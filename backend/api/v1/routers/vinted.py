@@ -340,7 +340,8 @@ async def publish_listing(
             success, error = await client.click_publish(page)
             
             if not success:
-                if "captcha" in error.lower() or "challenge" in error.lower():
+                error_lower = (error or "").lower()
+                if "captcha" in error_lower or "challenge" in error_lower:
                     return ListingPublishResponse(
                         ok=True,
                         dry_run=False,
@@ -349,7 +350,7 @@ async def publish_listing(
                         needs_manual=True,
                         reason="captcha_or_verification"
                     )
-                raise HTTPException(status_code=500, detail=error)
+                raise HTTPException(status_code=500, detail=error or "Unknown error")
             
             # Wait for redirect
             await asyncio.sleep(2)

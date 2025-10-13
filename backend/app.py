@@ -123,6 +123,13 @@ try:
 except:
     pass
 
+# Mount temp photos for Vinted uploads
+try:
+    os.makedirs("backend/data/temp_photos", exist_ok=True)
+    app.mount("/temp_photos", StaticFiles(directory="backend/data/temp_photos"), name="temp_photos")
+except Exception as e:
+    logger.warning(f"Could not mount temp_photos directory: {e}")
+
 if settings.MEDIA_STORAGE == "local":
     try:
         os.makedirs(settings.MEDIA_ROOT, exist_ok=True)
