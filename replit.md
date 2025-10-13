@@ -20,8 +20,9 @@ Preferred communication style: Simple, everyday language.
 
 ### API Framework
 - **FastAPI** serves as the core web framework, providing automatic OpenAPI documentation at `/docs` and `/redoc`
-- **CORS middleware** configured with permissive settings to allow frontend integration from any origin
+- **CORS middleware** configured with regex pattern matching for Lovable.dev wildcard domains (`https://*.lovable.dev`) plus configurable additional origins from environment
 - **Lifespan context manager** handles application startup/shutdown, including background scheduler initialization
+- **JSONResponse wrapper** ensures consistent JSON formatting and CORS header compatibility
 
 ### Data Storage
 - **File-based JSON database** (`backend/data/items.json`) stores all inventory items
@@ -64,13 +65,21 @@ Preferred communication style: Simple, everyday language.
 - Streaming responses with appropriate content-type headers
 
 ### API Routes Structure
-- `/ingest` - Photo upload and AI listing generation
-- `/listings` - CRUD operations for inventory items
+- `/ingest` - Photo upload and AI listing generation (including save-draft endpoint)
+- `/listings` - CRUD operations for inventory items (including publish endpoint)
 - `/pricing` - Price simulation and management
 - `/export` - Multi-format inventory exports
 - `/import` - CSV import functionality
 - `/stats` - Analytics and health monitoring
 - `/bonus` - Recommendations and test utilities
+
+### Lovable.dev Integration
+- **CORS Configuration**: Uses `allow_origin_regex` for wildcard Lovable domain support (`https://*.lovable.dev`)
+- **Additional Origins**: Configurable via `ADDITIONAL_CORS_ORIGINS` environment variable
+- **OpenAPI Client Generator**: Available in `frontend/openapi_client/generate_client.py` for TypeScript client generation
+- **Response Type Handling**: Properly handles JSON, CSV, and PDF responses based on content-type headers
+- **Publish Endpoint**: `/listings/publish/{item_id}` for marking items as listed (route ordering optimized)
+- **Integration Tests**: Comprehensive test suite in `test_lovable.py` validates all critical paths
 
 ## External Dependencies
 
