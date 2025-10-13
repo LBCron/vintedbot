@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     PLAYWRIGHT_HEADLESS: bool = True
     JOBS_ENABLED: bool = True
     
+    # Vinted session storage
+    SESSION_STORE_PATH: str = "backend/data/session.enc"
+    
     # Media storage configuration
     MEDIA_STORAGE: Literal["local", "s3"] = "local"
     MEDIA_ROOT: str = "backend/data/uploads"
