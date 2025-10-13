@@ -1,8 +1,18 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
+from dotenv import load_dotenv
 from backend.routes import ingest, listings, pricing, export, stats, bonus, import_route
 from backend.jobs.scheduler import start_scheduler, stop_scheduler
+
+load_dotenv()
+
+
+def ok(data: dict | list, status_code: int = 200):
+    """Helper function for standardized JSON responses"""
+    return JSONResponse(content=data, status_code=status_code)
 
 
 @asynccontextmanager
@@ -14,19 +24,34 @@ async def lifespan(app: FastAPI):
     stop_scheduler()
 
 
+allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "")
+if allowed_origins_env:
+    origins = [origin.strip() for origin in allowed_origins_env.split(",")]
+else:
+    origins = [
+        "http://localhost",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "https://*.lovable.dev",
+        "https://*.lovable.app",
+    ]
+
 app = FastAPI(
-    title="VintedBot API",
-    description="AI-powered clothing resale assistant API",
-    version="1.0.0",
+    title=os.getenv("API_TITLE", "VintedBot API"),
+    description=os.getenv("API_DESCRIPTION", "AI-powered clothing resale assistant API"),
+    version=os.getenv("API_VERSION", "1.0.0"),
     lifespan=lifespan
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins if origins != [""] else ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 app.include_router(ingest.router)
