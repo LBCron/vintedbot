@@ -28,20 +28,24 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "VintedBot API"
+args = "VintedBot Connector"
 
 [[workflows.workflow]]
-name = "VintedBot API"
+name = "VintedBot Connector"
 author = "agent"
-
-[workflows.workflow.metadata]
-outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "uvicorn backend.app:app --host 0.0.0.0 --port 5000"
 waitForPort = 5000
 
+[workflows.workflow.metadata]
+outputType = "webview"
+
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[[ports]]
+localPort = 43641
+externalPort = 3000
