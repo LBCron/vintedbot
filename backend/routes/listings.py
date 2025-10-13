@@ -38,3 +38,16 @@ async def delete_listing(item_id: str):
 @router.get("/status/{status}", response_model=List[Item])
 async def get_listings_by_status(status: ItemStatus):
     return db.get_by_status(status)
+
+
+@router.post("/publish/{item_id}", response_model=Item)
+async def publish_listing(item_id: str):
+    """Mark an item as published/listed (Lovable-friendly endpoint)"""
+    item = db.get_by_id(item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    
+    item.status = ItemStatus.LISTED
+    updated_item = db.update(item_id, item)
+    print(f"📢 Item published: {item.title}")
+    return updated_item
