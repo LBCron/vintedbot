@@ -1,0 +1,102 @@
+# VintedBot API - AI-Powered Clothing Resale Assistant
+
+## Overview
+
+VintedBot is a FastAPI-based backend system that automates the process of creating and managing clothing resale listings. The application uses AI to analyze clothing photos and generate complete product listings with pricing suggestions. It features automated price management, duplicate detection, inventory tracking, and multi-format export capabilities.
+
+The system is designed to streamline the resale workflow by:
+- Automatically generating product descriptions from images
+- Suggesting optimal pricing based on condition and brand
+- Detecting duplicate listings
+- Managing inventory status (draft, listed, sold, archived)
+- Providing scheduled price drops for unsold items
+- Exporting inventory in multiple formats (CSV, JSON, PDF, Vinted-specific)
+
+## User Preferences
+
+Preferred communication style: Simple, everyday language.
+
+## System Architecture
+
+### API Framework
+- **FastAPI** serves as the core web framework, providing automatic OpenAPI documentation at `/docs` and `/redoc`
+- **CORS middleware** configured with permissive settings to allow frontend integration from any origin
+- **Lifespan context manager** handles application startup/shutdown, including background scheduler initialization
+
+### Data Storage
+- **File-based JSON database** (`backend/data/items.json`) stores all inventory items
+- No external database required - simple JSON file acts as persistent storage
+- Custom `Database` class in `backend/models/db.py` provides CRUD operations
+- UUIDs used for unique item identification
+
+### AI & Image Processing
+- **Dual-mode AI service**: 
+  - OpenAI integration when API key is available
+  - Intelligent mock mode with realistic data generation when no API key present
+- **Image hash-based duplicate detection** using perceptual hashing (pHash)
+- **Text similarity matching** using rapidfuzz for title comparison (80% threshold)
+- Supports both image URLs and file uploads
+
+### Pricing Strategy
+- **Three-tier pricing model**: minimum, maximum, and target prices with justification
+- **Automated daily price drops** (5% default) via APScheduler background jobs
+- **Price history tracking** for all adjustments with timestamps and reasons
+- **Price floor protection** prevents drops below minimum suggested price
+- **Simulation endpoint** allows testing price trajectories over time
+
+### Background Jobs
+- **APScheduler** manages recurring tasks
+- **Daily cron job** (midnight) applies automatic price drops to all listed items
+- Scheduler lifecycle tied to FastAPI application lifespan
+- Job monitoring via health endpoint
+
+### Data Models (Pydantic Schemas)
+- **Item**: Core product model with full lifecycle tracking
+- **ItemStatus enum**: draft → listed → sold/archived workflow
+- **Condition enum**: Standardized condition levels (new with tags, very good, etc.)
+- **PriceSuggestion**: Structured pricing recommendations
+- **PriceHistory**: Audit trail for all price changes
+
+### Export System
+- **Multi-format support**: CSV, JSON, PDF, Vinted-specific CSV
+- **ReportLab** for PDF generation with formatted tables
+- **Custom field mapping** for Vinted marketplace compatibility
+- Streaming responses with appropriate content-type headers
+
+### API Routes Structure
+- `/ingest` - Photo upload and AI listing generation
+- `/listings` - CRUD operations for inventory items
+- `/pricing` - Price simulation and management
+- `/export` - Multi-format inventory exports
+- `/import` - CSV import functionality
+- `/stats` - Analytics and health monitoring
+- `/bonus` - Recommendations and test utilities
+
+## External Dependencies
+
+### Core Framework
+- **FastAPI** - Web framework with automatic API documentation
+- **Pydantic** - Data validation and schema definition
+- **Uvicorn** - ASGI server (implied, for running FastAPI)
+
+### AI & Image Processing
+- **OpenAI API** (optional) - GPT-based listing generation
+- **Pillow (PIL)** - Image processing
+- **imagehash** - Perceptual image hashing for duplicate detection
+- **rapidfuzz** - Fast fuzzy string matching
+
+### Background Processing
+- **APScheduler** - Cron-based job scheduling for automated price drops
+
+### Data Export
+- **ReportLab** - PDF generation with tables and formatting
+
+### HTTP & File Handling
+- **requests** - HTTP client for fetching remote images
+- **python-multipart** - File upload handling
+
+### Future Integration Points
+- Frontend connection ready via CORS-enabled REST API
+- Lovable.dev or similar frontend frameworks can consume `/docs` OpenAPI specification
+- Authentication layer can be added via FastAPI dependencies
+- External marketplace APIs (Vinted, etc.) can integrate via export formats
