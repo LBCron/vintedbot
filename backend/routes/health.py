@@ -39,3 +39,35 @@ async def health_check():
         },
         "scheduler_jobs_count": scheduler_jobs_count
     }
+
+
+@router.get("/ready")
+async def readiness_check():
+    """Readiness check endpoint for Lovable.dev frontend"""
+    return {
+        "status": "ready",
+        "timestamp": int(time.time())
+    }
+
+
+@router.get("/stats")
+async def backend_stats():
+    """Stats endpoint for Lovable.dev frontend"""
+    from backend.db import get_db_session
+    from backend.models import Listing, Draft, PublishJob
+    from sqlmodel import func, select
+    
+    with get_db_session() as db:
+        total_listings = db.exec(select(func.count(Listing.id))).first() or 0
+        total_drafts = db.exec(select(func.count(Draft.id))).first() or 0
+        total_jobs = db.exec(select(func.count(PublishJob.job_id))).first() or 0
+    
+    return {
+        "status": "ok",
+        "stats": {
+            "listings": total_listings,
+            "drafts": total_drafts,
+            "publish_jobs": total_jobs
+        },
+        "uptime_seconds": int(time.time() - start_time)
+    }

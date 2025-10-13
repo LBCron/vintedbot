@@ -43,6 +43,33 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
+@router.websocket("/ws")
+async def websocket_general(websocket: WebSocket):
+    """General WebSocket endpoint for Lovable.dev frontend"""
+    session_id = "lovable"
+    await manager.connect(websocket, session_id)
+    
+    try:
+        while True:
+            data = await websocket.receive_text()
+            
+            # Echo back for now
+            try:
+                message = json.loads(data)
+                await manager.send_message(session_id, {
+                    "type": "echo",
+                    "data": message
+                })
+            except:
+                pass
+    
+    except WebSocketDisconnect:
+        manager.disconnect(websocket, session_id)
+    except Exception as e:
+        logger.error(f"WebSocket error: {e}")
+        manager.disconnect(websocket, session_id)
+
+
 @router.websocket("/ws/messages")
 async def websocket_messages(websocket: WebSocket, session_id: str = "default"):
     """WebSocket endpoint for real-time message updates"""
