@@ -112,6 +112,27 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### Vinted Automation System (October 13, 2025)
+- ✅ **Playwright-based automation**: Full Vinted listing creation and publication
+- ✅ **Encrypted session vault**: Fernet encryption for cookie/user-agent storage (`backend/data/session.enc`)
+- ✅ **Photo upload pipeline**: Multipart upload with temp storage at `/temp_photos` (rate limited 10/min)
+- ✅ **Two-phase workflow**: 
+  - Phase A (prepare): Fill form, upload photos, detect captcha → returns `confirm_token`
+  - Phase B (publish): Click publish button using token (30min TTL)
+- ✅ **Dry-run by default**: All operations safe unless `dry_run: false` explicitly set
+- ✅ **Captcha detection**: Graceful handling with `needs_manual: true` response (no bypass attempts)
+- ✅ **Rate limiting**: 5 requests/min on publish endpoint
+- ✅ **Idempotency support**: `Idempotency-Key` header prevents duplicate publications
+- ✅ **Complete documentation**: `VINTED_API_TESTS.md` (cURL tests) + `LOVABLE_PROMPT.md` (frontend integration)
+- ✅ **New endpoints**:
+  - `POST /vinted/auth/session` - Save encrypted session
+  - `GET /vinted/auth/check` - Verify authentication
+  - `POST /vinted/photos/upload` - Upload listing photos
+  - `POST /vinted/listings/prepare` - Prepare draft (Phase A)
+  - `POST /vinted/listings/publish` - Publish listing (Phase B)
+- ✅ **Dependencies added**: playwright, cryptography
+- ✅ **Architect validated**: None-guards fixed, /temp_photos mounted, all critical paths functional
+
 ### Multipart Upload Endpoint (October 13, 2025)
 - ✅ **Production-ready image upload**: POST /api/v1/ingest/upload accepts 1-20 images
 - ✅ **Image processing pipeline**: Auto-corrects EXIF orientation, resizes to 1600px max, JPEG quality 80, strips GPS/EXIF data
