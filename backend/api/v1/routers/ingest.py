@@ -19,6 +19,12 @@ router = APIRouter(tags=["ingest"])
 limiter = Limiter(key_func=get_remote_address)
 
 
+@router.options("/ingest/upload")
+async def ingest_upload_options():
+    """OPTIONS endpoint for CORS preflight"""
+    return {"methods": ["POST", "OPTIONS"]}
+
+
 @router.post("/ingest/upload", response_model=DraftOut, status_code=201)
 @limiter.limit(settings.RATE_LIMIT_UPLOAD)
 async def ingest_upload(

@@ -9,6 +9,7 @@ start_time = time.time()
 
 
 @router.get("/health")
+@router.options("/health")
 async def health_check():
     """Enhanced health check endpoint"""
     process = psutil.Process()
@@ -42,6 +43,7 @@ async def health_check():
 
 
 @router.get("/ready")
+@router.options("/ready")
 async def readiness_check():
     """Readiness check endpoint for Lovable.dev frontend"""
     return {
@@ -51,6 +53,7 @@ async def readiness_check():
 
 
 @router.get("/stats")
+@router.options("/stats")
 async def backend_stats():
     """Stats endpoint for Lovable.dev frontend"""
     from backend.db import get_db_session
