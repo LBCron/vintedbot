@@ -113,6 +113,9 @@ app.include_router(ws.router)
 app.include_router(ingest.router, prefix="/api/v1", tags=["api-v1"])
 app.include_router(health_v1.router, prefix="/api/v1", tags=["api-v1"])
 
+# Alias for Lovable.dev compatibility (without /api/v1 prefix)
+app.include_router(ingest.router, tags=["ingest-alias"])
+
 # Mount static files for uploads and media
 try:
     app.mount("/uploads", StaticFiles(directory="backend/data/uploads"), name="uploads")
