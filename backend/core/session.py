@@ -1,0 +1,123 @@
+"""
+Secure session vault for Vinted authentication.
+Uses Fernet encryption to store cookies safely.
+"""
+import json
+import os
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Optional, Dict, Any
+from cryptography.fernet import Fernet
+from pydantic import BaseModel
+
+
+class VintedSession(BaseModel):
+    """Vinted session data model"""
+    cookie: str
+    user_agent: str
+    username: Optional[str] = None
+    user_id: Optional[str] = None
+    expires_at: Optional[datetime] = None
+    created_at: datetime = datetime.utcnow()
+
+
+class SessionVault:
+    """Encrypted session storage"""
+    
+    def __init__(self, key: str, storage_path: str = "backend/data/session.enc"):
+        """
+        Initialize vault with encryption key
+        
+        Args:
+            key: Fernet key (32-byte base64-encoded)
+            storage_path: Path to encrypted session file
+        """
+        # Ensure key is properly formatted for Fernet
+        if len(key) < 32:
+            key = key.ljust(32, '=')[:32]
+        
+        # Generate Fernet key from SECRET_KEY
+        import base64
+        import hashlib
+        key_bytes = hashlib.sha256(key.encode()).digest()
+        self.fernet_key = base64.urlsafe_b64encode(key_bytes)
+        self.fernet = Fernet(self.fernet_key)
+        
+        self.storage_path = Path(storage_path)
+        self.storage_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    def save_session(self, session: VintedSession) -> bool:
+        """
+        Encrypt and save session
+        
+        Args:
+            session: VintedSession object
+            
+        Returns:
+            True if saved successfully
+        """
+        try:
+            # Convert to dict and then to JSON
+            session_dict = session.model_dump(mode='json')
+            session_json = json.dumps(session_dict)
+            
+            # Encrypt
+            encrypted = self.fernet.encrypt(session_json.encode())
+            
+            # Save to file
+            self.storage_path.write_bytes(encrypted)
+            return True
+        except Exception as e:
+            print(f"❌ Error saving session: {e}")
+            return False
+    
+    def load_session(self) -> Optional[VintedSession]:
+        """
+        Load and decrypt session
+        
+        Returns:
+            VintedSession if found and valid, None otherwise
+        """
+        try:
+            if not self.storage_path.exists():
+                return None
+            
+            # Read encrypted data
+            encrypted = self.storage_path.read_bytes()
+            
+            # Decrypt
+            decrypted = self.fernet.decrypt(encrypted)
+            session_dict = json.loads(decrypted.decode())
+            
+            # Parse datetime strings
+            if session_dict.get('expires_at'):
+                session_dict['expires_at'] = datetime.fromisoformat(session_dict['expires_at'])
+            if session_dict.get('created_at'):
+                session_dict['created_at'] = datetime.fromisoformat(session_dict['created_at'])
+            
+            session = VintedSession(**session_dict)
+            
+            # Check expiration
+            if session.expires_at and session.expires_at < datetime.utcnow():
+                print("⚠️ Session expired")
+                return None
+            
+            return session
+        except Exception as e:
+            print(f"❌ Error loading session: {e}")
+            return None
+    
+    def clear_session(self) -> bool:
+        """Delete stored session"""
+        try:
+            if self.storage_path.exists():
+                self.storage_path.unlink()
+            return True
+        except Exception as e:
+            print(f"❌ Error clearing session: {e}")
+            return False
+    
+    def is_authenticated(self) -> bool:
+        """Check if valid session exists"""
+        session = self.load_session()
+        return session is not None
