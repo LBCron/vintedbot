@@ -28,10 +28,10 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "VintedBot API"
+args = "VintedBot Server"
 
 [[workflows.workflow]]
-name = "VintedBot API"
+name = "VintedBot Server"
 author = "agent"
 
 [[workflows.workflow.tasks]]
