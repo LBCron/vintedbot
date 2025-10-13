@@ -12,7 +12,7 @@ language = "python3"
 requiredFiles = [".replit", "replit.nix"]
 
 [deployment]
-run = ["uvicorn", "backend.app:app", "--host", "0.0.0.0", "--port", "8000"]
+run = ["uvicorn", "backend.app:app", "--host", "0.0.0.0", "--port", "5000"]
 deploymentTarget = "vm"
 
 [agent]
@@ -35,17 +35,13 @@ name = "VintedBot API"
 author = "agent"
 
 [workflows.workflow.metadata]
-outputType = "console"
+outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "uvicorn backend.app:app --host 0.0.0.0 --port 8000"
-waitForPort = 8000
+args = "uvicorn backend.app:app --host 0.0.0.0 --port 5000"
+waitForPort = 5000
 
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 8000
-externalPort = 8000
