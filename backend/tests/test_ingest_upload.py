@@ -86,11 +86,42 @@ async def test_ingest_upload_large_image_resize():
 @pytest.mark.asyncio
 async def test_ingest_upload_no_files():
     """Test error when no files provided"""
+    # FastAPI requires the files field, so it returns 422 when missing
+    # This is expected validation behavior for required multipart fields
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        r = await ac.post("/api/v1/ingest/upload", files={})
+        r = await ac.post("/api/v1/ingest/upload", data={"title": "test"})
     
-    assert r.status_code == 422
+    assert r.status_code == 422  # FastAPI validation for missing required field
+
+
+@pytest.mark.asyncio
+async def test_upload_oversized_file():
+    """Test that oversized files are rejected with 413"""
+    # Create a 16MB file (exceeds 15MB limit)
+    large_data = b"x" * (16 * 1024 * 1024)
+    files = {"files": ("large.jpg", large_data, "image/jpeg")}
+    
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        r = await ac.post("/api/v1/ingest/upload", files=files)
+    
+    assert r.status_code == 413
+    assert "too large" in r.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_upload_invalid_mime():
+    """Test that non-image files are rejected with 415"""
+    pdf_data = b"%PDF-1.4 fake pdf content"
+    files = {"files": ("doc.pdf", pdf_data, "application/pdf")}
+    
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        r = await ac.post("/api/v1/ingest/upload", files=files)
+    
+    assert r.status_code == 415
+    assert "unsupported" in r.json()["detail"].lower()
 
 
 @pytest.mark.asyncio

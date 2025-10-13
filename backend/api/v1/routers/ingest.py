@@ -1,24 +1,28 @@
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
-from typing import List
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Request
+from typing import List, Optional
 from sqlmodel import select
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from backend.settings import settings
 from backend.core.media import (
     sniff_mime,
-    check_size_limit,
     is_allowed_mime,
     process_image,
     sha256_of,
     store_local,
 )
-from backend.db import get_session
+from backend.db import get_db_session
 from backend.models import Media, Draft, DraftPhoto
 from backend.api.v1.schemas import DraftOut, DraftPhotoOut, MediaOut
 
 router = APIRouter(tags=["ingest"])
+limiter = Limiter(key_func=get_remote_address)
 
 
 @router.post("/ingest/upload", response_model=DraftOut, status_code=201)
+@limiter.limit(settings.RATE_LIMIT_UPLOAD)
 async def ingest_upload(
+    request: Request,
     files: List[UploadFile] = File(..., description="Multiple image files (field name: 'files')"),
     title: str = Form("", description="Optional initial title for the draft"),
 ):
@@ -35,7 +39,7 @@ async def ingest_upload(
     
     Returns: Draft listing with processed photos
     """
-    if not files:
+    if not files or len(files) == 0:
         raise HTTPException(400, "No files provided")
     
     if len(files) > settings.MAX_UPLOADS_PER_REQUEST:
@@ -49,8 +53,13 @@ async def ingest_upload(
     for f in files:
         raw = await f.read()
         
-        # Validate size
-        check_size_limit(raw)
+        # Validate size (raise 413 for oversized files)
+        mb = len(raw) / (1024 * 1024)
+        if mb > settings.MAX_FILE_SIZE_MB:
+            raise HTTPException(
+                413,
+                f"File too large: {mb:.1f} MB exceeds limit of {settings.MAX_FILE_SIZE_MB} MB"
+            )
         
         # Validate MIME type
         mime = sniff_mime(raw)
@@ -77,7 +86,7 @@ async def ingest_upload(
         })
 
     # Save to database
-    async with get_session() as session:
+    with get_db_session() as session:
         # Create draft
         draft = Draft(
             title=title or "",
@@ -85,16 +94,16 @@ async def ingest_upload(
             status="draft"
         )
         session.add(draft)
-        await session.flush()
+        session.flush()
         
         # Create media records and link to draft
         media_records = []
         for idx, p in enumerate(processed):
             # Check if media already exists
-            result = await session.execute(
+            result = session.exec(
                 select(Media).where(Media.sha256 == p["sha"])
             )
-            existing_media = result.scalar_one_or_none()
+            existing_media = result.first()
             
             if existing_media:
                 media = existing_media
@@ -110,7 +119,7 @@ async def ingest_upload(
                     url=p["url"]
                 )
                 session.add(media)
-                await session.flush()
+                session.flush()
             
             # Link to draft
             draft_photo = DraftPhoto(
@@ -119,23 +128,33 @@ async def ingest_upload(
                 order_index=idx
             )
             session.add(draft_photo)
-            media_records.append((media, idx))
+            
+            # Store media data for response (before session closes)
+            media_records.append({
+                "id": media.id,
+                "url": media.url,
+                "width": media.width,
+                "height": media.height,
+                "mime": media.mime,
+                "order_index": idx
+            })
         
-        await session.commit()
+        session.commit()
+        session.refresh(draft)
     
     # Build response DTO
     photos_out = [
         DraftPhotoOut(
             media=MediaOut(
-                id=media.id,
-                url=media.url,
-                width=media.width,
-                height=media.height,
-                mime=media.mime
+                id=m["id"],
+                url=m["url"],
+                width=m["width"],
+                height=m["height"],
+                mime=m["mime"]
             ),
-            order_index=order_idx
+            order_index=m["order_index"]
         )
-        for media, order_idx in media_records
+        for m in media_records
     ]
     
     return DraftOut(

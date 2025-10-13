@@ -56,11 +56,11 @@ def process_image(data: bytes) -> Tuple[bytes, int, int, str]:
     if max(w, h) > max_dim:
         if w >= h:
             nh = int(h * (max_dim / w))
-            img = img.resize((max_dim, nh), Image.LANCZOS)
+            img = img.resize((max_dim, nh), Image.Resampling.LANCZOS)
             w, h = max_dim, nh
         else:
             nw = int(w * (max_dim / h))
-            img = img.resize((nw, max_dim), Image.LANCZOS)
+            img = img.resize((nw, max_dim), Image.Resampling.LANCZOS)
             w, h = nw, max_dim
     
     # Export as JPEG without EXIF data

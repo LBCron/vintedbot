@@ -1,8 +1,13 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Literal, List
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file="backend/.env",
+        env_file_encoding="utf-8",
+        case_sensitive=True
+    )
     ENV: str = "dev"
     PORT: int = 5000
     
@@ -49,11 +54,6 @@ class Settings(BaseSettings):
     # Rate limiting
     RATE_LIMIT_GLOBAL: str = "60/minute"
     RATE_LIMIT_UPLOAD: str = "10/minute"
-    
-    class Config:
-        env_file = "backend/.env"
-        env_file_encoding = "utf-8"
-        case_sensitive = True
 
 
 settings = Settings()
