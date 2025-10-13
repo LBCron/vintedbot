@@ -1,0 +1,181 @@
+You are an experienced FastAPI + Playwright engineer. Build a robust, production-ready backend in this Replit project called "vintedbot-connector" that will allow a Lovable frontend to provide a near-complete Vinted-like experience for a single user (MVP -> then expand). Focus first on a SAFE, reversible approach (mock/manual modes) and provide an optional, strictly opt-in AUTOMATED mode using Playwright for browser actions.
+
+Important legal/security note (must be included in README and UI):
+- Do NOT attempt to bypass CAPTCHA or other anti-bot measures.
+- Automation must be opt-in and must fail safely if blocked (captcha/2FA).
+- Secrets (cookies, proxies) must be encrypted and stored securely.
+- Default mode is MOCK. Manual session import is recommended before any automation.
+
+High-level goals:
+- Provide **full messaging/inbox experience**: threads, messages, attachments, read/unread, thread metadata, quick-reply using AI drafts, push updates, websocket streaming, webhooks, pagination, search in threads (local).
+- Provide endpoints and workflow to manage listings, publish queue, stats, offers, conversations, shipments, sales history, favorites, and user profile fields so Lovable can replicate the Vinted UI (except global site search/scraping which will be added later).
+- Worker and scheduling for inbox sync, publish queue, price drops, and periodic tasks.
+- Clear contract (endpoints) for the Lovable frontend.
+- Modeled for single-user per Replit instance, but structured so multi-user is possible later.
+
+ENV variables (.env.example)
+- SESSION_MODE = mock | manual | automated   # default: mock
+- ALLOWED_ORIGINS = https://your-lovable-domain
+- ENCRYPTION_KEY = (32 bytes for cookie encryption)
+- OPENAI_API_KEY = ...
+- PLAYWRIGHT_HEADLESS = "1" or "0"
+- PROXY_URL = (optional, for automation)
+- SYNC_INTERVAL_MIN = 5   # inbox sync interval, minutes
+
+Dependencies (requirements.txt)
+fastapi uvicorn httpx python-dotenv apscheduler cryptography playwright python-multipart pydantic loguru sqlmodel aiofiles python-jose websockets
+
+Project structure (create files / folders)
+/backend
+  app.py
+  models.py          # SQLModel models (User, Session, MessageThread, Message, Attachment, PublishJob, Offer, Order, Listing)
+  db.py              # db init (sqlite via SQLModel or tinydb for quick start)
+  vinted_connector.py# wrappers to interact with Vinted pages / mobile endpoints (mock + manual cookie usage)
+  playwright_worker.py# optional Playwright worker for automation (headful/headless)
+  jobs.py            # APScheduler job definitions (inbox_sync, price_drop, publish_worker)
+  routes/
+    auth.py          # session import / test / logout
+    messages.py      # full messaging API
+    publish.py       # queue publishes, job status
+    listings.py      # CRUD + export
+    offers.py        # offers/inbox-related endpoints
+    orders.py        # order/shipping endpoints (basic)
+    health.py
+    ws.py            # websocket endpoint for live updates
+  utils/
+    crypto.py        # encrypt/decrypt session cookies
+    logger.py        # loguru config + request id
+    validators.py    # url/file validators
+  README.md
+  .env.example
+
+MODES OF OPERATION (brief)
+- MOCK: returns plausible mock data for all endpoints. Perfect for frontend development.
+- MANUAL: user pastes encrypted Vinted session cookie via POST /vinted/auth/session. Backend validates it by requesting a protected endpoint on Vinted (or a lightweight profile endpoint). Stored encrypted cookie used for read-only ops (inbox sync, fetch listing pages). Publish flow in MANUAL mode PREFILLS form but DOES NOT click publish unless user confirms.
+- AUTOMATED (opt-in): Playwright worker uses stored cookie and optionally proxy to fill forms and click publish/reply. On encountering captcha/2FA/blocker -> job fails and stores screenshot + logs. User is notified and must intervene.
+
+MESSAGING / INBOX features (must be fully supported)
+- Background inbox sync job:
+  - Periodic job (configurable) that fetches inbox threads from Vinted using stored session cookie (or mocks).
+  - Store threads: thread_id, participants, snippet, unread_count, last_message_at.
+  - Store messages: id, thread_id, sender, body, attachments (urls), created_at, delivered/read flags.
+- Endpoints:
+  - GET  /vinted/messages?since=ISO&limit=50&offset=0
+    -> returns thread list (paginated) with unread counts and last message snippet
+  - GET  /vinted/messages/{thread_id}?limit=50&offset=0
+    -> returns messages ordered asc or desc + attachments metadata
+  - POST /vinted/messages/{thread_id}/reply
+    body: { session_id, text, attachments?: [base64 or upload reference], send_mode: "manual"|"automated" }
+    -> MANUAL: create a DraftReply; persist; return preview_url and job_id. Optionally create Playwright headful preview that opens a page prefilled but not submitted.
+    -> AUTOMATED: queue Playwright job to post message; if blocked -> job failed with screenshot.
+  - POST /vinted/messages/send-attachment (multipart) -> upload file, store in /data/uploads, return URL for message
+  - POST /vinted/messages/bulk-mark-read
+  - GET  /vinted/messages/notifications -> return unread counts
+- Real-time:
+  - WebSocket at /ws/messages?session_id=... pushing new messages/thread updates and job status.
+  - Server push/webhook support (configure a webhook URL to receive changes).
+- Search within threads (local): implement quick search endpoint uses DB full-text search. (Global site search/scraping is noted as “later”)
+
+LISTINGS / PUBLISHING (expose endpoints so Lovable can replicate Vinted UI)
+- Endpoints:
+  - POST /ingest/photos (existing) -> returns { item_id, draft }
+  - GET  /listings -> all items (with filters/pagination)
+  - GET  /listings/{id}
+  - POST /listings/publish/{id}?session_id=...&mode=manual|automated&schedule=ISO
+    -> queues publish job
+  - GET  /publish/queue -> list jobs
+  - GET  /publish/queue/{job_id}
+  - POST /publish/queue/{job_id}/cancel
+  - GET /export/csv, /export/json
+- Publish job lifecycle:
+  queued -> processing -> success | failed | blocked
+  logs and screenshots stored for failed/blocked jobs.
+- Support attachments upload (multipart), image optimization/resizing, perceptual hash check to avoid duplicates.
+
+UX / FRONTEND CONTRACT (what Lovable will be able to do)
+- Inbox screen: threads list, unread counts, search (local), thread view with messages and attachments, quick-reply with AI suggestion button, mark read/unread, delete/archive thread.
+- Listing page: view/edit the draft, preview how it will appear on Vinted, publish controls (manual preview or automated queue).
+- Notifications: real-time messages and job updates via websocket.
+- Settings: manage sessions (import cookie, test session, switch mode, logout), enable automation toggle (explicit UX confirmation), set schedule for publishes/sync.
+- Admin/debug: last 50 logs, last 10 screenshots for publish failures, queue monitoring.
+
+WEBHOOKS / PUSH / REAL-TIME
+- Allow users to register a webhook URL in settings; backend posts to webhook on:
+  - new_message_received
+  - publish_job_complete
+  - publish_job_failed
+  - session_invalidated
+- Implement a /ws/messages websocket endpoint for live updates (subscribe to session_id).
+
+SECURITY & STORAGE
+- Encrypt session cookie value with ENCRYPTION_KEY before storing in DB.
+- Do not write raw cookie values to logs.
+- Store attachments and screenshots in backend/data/uploads; sanitize filenames.
+- Rate limit Playwright jobs and inbound requests to sensitive endpoints.
+
+PLAYWRIGHT WORKER (optional & opt-in)
+- playwright_worker.py should:
+  - load decrypted cookie into browser context
+  - be able to open Vinted new listing page, fill fields, upload images (from stored upload path), click publish (if mode=automated)
+  - take full-page screenshot on error and save to /data/screenshots/{job_id}.png
+  - return structured logs for each step
+  - detect and abort if captcha/2FA appears; do not attempt to bypass
+- Worker must be restartable and report status to DB.
+
+SCHEDULER & JOB QUEUE
+- APScheduler or lightweight queue to run:
+  - inbox_sync (every SYNC_INTERVAL_MIN)
+  - publish worker (poll queue)
+  - price drops/other periodic tasks
+- Jobs persisted in DB with status/history.
+
+DEVELOPMENT / MOCK MODE
+- Provide a robust mock mode that returns realistic messages, threads, listings, and publish job flows for frontend dev.
+- Provide a script `scripts/seed_mock_data.py` to seed DB for testing.
+
+ENDPOINT LIST (summary)
+- POST /vinted/auth/session { cookie_value } -> { session_id, valid }
+- POST /vinted/auth/logout { session_id }
+- GET  /vinted/messages?since=&limit=&offset=
+- GET  /vinted/messages/{thread_id}
+- POST /vinted/messages/{thread_id}/reply
+- POST /vinted/messages/send-attachment (multipart)
+- GET  /vinted/messages/notifications
+- WS   /ws/messages?session_id=
+- POST /vinted/publish/queue { item_id, session_id, mode, schedule_at }
+- GET  /vinted/publish/queue
+- GET  /vinted/publish/queue/{job_id}
+- POST /vinted/publish/queue/{job_id}/cancel
+- GET  /listings
+- GET  /listings/{id}
+- POST /ingest/photos (existing)
+- GET  /export/csv, /export/json
+- GET  /health
+
+DOCUMENTATION & README
+- Provide step-by-step: how to import a session (manual cookie), how to enable automation, how to check logs/screenshots, safety checklist, how mock-mode works.
+- Provide sample curl calls for each main endpoint.
+- Provide clear “what to do if automation fails (captcha)” instructions.
+
+DELIVERABLES (what I expect you to produce)
+- Full backend code in /backend with the files listed above.
+- Working mock-mode for Lovable frontend development.
+- Playwright worker skeleton (fully functioning in headful mode in dev; headless optional).
+- DB setup (sqlite) + migration/seed script for mock data.
+- README explaining how to switch mode and how the Last-Resort Manual flow works.
+- End-to-end example: create draft -> queue publish manual -> worker opens pre-filled page (manual confirm) -> mark job done.
+
+NOTES ON SCRAPING / SITE-WIDE SEARCH (LATER)
+- The project must provide hooks and extension points for a future scraping module that will support site-wide searches and indexing (this will be added later). For now, **do not implement aggressive scraping**; instead provide the API extension points (e.g., `/vinted/scrape/search?query=...`) that return a 501 Not Implemented or mock data until scraping is added.
+
+FINAL MESSAGE WHEN COMPLETE
+- Return a checklist of implemented endpoints and functionality.
+- Print console lines:
+  - "Uvicorn running on http://0.0.0.0:5000"
+  - "Playwright worker ready (headless=<value>)"
+  - "Inbox sync job scheduled every <N> minutes"
+- Provide sample curl for:
+  - POST /vinted/auth/session
+  - POST /vinted/publish/queue
+
+Make sure the system is robust, well-logged, conservative by default (mock/manual), and that automation is fully opt-in. Keep everything modular so the Lovable frontend can implement a full Vinted-like UI (messages, listings, profile, orders) now and add site search/scraping later.
