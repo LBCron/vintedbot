@@ -1,0 +1,1180 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "VintedBot API",
+    "description": "AI-powered clothing resale assistant API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/ingest/photos": {
+      "post": {
+        "tags": [
+          "Ingest"
+        ],
+        "summary": "Ingest Photos",
+        "operationId": "ingest_photos_ingest_photos_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_ingest_photos_ingest_photos_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Draft"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ingest/save-draft": {
+      "post": {
+        "tags": [
+          "Ingest"
+        ],
+        "summary": "Save Draft",
+        "operationId": "save_draft_ingest_save_draft_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Draft"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Item"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/listings/all": {
+      "get": {
+        "tags": [
+          "Listings"
+        ],
+        "summary": "Get All Listings",
+        "operationId": "get_all_listings_listings_all_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Item"
+                  },
+                  "type": "array",
+                  "title": "Response Get All Listings Listings All Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/listings/{item_id}": {
+      "get": {
+        "tags": [
+          "Listings"
+        ],
+        "summary": "Get Listing",
+        "operationId": "get_listing_listings__item_id__get",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Item"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Listings"
+        ],
+        "summary": "Update Listing",
+        "operationId": "update_listing_listings__item_id__put",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Item"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Item"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Listings"
+        ],
+        "summary": "Delete Listing",
+        "operationId": "delete_listing_listings__item_id__delete",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/listings/status/{status}": {
+      "get": {
+        "tags": [
+          "Listings"
+        ],
+        "summary": "Get Listings By Status",
+        "operationId": "get_listings_by_status_listings_status__status__get",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ItemStatus"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Item"
+                  },
+                  "title": "Response Get Listings By Status Listings Status  Status  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pricing/simulate": {
+      "post": {
+        "tags": [
+          "Pricing"
+        ],
+        "summary": "Simulate Pricing",
+        "operationId": "simulate_pricing_pricing_simulate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PriceSimulation"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SimulationResult"
+                  },
+                  "type": "array",
+                  "title": "Response Simulate Pricing Pricing Simulate Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/export/csv": {
+      "get": {
+        "tags": [
+          "Export"
+        ],
+        "summary": "Export Csv",
+        "operationId": "export_csv_export_csv_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/export/vinted": {
+      "get": {
+        "tags": [
+          "Export"
+        ],
+        "summary": "Export Vinted",
+        "operationId": "export_vinted_export_vinted_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/export/json": {
+      "get": {
+        "tags": [
+          "Export"
+        ],
+        "summary": "Export Json",
+        "operationId": "export_json_export_json_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/export/pdf": {
+      "get": {
+        "tags": [
+          "Export"
+        ],
+        "summary": "Export Pdf",
+        "operationId": "export_pdf_export_pdf_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stats": {
+      "get": {
+        "tags": [
+          "Stats"
+        ],
+        "summary": "Get Stats",
+        "operationId": "get_stats_stats_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "Stats"
+        ],
+        "summary": "Get Health",
+        "operationId": "get_health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bonus/test/photoset": {
+      "get": {
+        "tags": [
+          "Bonus Features"
+        ],
+        "summary": "Generate Test Photoset",
+        "operationId": "generate_test_photoset_bonus_test_photoset_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Draft"
+                  },
+                  "type": "array",
+                  "title": "Response Generate Test Photoset Bonus Test Photoset Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bonus/recommendations": {
+      "get": {
+        "tags": [
+          "Bonus Features"
+        ],
+        "summary": "Get Recommendations",
+        "operationId": "get_recommendations_bonus_recommendations_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Item"
+                  },
+                  "type": "array",
+                  "title": "Response Get Recommendations Bonus Recommendations Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bonus/simulate/multi-price": {
+      "post": {
+        "tags": [
+          "Bonus Features"
+        ],
+        "summary": "Simulate Multiple Prices",
+        "operationId": "simulate_multiple_prices_bonus_simulate_multi_price_post",
+        "parameters": [
+          {
+            "name": "min_price",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 10.0,
+              "title": "Min Price"
+            }
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 30,
+              "title": "Days"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "title": "Prices"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/import/csv": {
+      "post": {
+        "tags": [
+          "Import"
+        ],
+        "summary": "Import Csv",
+        "operationId": "import_csv_import_csv_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_import_csv_import_csv_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "summary": "Root",
+        "operationId": "root__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Body_import_csv_import_csv_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_import_csv_import_csv_post"
+      },
+      "Body_ingest_photos_ingest_photos_post": {
+        "properties": {
+          "request": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PhotoIngestRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "files": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "format": "binary"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Files"
+          }
+        },
+        "type": "object",
+        "title": "Body_ingest_photos_ingest_photos_post"
+      },
+      "Condition": {
+        "type": "string",
+        "enum": [
+          "new_with_tags",
+          "new_without_tags",
+          "very_good",
+          "good",
+          "satisfactory"
+        ],
+        "title": "Condition"
+      },
+      "Draft": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "brand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand"
+          },
+          "category_guess": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Guess"
+          },
+          "condition": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Condition"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "size_guess": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Guess"
+          },
+          "keywords": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Keywords",
+            "default": []
+          },
+          "price_suggestion": {
+            "$ref": "#/components/schemas/PriceSuggestion"
+          },
+          "image_urls": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Image Urls",
+            "default": []
+          },
+          "possible_duplicate": {
+            "type": "boolean",
+            "title": "Possible Duplicate",
+            "default": false
+          },
+          "estimated_sale_score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Sale Score"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "description",
+          "price_suggestion"
+        ],
+        "title": "Draft"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "uptime_seconds": {
+            "type": "number",
+            "title": "Uptime Seconds"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "scheduler_jobs": {
+            "type": "integer",
+            "title": "Scheduler Jobs"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "uptime_seconds",
+          "version",
+          "scheduler_jobs"
+        ],
+        "title": "HealthResponse"
+      },
+      "Item": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "brand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "size": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size"
+          },
+          "condition": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Condition"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "price": {
+            "type": "number",
+            "title": "Price"
+          },
+          "price_suggestion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PriceSuggestion"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "price_history": {
+            "items": {
+              "$ref": "#/components/schemas/PriceHistory"
+            },
+            "type": "array",
+            "title": "Price History",
+            "default": []
+          },
+          "keywords": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Keywords",
+            "default": []
+          },
+          "image_urls": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Image Urls",
+            "default": []
+          },
+          "image_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Hash"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ItemStatus",
+            "default": "draft"
+          },
+          "possible_duplicate": {
+            "type": "boolean",
+            "title": "Possible Duplicate",
+            "default": false
+          },
+          "estimated_sale_score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Sale Score"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "description",
+          "price"
+        ],
+        "title": "Item"
+      },
+      "ItemStatus": {
+        "type": "string",
+        "enum": [
+          "draft",
+          "listed",
+          "sold",
+          "archived"
+        ],
+        "title": "ItemStatus"
+      },
+      "PhotoIngestRequest": {
+        "properties": {
+          "urls": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Urls",
+            "default": []
+          }
+        },
+        "type": "object",
+        "title": "PhotoIngestRequest"
+      },
+      "PriceHistory": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Date"
+          },
+          "old_price": {
+            "type": "number",
+            "title": "Old Price"
+          },
+          "new_price": {
+            "type": "number",
+            "title": "New Price"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason",
+            "default": "automatic_drop"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "old_price",
+          "new_price"
+        ],
+        "title": "PriceHistory"
+      },
+      "PriceSimulation": {
+        "properties": {
+          "initial_price": {
+            "type": "number",
+            "title": "Initial Price"
+          },
+          "min_price": {
+            "type": "number",
+            "title": "Min Price"
+          },
+          "days": {
+            "type": "integer",
+            "title": "Days",
+            "default": 30
+          }
+        },
+        "type": "object",
+        "required": [
+          "initial_price",
+          "min_price"
+        ],
+        "title": "PriceSimulation"
+      },
+      "PriceSuggestion": {
+        "properties": {
+          "min": {
+            "type": "number",
+            "title": "Min",
+            "description": "Minimum price threshold"
+          },
+          "max": {
+            "type": "number",
+            "title": "Max",
+            "description": "Maximum price"
+          },
+          "target": {
+            "type": "number",
+            "title": "Target",
+            "description": "Target selling price"
+          },
+          "justification": {
+            "type": "string",
+            "title": "Justification",
+            "description": "Reasoning for price range"
+          }
+        },
+        "type": "object",
+        "required": [
+          "min",
+          "max",
+          "target",
+          "justification"
+        ],
+        "title": "PriceSuggestion"
+      },
+      "SimulationResult": {
+        "properties": {
+          "day": {
+            "type": "integer",
+            "title": "Day"
+          },
+          "price": {
+            "type": "number",
+            "title": "Price"
+          },
+          "drop_percentage": {
+            "type": "number",
+            "title": "Drop Percentage",
+            "default": 0.0
+          }
+        },
+        "type": "object",
+        "required": [
+          "day",
+          "price"
+        ],
+        "title": "SimulationResult"
+      },
+      "StatsResponse": {
+        "properties": {
+          "total_items": {
+            "type": "integer",
+            "title": "Total Items"
+          },
+          "total_value": {
+            "type": "number",
+            "title": "Total Value"
+          },
+          "avg_price": {
+            "type": "number",
+            "title": "Avg Price"
+          },
+          "top_brands": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Top Brands"
+          },
+          "duplicates_detected": {
+            "type": "integer",
+            "title": "Duplicates Detected"
+          },
+          "avg_days_since_creation": {
+            "type": "number",
+            "title": "Avg Days Since Creation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_items",
+          "total_value",
+          "avg_price",
+          "top_brands",
+          "duplicates_detected",
+          "avg_days_since_creation"
+        ],
+        "title": "StatsResponse"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

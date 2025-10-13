@@ -69,6 +69,38 @@ def test_export_csv():
     return r.text
 
 
+def test_publish_listing():
+    """Test publish listing endpoint"""
+    print("\n🧪 Testing /listings/publish/{id} endpoint...")
+    
+    draft_data = requests.post(
+        f"{BASE_URL}/ingest/photos",
+        json={"urls": ["https://picsum.photos/seed/publish-test/800/800"]}
+    ).json()
+    
+    save_response = requests.post(
+        f"{BASE_URL}/ingest/save-draft",
+        json=draft_data
+    )
+    assert save_response.status_code == 200, f"Failed to save draft: {save_response.status_code}"
+    saved_item = save_response.json()
+    item_id = saved_item["id"]
+    
+    r = requests.post(f"{BASE_URL}/listings/publish/{item_id}")
+    assert r.status_code == 200, f"Expected 200, got {r.status_code}"
+    data = r.json()
+    assert data["status"] == "listed", f"Expected status 'listed', got {data['status']}"
+    print(f"✅ Publish endpoint passed: {data['title']} now listed")
+    
+    requests.delete(f"{BASE_URL}/listings/{item_id}")
+    
+    r_404 = requests.post(f"{BASE_URL}/listings/publish/nonexistent-id")
+    assert r_404.status_code == 404, f"Expected 404 for nonexistent item, got {r_404.status_code}"
+    print(f"✅ Publish endpoint correctly returns 404 for missing items")
+    
+    return data
+
+
 def test_cors_headers():
     """Test CORS headers are present"""
     print("\n🧪 Testing CORS headers...")
@@ -96,6 +128,7 @@ def run_all_tests():
         test_stats()
         test_ingest()
         test_listings_all()
+        test_publish_listing()
         test_export_csv()
         test_cors_headers()
         

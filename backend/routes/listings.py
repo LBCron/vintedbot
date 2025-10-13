@@ -35,11 +35,6 @@ async def delete_listing(item_id: str):
     return {"message": "Item deleted successfully"}
 
 
-@router.get("/status/{status}", response_model=List[Item])
-async def get_listings_by_status(status: ItemStatus):
-    return db.get_by_status(status)
-
-
 @router.post("/publish/{item_id}", response_model=Item)
 async def publish_listing(item_id: str):
     """Mark an item as published/listed (Lovable-friendly endpoint)"""
@@ -51,3 +46,8 @@ async def publish_listing(item_id: str):
     updated_item = db.update(item_id, item)
     print(f"📢 Item published: {item.title}")
     return updated_item
+
+
+@router.get("/status/{status}", response_model=List[Item])
+async def get_listings_by_status(status: ItemStatus):
+    return db.get_by_status(status)
