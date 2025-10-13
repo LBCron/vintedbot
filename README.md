@@ -51,6 +51,18 @@ The server is already running! Visit:
 - **Alternative Docs**: [/redoc](/redoc) (ReDoc)
 - **Root**: [/](/) (API info)
 
+### Public API URL
+
+The API is deployed and accessible at:
+```
+https://b3358a26-d290-4c55-82fc-cc0ad63fac5b-00-29ghky26cw3zi.janeway.replit.dev
+```
+
+For Lovable.dev integration, use:
+```bash
+VITE_API_BASE_URL=https://b3358a26-d290-4c55-82fc-cc0ad63fac5b-00-29ghky26cw3zi.janeway.replit.dev
+```
+
 ## API Endpoints
 
 ### Photo Ingestion
@@ -92,9 +104,30 @@ Create a `.env` file (see `.env.example`):
 ```bash
 # Optional - enables real AI generation
 OPENAI_API_KEY=your_openai_api_key_here
+
+# CORS Configuration
+ALLOWED_ORIGINS=https://lovable.dev,https://*.lovable.dev,https://*.lovable.app
+
+# Price drop cron (default: 3 AM daily)
+PRICE_DROP_CRON=0 3 * * *
 ```
 
 **Note**: If no OpenAI key is provided, the system uses intelligent mock mode with realistic data.
+
+## Deployment
+
+The application is configured for Replit deployment with "Always On" capability:
+
+1. **Development Mode**: The API runs automatically when you open the Repl
+2. **Production Mode**: Use the Replit "Deploy" button to enable Always On
+3. **Port Configuration**: The application is configured to run on port 5000
+4. **CORS**: Pre-configured for Lovable.dev integration
+
+To deploy:
+1. Click the "Deploy" button in Replit
+2. Select "Reserved VM" deployment type
+3. Enable "Always On" to keep the API running 24/7
+4. Your API will be accessible at the public URL above
 
 ## Architecture
 

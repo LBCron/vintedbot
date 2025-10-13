@@ -109,3 +109,32 @@ Preferred communication style: Simple, everyday language.
 - Lovable.dev or similar frontend frameworks can consume `/docs` OpenAPI specification
 - Authentication layer can be added via FastAPI dependencies
 - External marketplace APIs (Vinted, etc.) can integrate via export formats
+
+## Recent Changes
+
+### Project Restoration (October 13, 2025)
+- ✅ **Restored from ZIP backup**: Successfully extracted and reorganized project structure
+- ✅ **Python 3.11 environment**: Configured with uv package manager
+- ✅ **Dependencies installed**: All required packages installed via pyproject.toml
+- ✅ **Workflow configured**: FastAPI server running on port 5000 with automatic startup
+- ✅ **Deployment ready**: Configured for Replit VM deployment with Always On capability
+- ✅ **Public API URL**: https://b3358a26-d290-4c55-82fc-cc0ad63fac5b-00-29ghky26cw3zi.janeway.replit.dev
+
+### Development Setup
+1. **Package Manager**: Using uv for dependency management (faster than pip)
+2. **Environment Variables**: .env file created from .env.example template
+3. **Port Configuration**: Bound to 0.0.0.0:5000 for Replit compatibility
+4. **CORS**: Pre-configured for Lovable.dev integration
+5. **Background Scheduler**: APScheduler running with 1 cron job for daily price drops
+
+### Deployment Configuration
+- **Type**: Reserved VM (for Always On capability)
+- **Run Command**: `uvicorn backend.app:app --host 0.0.0.0 --port 5000`
+- **Port**: 5000 (Replit standard)
+- **Environment**: Production-ready with health monitoring
+
+### Lovable.dev Integration
+To connect a Lovable.dev frontend, use this environment variable:
+```
+VITE_API_BASE_URL=https://b3358a26-d290-4c55-82fc-cc0ad63fac5b-00-29ghky26cw3zi.janeway.replit.dev
+```
