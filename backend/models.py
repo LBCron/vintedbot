@@ -89,3 +89,37 @@ class Listing(SQLModel, table=True):
     photos: List[str] = Field(default=[], sa_column=Column(JSON))
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class Media(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: Optional[int] = Field(default=None, foreign_key="user.id")
+    sha256: str = Field(max_length=64, index=True)
+    filename: str = Field(max_length=255)
+    mime: str = Field(max_length=64)
+    width: int
+    height: int
+    size_bytes: int
+    storage: str = Field(max_length=16)
+    url: str = Field(max_length=512)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class Draft(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: Optional[int] = Field(default=None, foreign_key="user.id")
+    title: str = Field(default="", max_length=160)
+    description: str = Field(default="", sa_column=Column(Text))
+    price_suggested: Optional[float] = None
+    status: str = Field(default="draft", max_length=24)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class DraftPhoto(SQLModel, table=True):
+    __tablename__ = "draft_photo"
+    
+    id: Optional[int] = Field(default=None, primary_key=True)
+    draft_id: int = Field(foreign_key="draft.id")
+    media_id: int = Field(foreign_key="media.id")
+    order_index: int = Field(default=0)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
