@@ -112,6 +112,16 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### Multipart Upload Endpoint (October 13, 2025)
+- ✅ **Production-ready image upload**: POST /api/v1/ingest/upload accepts 1-20 images
+- ✅ **Image processing pipeline**: Auto-corrects EXIF orientation, resizes to 1600px max, JPEG quality 80, strips GPS/EXIF data
+- ✅ **Security & validation**: Rate limiting (10/min), file size limit (15MB/413), MIME validation (415), proper error codes
+- ✅ **Database models**: Media, Draft, DraftPhoto for tracking uploads and draft listings
+- ✅ **Idempotent storage**: SHA256-based filenames prevent duplicates
+- ✅ **Local media serving**: Files served from /media endpoint with static file mount
+- ✅ **Comprehensive tests**: 8 test cases covering happy paths, oversize files, invalid MIME, validation errors
+- ✅ **New dependencies**: pydantic-settings, filetype, boto3, tenacity, slowapi, pytest-asyncio
+
 ### Project Restoration (October 13, 2025)
 - ✅ **Restored from ZIP backup**: Successfully extracted and reorganized project structure
 - ✅ **Python 3.11 environment**: Configured with uv package manager
