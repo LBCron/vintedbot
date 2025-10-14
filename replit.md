@@ -122,10 +122,12 @@ Preferred communication style: Simple, everyday language.
 - ✅ **Background Processing**: Non-blocking async jobs (asyncio.to_thread) with real-time progress tracking
 - ✅ **Draft Management**: Full CRUD endpoints for drafts (list, get, update, delete, publish)
 - ✅ **Flexible Image Validation**: Accepts JPG, PNG, WEBP, GIF, BMP, HEIC, HEIF - validates by extension, MIME, or PIL
+- ✅ **HEIC Auto-Conversion**: iPhone HEIC/HEIF photos automatically converted to JPG (pillow-heif)
 - ✅ **New Modules**:
   - `backend/core/ai_analyzer.py` - GPT-4 Vision analysis engine with smart grouping
   - `backend/schemas/bulk.py` - Pydantic models for drafts and jobs
   - `backend/api/v1/routers/bulk.py` - Bulk upload & draft endpoints with flexible validation
+  - `backend/api/v1/routers/vinted.py` - HEIC conversion support for mobile uploads
 
 ### New Endpoints (October 14, 2025)
 - `POST /bulk/photos/analyze` - Upload multiple photos and create drafts automatically

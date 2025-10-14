@@ -4,6 +4,7 @@ Handles session management, photo uploads, and listing creation/publication
 """
 import asyncio
 import secrets
+import io
 from datetime import datetime, timedelta
 from typing import Optional, Any, Dict
 from fastapi import APIRouter, HTTPException, UploadFile, File, Header, Depends
@@ -11,6 +12,11 @@ from fastapi.responses import JSONResponse
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
+from PIL import Image
+from pillow_heif import register_heif_opener
+
+# Register HEIF/HEIC support in PIL
+register_heif_opener()
 
 from backend.settings import settings
 from backend.core.session import SessionVault, VintedSession
@@ -212,9 +218,11 @@ async def upload_photos(
     """
     Upload multiple photos for Vinted listing (mobile-friendly)
     
-    Accepts: 1-20 images (JPG, PNG, WEBP)
+    Accepts: 1-20 images (JPG, PNG, WEBP, HEIC, HEIF)
     Max size: 15MB per photo
     Rate limited to 10/minute
+    
+    HEIC/HEIF photos are automatically converted to JPG
     
     NEW: auto_analyze=true triggers AI analysis and draft creation
     
@@ -236,18 +244,47 @@ async def upload_photos(
         os.makedirs(temp_dir, exist_ok=True)
         
         for i, file in enumerate(files):
-            # Validate file type
-            if not file.content_type or not file.content_type.startswith('image/'):
+            # Validate file type (accept HEIC/HEIF)
+            filename_lower = (file.filename or "").lower()
+            is_heic = filename_lower.endswith(('.heic', '.heif'))
+            
+            if not is_heic and (not file.content_type or not file.content_type.startswith('image/')):
                 raise HTTPException(status_code=415, detail=f"Only image files allowed: {file.filename}")
             
-            # Check file size (15MB max)
+            # Read file content
             content = await file.read()
+            
+            # Check file size (15MB max)
             if len(content) > 15 * 1024 * 1024:
                 raise HTTPException(status_code=413, detail=f"File too large (max 15MB): {file.filename}")
             
             # Generate temp_id
             temp_id = f"photo_{i:03d}"
-            ext = file.filename.split('.')[-1] if (file.filename and '.' in file.filename) else 'jpg'
+            
+            # Convert HEIC/HEIF to JPG
+            if is_heic:
+                print(f"🔄 Converting HEIC/HEIF to JPG: {file.filename}")
+                try:
+                    # Open HEIC with PIL (pillow-heif registered)
+                    image = Image.open(io.BytesIO(content))
+                    
+                    # Convert to RGB (remove alpha channel if present)
+                    if image.mode in ('RGBA', 'LA', 'P'):
+                        image = image.convert('RGB')
+                    
+                    # Save as JPEG
+                    output = io.BytesIO()
+                    image.save(output, format='JPEG', quality=85)
+                    content = output.getvalue()
+                    
+                    ext = 'jpg'
+                    print(f"✅ Converted HEIC → JPG: {file.filename}")
+                except Exception as e:
+                    print(f"❌ HEIC conversion failed: {e}")
+                    raise HTTPException(status_code=400, detail=f"Failed to convert HEIC: {file.filename}")
+            else:
+                ext = file.filename.split('.')[-1] if (file.filename and '.' in file.filename) else 'jpg'
+            
             filename = f"{temp_id}.{ext}"
             file_path = f"{temp_dir}/{filename}"
             

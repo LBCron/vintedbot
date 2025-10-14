@@ -3,7 +3,7 @@ modules = ["python-3.11"]
 
 [nix]
 channel = "stable-25_05"
-packages = ["cargo", "freetype", "gitFull", "glibcLocales", "lcms2", "libiconv", "libimagequant", "libjpeg", "libtiff", "libwebp", "libxcrypt", "openjpeg", "openssl", "pkg-config", "playwright-driver", "rapidfuzz-cpp", "rustc", "taskflow", "tcl", "tk", "zlib"]
+packages = ["cargo", "freetype", "gitFull", "glibcLocales", "lcms2", "libaom", "libde265", "libheif", "libiconv", "libimagequant", "libjpeg", "libtiff", "libwebp", "libxcrypt", "nasm", "openjpeg", "openssl", "pkg-config", "playwright-driver", "rapidfuzz-cpp", "rustc", "taskflow", "tcl", "tk", "x265", "zlib"]
 
 [unitTest]
 language = "python3"
@@ -50,3 +50,7 @@ externalPort = 80
 [[ports]]
 localPort = 36067
 externalPort = 3000
+
+[[ports]]
+localPort = 39655
+externalPort = 3001
