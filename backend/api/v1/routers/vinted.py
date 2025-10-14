@@ -57,7 +57,7 @@ def extract_username_from_cookie(cookie: str) -> Optional[str]:
         return None
 
 
-@router.post("/auth/session")
+@router.post("/auth/session", response_model=SessionResponse)
 async def save_session(request: SessionRequest):
     """
     Save Vinted authentication session (cookie + user-agent)
@@ -85,23 +85,15 @@ async def save_session(request: SessionRequest):
         
         print(f"✅ Session saved (encrypted): user={username or 'unknown'}")
         
-        # Return SIMPLE response - Lovable probably just checks these fields
-        return {
-            "success": True,
-            "valid": True,
-            "authenticated": True,
-            "username": username or "vinted_user",
-            "message": "Session enregistrée avec succès"
-        }
+        # Return SessionResponse matching the exact schema Lovable expects
+        return SessionResponse(
+            ok=True,
+            persisted=persisted,
+            username=username
+        )
     except Exception as e:
         print(f"❌ Save session error: {e}")
-        return {
-            "success": False,
-            "valid": False,
-            "authenticated": False,
-            "error": str(e),
-            "message": "Erreur lors de l'enregistrement"
-        }
+        raise HTTPException(status_code=500, detail=f"Failed to save session: {str(e)}")
 
 
 @router.post("/auth/session/debug")
