@@ -105,7 +105,7 @@ async def request_logging_middleware(request: Request, call_next):
 
 # Include routers (existing routes)
 app.include_router(health.router)
-app.include_router(auth.router)
+# app.include_router(auth.router)  # Disabled - using new Vinted router with Playwright
 app.include_router(messages.router)
 app.include_router(publish.router)
 app.include_router(listings.router)
