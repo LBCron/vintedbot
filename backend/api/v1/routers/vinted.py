@@ -39,6 +39,24 @@ vault = SessionVault(
 )
 
 
+def extract_username_from_cookie(cookie: str) -> Optional[str]:
+    """
+    Extract username from Vinted cookies
+    Looks for common patterns in cookie values
+    """
+    try:
+        # Try to find _vinted_fr_session or similar session cookies
+        # These often contain user info
+        if "_vinted_" in cookie:
+            # Session cookies exist, user is likely authenticated
+            # For now, return a placeholder that indicates auth is valid
+            # Real parsing would need to decode the session cookie
+            return "vinted_user"
+        return None
+    except:
+        return None
+
+
 @router.post("/auth/session", response_model=SessionResponse)
 async def save_session(request: SessionRequest):
     """
@@ -48,17 +66,19 @@ async def save_session(request: SessionRequest):
     """
     try:
         print(f"📥 Received session request: cookie length={len(request.cookie)}, UA={request.user_agent[:50]}...")
+        
+        # Extract username from cookies
+        username = extract_username_from_cookie(request.cookie)
+        
         # Create session object
         session = VintedSession(
             cookie=request.cookie,
             user_agent=request.user_agent,
+            username=username,
+            user_id=username,  # Use same value for now
             expires_at=request.expires_at or datetime.utcnow() + timedelta(days=30),
             created_at=datetime.utcnow()
         )
-        
-        # Extract username if possible (optional parsing)
-        username = None
-        # Could parse from cookie if format is known
         
         # Save encrypted session
         persisted = vault.save_session(session)
