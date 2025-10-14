@@ -169,3 +169,11 @@ To connect a Lovable.dev frontend, use this environment variable:
 ```
 VITE_API_BASE_URL=https://b3358a26-d290-4c55-82fc-cc0ad63fac5b-00-29ghky26cw3zi.janeway.replit.dev
 ```
+
+**CORS Configuration (October 14, 2025):**
+- Backend configured with regex pattern to accept all Lovable domains:
+  - `*.lovableproject.com` (current Lovable frontend domain)
+  - `*.lovable.dev` 
+  - `*.lovable.app`
+- Pattern: `r"https://.*\.lovable(project\.com|\.dev|\.app)"`
+- Mock mode disabled: `MOCK_MODE=False` for real Vinted authentication
