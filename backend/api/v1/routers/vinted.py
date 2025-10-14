@@ -47,6 +47,7 @@ async def save_session(request: SessionRequest):
     Security: Cookie is encrypted with Fernet before storage
     """
     try:
+        print(f"📥 Received session request: cookie length={len(request.cookie)}, UA={request.user_agent[:50]}...")
         # Create session object
         session = VintedSession(
             cookie=request.cookie,
