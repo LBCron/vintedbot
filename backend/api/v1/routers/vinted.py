@@ -57,7 +57,7 @@ def extract_username_from_cookie(cookie: str) -> Optional[str]:
         return None
 
 
-@router.post("/auth/session", response_model=SessionResponse)
+@router.post("/auth/session")
 async def save_session(request: SessionRequest):
     """
     Save Vinted authentication session (cookie + user-agent)
@@ -67,7 +67,7 @@ async def save_session(request: SessionRequest):
     try:
         print(f"📥 Received session request: cookie length={len(request.cookie)}, UA={request.user_agent[:50]}...")
         
-        # Extract username from cookies
+        # Extract username from cookies (simple detection)
         username = extract_username_from_cookie(request.cookie)
         
         # Create session object
@@ -75,7 +75,7 @@ async def save_session(request: SessionRequest):
             cookie=request.cookie,
             user_agent=request.user_agent,
             username=username,
-            user_id=username,  # Use same value for now
+            user_id=username,
             expires_at=request.expires_at or datetime.utcnow() + timedelta(days=30),
             created_at=datetime.utcnow()
         )
@@ -85,22 +85,23 @@ async def save_session(request: SessionRequest):
         
         print(f"✅ Session saved (encrypted): user={username or 'unknown'}")
         
-        # Return multiple formats for compatibility
-        response = {
-            "ok": True,
-            "persisted": persisted,
-            "username": username,
-            "authenticated": True,  # Lovable might check this
-            "user_id": username,
-            "success": True,  # Additional compatibility
+        # Return SIMPLE response - Lovable probably just checks these fields
+        return {
+            "success": True,
             "valid": True,
-            "session_saved": True
+            "authenticated": True,
+            "username": username or "vinted_user",
+            "message": "Session enregistrée avec succès"
         }
-        
-        return response
     except Exception as e:
         print(f"❌ Save session error: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to save session: {str(e)}")
+        return {
+            "success": False,
+            "valid": False,
+            "authenticated": False,
+            "error": str(e),
+            "message": "Erreur lors de l'enregistrement"
+        }
 
 
 @router.post("/auth/session/debug")
@@ -131,6 +132,52 @@ async def debug_session(payload: Dict[str, Any]):
             return {"ok": False, "error": "Missing cookie or user_agent", "received": payload}
     except Exception as e:
         return {"ok": False, "error": str(e), "received": payload}
+
+
+@router.post("/auth/validate")
+async def validate_session(request: SessionRequest):
+    """
+    Alternative endpoint that saves AND validates in one go
+    Returns comprehensive validation result
+    """
+    try:
+        print(f"📥 VALIDATE - cookie length={len(request.cookie)}")
+        
+        # Extract username
+        username = extract_username_from_cookie(request.cookie)
+        
+        # Create and save session
+        session = VintedSession(
+            cookie=request.cookie,
+            user_agent=request.user_agent,
+            username=username,
+            user_id=username,
+            expires_at=request.expires_at or datetime.utcnow() + timedelta(days=30),
+            created_at=datetime.utcnow()
+        )
+        
+        persisted = vault.save_session(session)
+        
+        # Return validation-focused response
+        return {
+            "valid": True,
+            "authenticated": True,
+            "saved": persisted,
+            "username": username,
+            "user_id": username,
+            "session": {
+                "cookie_length": len(request.cookie),
+                "has_vinted_session": "_vinted_" in request.cookie,
+                "expires_at": session.expires_at.isoformat() if session.expires_at else None
+            }
+        }
+    except Exception as e:
+        print(f"❌ VALIDATE error: {e}")
+        return {
+            "valid": False,
+            "authenticated": False,
+            "error": str(e)
+        }
 
 
 @router.get("/auth/check", response_model=AuthCheckResponse)
