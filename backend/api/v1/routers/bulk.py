@@ -10,6 +10,8 @@ from typing import List, Dict, Optional
 from pathlib import Path
 from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Query
 from fastapi.responses import JSONResponse
+from PIL import Image
+import io
 
 from backend.core.ai_analyzer import (
     analyze_clothing_photos,
@@ -31,6 +33,39 @@ router = APIRouter(prefix="/bulk", tags=["bulk"])
 bulk_jobs: Dict[str, Dict] = {}
 drafts_storage: Dict[str, DraftItem] = {}
 
+# Validation flexible des formats d'images
+ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.heic', '.heif'}
+ALLOWED_MIMES = {'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/bmp', 'image/heic', 'image/heif'}
+
+
+def validate_image_file(file: UploadFile) -> bool:
+    """
+    Validation flexible des images - accepte par extension, MIME type, ou vérification PIL
+    """
+    filename = file.filename or ""
+    ext = os.path.splitext(filename)[1].lower()
+    mime = (file.content_type or "").lower()
+    
+    # Méthode 1: Vérifier l'extension
+    if ext in ALLOWED_EXTENSIONS:
+        return True
+    
+    # Méthode 2: Vérifier le MIME type
+    if mime in ALLOWED_MIMES:
+        return True
+    
+    # Méthode 3: Essayer de vérifier avec PIL (dernier recours)
+    try:
+        file.file.seek(0)
+        img = Image.open(file.file)
+        img.verify()
+        file.file.seek(0)  # Reset pour la lecture suivante
+        return True
+    except Exception:
+        pass
+    
+    return False
+
 
 def save_uploaded_photos(files: List[UploadFile], job_id: str) -> List[str]:
     """Save uploaded photos and return file paths"""
@@ -41,7 +76,7 @@ def save_uploaded_photos(files: List[UploadFile], job_id: str) -> List[str]:
     
     for i, file in enumerate(files):
         # Generate unique filename
-        ext = Path(file.filename).suffix or ".jpg"
+        ext = Path(file.filename or "photo.jpg").suffix or ".jpg"
         filename = f"photo_{i:03d}{ext}"
         filepath = temp_dir / filename
         
@@ -158,14 +193,17 @@ async def bulk_upload_photos(
         if len(files) > 500:
             raise HTTPException(status_code=400, detail="Maximum 500 photos allowed")
         
-        # Validate file types
+        # Validation flexible des formats d'images
+        invalid_files = []
         for file in files:
-            if not file.content_type or not file.content_type.startswith('image/'):
-                filename_str = file.filename or "unknown"
-                raise HTTPException(
-                    status_code=415,
-                    detail=f"Only image files allowed: {filename_str}"
-                )
+            if not validate_image_file(file):
+                invalid_files.append(file.filename or "unknown")
+        
+        if invalid_files:
+            raise HTTPException(
+                status_code=415,
+                detail=f"Formats invalides (JPG/PNG/WEBP/HEIC/GIF/BMP attendus): {', '.join(invalid_files[:5])}"
+            )
         
         # Create job
         job_id = str(uuid.uuid4())[:8]

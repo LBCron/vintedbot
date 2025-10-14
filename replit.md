@@ -113,18 +113,19 @@ Preferred communication style: Simple, everyday language.
 ## Recent Changes
 
 ### AI-Powered Photo Analysis & Draft Generation (October 14, 2025)
-- ✅ **OpenAI GPT-4 Vision Integration**: Using Replit AI Integrations (no API key required, billed to credits)
+- ✅ **Personal OpenAI API Key**: Uses user's own OpenAI Premium subscription (no Replit credits charged)
 - ✅ **Automatic Draft Creation**: Upload photos → AI analyzes → Creates complete drafts with title, price, description
-- ✅ **Multi-Photo Bulk Upload**: `/bulk/photos/analyze` accepts 1-500 photos, groups them by item (4 photos/item default)
+- ✅ **Multi-Photo Bulk Upload**: `/bulk/photos/analyze` accepts 1-500 photos, groups them by item (default: 4 photos/item)
+- ✅ **Multiple Drafts Creation**: Example: 140 photos with photos_per_item=8 → creates 17-18 separate drafts
 - ✅ **Smart Analysis**: GPT-4o Vision detects category, color, condition, brand, size from photos
 - ✅ **Pricing Intelligence**: AI suggests optimal prices based on category, condition, and detected brands
-- ✅ **Background Processing**: Async jobs with real-time progress tracking via `/bulk/jobs/{job_id}`
+- ✅ **Background Processing**: Non-blocking async jobs (asyncio.to_thread) with real-time progress tracking
 - ✅ **Draft Management**: Full CRUD endpoints for drafts (list, get, update, delete, publish)
-- ✅ **Auto-Analyze on Upload**: `/vinted/photos/upload?auto_analyze=true` triggers AI analysis automatically
+- ✅ **Flexible Image Validation**: Accepts JPG, PNG, WEBP, GIF, BMP, HEIC, HEIF - validates by extension, MIME, or PIL
 - ✅ **New Modules**:
-  - `backend/core/ai_analyzer.py` - GPT-4 Vision analysis engine
+  - `backend/core/ai_analyzer.py` - GPT-4 Vision analysis engine with smart grouping
   - `backend/schemas/bulk.py` - Pydantic models for drafts and jobs
-  - `backend/api/v1/routers/bulk.py` - Bulk upload & draft endpoints
+  - `backend/api/v1/routers/bulk.py` - Bulk upload & draft endpoints with flexible validation
 
 ### New Endpoints (October 14, 2025)
 - `POST /bulk/photos/analyze` - Upload multiple photos and create drafts automatically
