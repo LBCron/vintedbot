@@ -206,6 +206,7 @@ async def check_auth():
 @limiter.limit("10/minute")
 async def upload_photos(
     files: list[UploadFile] = File(...),
+    auto_analyze: bool = True,
     request: Optional[str] = None
 ):
     """
@@ -215,15 +216,26 @@ async def upload_photos(
     Max size: 15MB per photo
     Rate limited to 10/minute
     
-    Returns: {"photos": [{"temp_id", "url", "filename"}, ...]}
+    NEW: auto_analyze=true triggers AI analysis and draft creation
+    
+    Returns: 
+    - If auto_analyze=false: {"photos": [{"temp_id", "url", "filename"}, ...]}
+    - If auto_analyze=true: {"job_id": "...", "photos": [...], "message": "..."}
     """
     try:
         if len(files) > 20:
             raise HTTPException(status_code=400, detail="Maximum 20 photos allowed")
         
         photos = []
+        photo_paths = []
         
-        for file in files:
+        # Generate job_id for this upload batch
+        job_id = secrets.token_urlsafe(8)
+        temp_dir = f"backend/data/temp_photos/{job_id}"
+        import os
+        os.makedirs(temp_dir, exist_ok=True)
+        
+        for i, file in enumerate(files):
             # Validate file type
             if not file.content_type or not file.content_type.startswith('image/'):
                 raise HTTPException(status_code=415, detail=f"Only image files allowed: {file.filename}")
@@ -234,27 +246,55 @@ async def upload_photos(
                 raise HTTPException(status_code=413, detail=f"File too large (max 15MB): {file.filename}")
             
             # Generate temp_id
-            temp_id = f"photo_{secrets.token_urlsafe(16)}"
-            
-            # Save file temporarily
-            import os
-            temp_dir = "backend/data/temp_photos"
-            os.makedirs(temp_dir, exist_ok=True)
-            
-            file_path = f"{temp_dir}/{temp_id}_{file.filename}"
+            temp_id = f"photo_{i:03d}"
+            ext = file.filename.split('.')[-1] if (file.filename and '.' in file.filename) else 'jpg'
+            filename = f"{temp_id}.{ext}"
+            file_path = f"{temp_dir}/{filename}"
             
             with open(file_path, "wb") as f:
                 f.write(content)
             
-            print(f"✅ Photo uploaded: {file.filename} -> {temp_id}")
+            print(f"✅ Photo uploaded: {file.filename} -> {filename}")
             
+            photo_paths.append(file_path)
             photos.append({
                 "temp_id": temp_id,
-                "url": f"/temp_photos/{temp_id}_{file.filename}",
+                "url": f"/temp_photos/{job_id}/{filename}",
                 "filename": file.filename
             })
         
-        # Return LOVABLE FORMAT: {"photos": [...]}
+        # If auto_analyze enabled, trigger AI analysis
+        if auto_analyze:
+            from backend.api.v1.routers.bulk import process_bulk_job, bulk_jobs
+            
+            # Initialize job
+            bulk_jobs[job_id] = {
+                "job_id": job_id,
+                "status": "queued",
+                "total_photos": len(photo_paths),
+                "processed_photos": len(photo_paths),
+                "total_items": max(1, len(photo_paths) // 4),
+                "completed_items": 0,
+                "failed_items": 0,
+                "drafts": [],
+                "errors": [],
+                "started_at": None,
+                "completed_at": None,
+                "progress_percent": 0.0
+            }
+            
+            # Start analysis in background
+            asyncio.create_task(process_bulk_job(job_id, photo_paths, photos_per_item=4))
+            
+            print(f"🚀 AI analysis started: job_id={job_id}")
+            
+            return {
+                "job_id": job_id,
+                "photos": photos,
+                "message": f"Analyzing {len(photos)} photos... Check /bulk/jobs/{job_id} for status"
+            }
+        
+        # Return standard format if auto_analyze disabled
         return {"photos": photos}
         
     except HTTPException:

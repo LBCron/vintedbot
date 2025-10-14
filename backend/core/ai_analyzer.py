@@ -114,14 +114,14 @@ Analyse les photos et génère le JSON:"""
         # Call OpenAI API
         response = openai_client.chat.completions.create(
             model="gpt-4o",  # Use GPT-4 with vision capabilities
-            messages=messages,
+            messages=messages,  # type: ignore
             max_completion_tokens=1000,
             temperature=0.7,
             response_format={"type": "json_object"}
         )
         
         # Parse JSON response
-        content = response.choices[0].message.content
+        content = response.choices[0].message.content or "{}"
         result = json.loads(content)
         
         print(f"✅ Analysis complete: {result.get('title', 'Unknown')}")
@@ -131,7 +131,6 @@ Analyse les photos et génère le JSON:"""
         
     except json.JSONDecodeError as e:
         print(f"❌ JSON parse error: {e}")
-        print(f"   Raw response: {content}")
         # Return fallback result
         return generate_fallback_analysis(photo_paths)
         

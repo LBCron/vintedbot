@@ -138,7 +138,7 @@ async def process_bulk_job(job_id: str, photo_paths: List[str], photos_per_item:
 @router.post("/photos/analyze", response_model=BulkUploadResponse)
 async def bulk_upload_photos(
     files: List[UploadFile] = File(...),
-    background_tasks: BackgroundTasks = None,
+    background_tasks: Optional[BackgroundTasks] = None,
     photos_per_item: int = Query(default=4, ge=1, le=10)
 ):
     """
@@ -161,9 +161,10 @@ async def bulk_upload_photos(
         # Validate file types
         for file in files:
             if not file.content_type or not file.content_type.startswith('image/'):
+                filename_str = file.filename or "unknown"
                 raise HTTPException(
                     status_code=415,
-                    detail=f"Only image files allowed: {file.filename}"
+                    detail=f"Only image files allowed: {filename_str}"
                 )
         
         # Create job
