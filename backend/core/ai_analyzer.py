@@ -8,19 +8,12 @@ from typing import List, Dict, Any, Optional
 from pathlib import Path
 import json
 
-# the newest OpenAI model is "gpt-5" which was released August 7, 2025.
-# do not change this unless explicitly requested by the user
+# the newest OpenAI model is "gpt-4o" 
 from openai import OpenAI
 
-# Use Replit AI Integrations (no API key required, billed to credits)
-AI_INTEGRATIONS_OPENAI_API_KEY = os.environ.get("AI_INTEGRATIONS_OPENAI_API_KEY")
-AI_INTEGRATIONS_OPENAI_BASE_URL = os.environ.get("AI_INTEGRATIONS_OPENAI_BASE_URL")
-
-# This is using Replit's AI Integrations service
-openai_client = OpenAI(
-    api_key=AI_INTEGRATIONS_OPENAI_API_KEY,
-    base_url=AI_INTEGRATIONS_OPENAI_BASE_URL
-)
+# Use user's personal OpenAI API key (from Replit Secrets)
+openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+print("✅ Using personal OpenAI API key")
 
 
 def encode_image_to_base64(image_path: str) -> str:
