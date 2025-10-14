@@ -8,9 +8,12 @@ from pydantic import BaseModel, Field
 
 class SessionRequest(BaseModel):
     """Request to save Vinted session"""
-    cookie: str = Field(..., description="Complete Cookie header value")
+    cookie: str = Field(..., alias="cookie_value", description="Complete Cookie header value")
     user_agent: str = Field(..., description="User-Agent string")
     expires_at: Optional[datetime] = None
+    
+    class Config:
+        populate_by_name = True  # Accept both 'cookie' and 'cookie_value'
 
 
 class SessionResponse(BaseModel):
