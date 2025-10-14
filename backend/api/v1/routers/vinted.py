@@ -85,11 +85,19 @@ async def save_session(request: SessionRequest):
         
         print(f"✅ Session saved (encrypted): user={username or 'unknown'}")
         
-        return SessionResponse(
-            ok=True,
-            persisted=persisted,
-            username=username
-        )
+        # Return multiple formats for compatibility
+        response = {
+            "ok": True,
+            "persisted": persisted,
+            "username": username,
+            "authenticated": True,  # Lovable might check this
+            "user_id": username,
+            "success": True,  # Additional compatibility
+            "valid": True,
+            "session_saved": True
+        }
+        
+        return response
     except Exception as e:
         print(f"❌ Save session error: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to save session: {str(e)}")
