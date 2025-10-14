@@ -78,3 +78,14 @@ class ListingPublishResponse(BaseModel):
     listing_url: Optional[str] = None
     needs_manual: Optional[bool] = None
     reason: Optional[str] = None
+
+
+class PublishJob(BaseModel):
+    """Publish job in queue - LOVABLE FORMAT"""
+    job_id: str
+    item_id: int | str
+    status: str = Field(..., description="queued | processing | success | failed | blocked")
+    mode: str = Field(..., description="manual | automated")
+    scheduled_at: Optional[str] = None
+    logs: Optional[str] = None
+    screenshot: Optional[str] = None

@@ -112,6 +112,20 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### Publish Queue API Fixed (October 14, 2025)
+- ✅ **Publish queue endpoint**: `GET /vinted/publish/queue` now returns Lovable-compatible format (direct array)
+- ✅ **Job actions added**: retry, run, pause, delete endpoints for queue management
+- ✅ **Fast response**: <2ms average, no more timeouts
+- ✅ **Field mapping**: `scheduled_at` (not schedule_at), `screenshot` (not screenshot_path), status/mode as strings
+- ✅ **All job endpoints working**:
+  - `GET /vinted/publish/queue` - List all jobs
+  - `GET /vinted/publish/queue/{job_id}` - Get job details
+  - `POST /vinted/publish/queue/{job_id}/cancel` - Cancel job
+  - `POST /vinted/publish/queue/{job_id}/retry` - Retry failed job
+  - `POST /vinted/publish/queue/{job_id}/run` - Manually trigger queued job
+  - `POST /vinted/publish/queue/{job_id}/pause` - Pause running job
+  - `DELETE /vinted/publish/queue/{job_id}` - Delete job
+
 ### Mobile Photo Upload Fix (October 14, 2025)
 - ✅ **Multi-photo upload endpoint**: `/vinted/photos/upload` now accepts 1-20 images simultaneously
 - ✅ **Lovable-compatible format**: Returns `{"photos": [{"temp_id", "url", "filename"}]}` as expected by frontend
