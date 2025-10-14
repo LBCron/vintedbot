@@ -5,7 +5,7 @@ Handles session management, photo uploads, and listing creation/publication
 import asyncio
 import secrets
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, Any, Dict
 from fastapi import APIRouter, HTTPException, UploadFile, File, Header, Depends
 from fastapi.responses import JSONResponse
 from slowapi import Limiter
@@ -73,6 +73,36 @@ async def save_session(request: SessionRequest):
     except Exception as e:
         print(f"❌ Save session error: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to save session: {str(e)}")
+
+
+@router.post("/auth/session/debug")
+async def debug_session(payload: Dict[str, Any]):
+    """
+    Debug endpoint - accepts any JSON to see what Lovable sends
+    """
+    print(f"🔍 DEBUG - Received payload: {payload}")
+    print(f"🔍 DEBUG - Payload keys: {list(payload.keys())}")
+    print(f"🔍 DEBUG - Payload types: {[(k, type(v).__name__) for k, v in payload.items()]}")
+    
+    # Try to save it anyway
+    try:
+        # Extract cookie and user_agent if they exist
+        cookie = payload.get('cookie') or payload.get('cookies') or payload.get('session_cookie')
+        user_agent = payload.get('user_agent') or payload.get('userAgent') or payload.get('ua')
+        
+        if cookie and user_agent:
+            session = VintedSession(
+                cookie=cookie,
+                user_agent=user_agent,
+                expires_at=datetime.utcnow() + timedelta(days=30),
+                created_at=datetime.utcnow()
+            )
+            persisted = vault.save_session(session)
+            return {"ok": True, "persisted": persisted, "debug": "Found cookie and user_agent"}
+        else:
+            return {"ok": False, "error": "Missing cookie or user_agent", "received": payload}
+    except Exception as e:
+        return {"ok": False, "error": str(e), "received": payload}
 
 
 @router.get("/auth/check", response_model=AuthCheckResponse)
