@@ -85,11 +85,12 @@ async def save_session(request: SessionRequest):
         
         print(f"✅ Session saved (encrypted): user={username or 'unknown'}")
         
-        # Return SessionResponse matching the exact schema Lovable expects
+        # Return EXACT format Lovable expects: {session_id, valid, created_at}
         return SessionResponse(
-            ok=True,
-            persisted=persisted,
-            username=username
+            session_id=1,  # Static ID for now (could be random or from DB)
+            valid=True,
+            created_at=datetime.utcnow().isoformat() + "Z",
+            note=f"Session saved for user: {username or 'unknown'}"
         )
     except Exception as e:
         print(f"❌ Save session error: {e}")

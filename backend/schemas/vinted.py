@@ -17,10 +17,11 @@ class SessionRequest(BaseModel):
 
 
 class SessionResponse(BaseModel):
-    """Response after saving session"""
-    ok: bool
-    persisted: bool
-    username: Optional[str] = None
+    """Response after saving session - LOVABLE FORMAT"""
+    session_id: int
+    valid: bool
+    created_at: str
+    note: Optional[str] = None
 
 
 class AuthCheckResponse(BaseModel):
