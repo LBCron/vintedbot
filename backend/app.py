@@ -57,16 +57,20 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# CORS middleware
+# CORS middleware - Allow Lovable domains with regex
 allowed_origins = os.getenv("ALLOWED_ORIGINS", "*")
 if allowed_origins == "*":
     origins = ["*"]
+    allow_origin_regex = None
 else:
     origins = [origin.strip() for origin in allowed_origins.split(",")]
+    # Add regex pattern for all Lovable domains
+    allow_origin_regex = r"https://.*\.lovable(project\.com|\.dev|\.app)"
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=allow_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
