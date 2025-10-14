@@ -16,7 +16,7 @@ from backend.db import create_tables
 from backend.jobs import start_scheduler, stop_scheduler
 from backend.utils.logger import logger, log_request
 from backend.routes import auth, messages, publish, listings, offers, orders, health, ws
-from backend.api.v1.routers import ingest, health as health_v1, vinted, bulk
+from backend.api.v1.routers import ingest, health as health_v1, vinted, bulk, ai
 from backend.settings import settings
 
 load_dotenv()
@@ -118,6 +118,7 @@ app.include_router(ingest.router, prefix="/api/v1", tags=["api-v1"])
 app.include_router(health_v1.router, prefix="/api/v1", tags=["api-v1"])
 app.include_router(vinted.router, tags=["vinted"])
 app.include_router(bulk.router, tags=["bulk"])
+app.include_router(ai.router, tags=["ai"])
 
 # Alias for Lovable.dev compatibility (without /api/v1 prefix)
 app.include_router(ingest.router, tags=["ingest-alias"])
