@@ -1,0 +1,189 @@
+PROMPT BACKEND — VintedBot Studio (FastAPI + Postgres + Redis)
+
+Tu es Staff Backend Engineer. Livre une API production-ready pour VintedBot Studio, compatible avec le front décrit (React/TS/Tailwind).
+Stack imposée : Python 3.11, FastAPI, SQLAlchemy (Postgres), Redis, Pydantic v2, Uvicorn, tâches asynchrones via RQ/Celery (au choix) + APScheduler pour le scheduling. Logs temps réel via SSE (fallback polling) et option WebSocket.
+
+Exigences générales
+
+Auth: Bearer <ADMIN_TOKEN> (env ADM_TOKEN) ou JWT (env JWT_SECRET).
+
+CORS ouvert au domaine du front.
+
+Enveloppe réponse:
+
+{ "data": <payload|null>, "error": null, "meta": { "page":1,"page_size":20,"total":123 } }
+
+
+Pagination: page, page_size (max 100). Recherche: search. Filtres dédiés par ressource.
+
+Erreurs: HTTP codes + body { "data": null, "error": {"code":"...","message":"...","details":{}} }.
+
+Observabilité: logs structurés (JSON), request ID (header X-Request-Id), timing.
+
+OpenAPI propre (+ /health, /version).
+
+Migrations via Alembic.
+
+Modèles (DB)
+
+jobs: id (uuid), item_id (int), planned_at (timestamptz), status enum(queued,running,success,failed,paused), mode enum(manual,automated), created_at, updated_at, duration_ms, last_error text, logs_pointer (blob/offset).
+
+listings: id, title, price_cents, category, status enum(draft,live,archived), thumb_url, last_synced_at, meta jsonb.
+
+uploads: id, filename, size, mime, storage_url, status enum(pending,processing,ready,failed), created_at.
+
+messages: id, thread_id, from, to, subject, snippet, body, folder enum(inbox,sent,archived), created_at, read bool.
+
+settings: id, key, value jsonb, updated_at.
+
+Endpoints à livrer
+Health & Auth
+
+GET /health → {ok:true}
+
+POST /auth/login (si JWT) → token.
+
+Jobs
+
+GET /api/jobs?status=all|queued|running|success|failed|paused&search=&page=&page_size=
+→ data: Job[] (tri par planned_at ASC, puis status).
+
+GET /api/jobs/{id} → data: Job.
+
+POST /api/jobs/{id}/run → passe queued/paused → running + enqueue worker.
+
+POST /api/jobs/{id}/pause → running → paused.
+
+POST /api/jobs/{id}/retry → failed → queued.
+
+DELETE /api/jobs/{id} → soft delete.
+
+Logs:
+
+GET /api/jobs/{id}/logs?offset=<bytes> → chunk text + nouvel offset.
+
+GET /api/jobs/{id}/logs/stream (SSE text/event-stream) → events {type:"log"|"status", data:{...}} (auto-heartbeat 15s).
+
+Listings
+
+GET /api/listings?status=&category=&min_price=&max_price=&search=&page=&page_size= → data: Listing[].
+
+POST /api/listings (zod-like validation côté back aussi) → crée un brouillon.
+
+PATCH /api/listings/{id} → mise à jour partielle.
+
+POST /api/listings/{id}/publish → crée un job automatique et le met en queued.
+
+DELETE /api/listings/{id} → archive/supprime.
+
+Upload
+
+POST /api/upload/init → {upload_id, part_size} (multipart/chunk).
+
+POST /api/upload/{upload_id}/part?index=n (binary body) → enregistre chunk.
+
+POST /api/upload/{upload_id}/complete → assemble + virus scan (option), retourne uploads/{id}.
+
+GET /api/uploads/{id} → méta + storage_url.
+(Stockage: disque local MEDIA_ROOT ou S3 compatible; retirer EXIF côté worker si demandé.)
+
+Messages
+
+GET /api/messages?folder=inbox|sent|archived&search=&page=&page_size=
+
+GET /api/messages/{id}
+
+POST /api/messages/{id}/reply → enfile un job d’envoi (et trace dans logs).
+
+Settings
+
+GET /api/settings → clés non sensibles.
+
+POST /api/settings → upsert (masquer valeurs sensibles dans réponses).
+
+POST /api/ping → teste intégrations (retourne détails latence).
+
+Schémas Pydantic (extraits)
+class JobStatus(str, Enum): queued="queued"; running="running"; success="success"; failed="failed"; paused="paused"
+class JobMode(str, Enum): manual="manual"; automated="automated"
+
+class Job(BaseModel):
+    id: UUID
+    item_id: int
+    planned_at: datetime
+    status: JobStatus
+    mode: JobMode
+    created_at: datetime
+    updated_at: datetime
+    duration_ms: int | None = None
+    last_error: str | None = None
+
+Flux Worker & Scheduling
+
+Worker (RQ/Celery) exécute le job → stream des logs (écritures append-only dans Redis ou fichier), envoie events SSE/WS status:update.
+
+APScheduler vérifie toutes les minutes les jobs.queued dont planned_at <= now() → enqueue.
+
+Sur fin d’exécution, calcule duration_ms, set success|failed + last_error.
+
+SSE/WS — formats d’événements
+
+Channel SSE /api/jobs/{id}/logs/stream:
+
+event: status
+data: {"job_id":"...","status":"running","ts":"..."}
+
+event: log
+data: {"job_id":"...","line":"[12:00:01] Starting publish #2"}
+
+
+Option WebSocket /ws/queue (broadcast):
+{"type":"job_update","job":<Job>}.
+
+Sécurité & limites
+
+Rate limit simple: 60 req/min par IP (Redis token bucket).
+
+Protection uploads: taille max (env MAX_UPLOAD_MB), extension whitelist, antivirus (optionnel).
+
+Masquer secrets dans /api/settings et /openapi.json (si flag hide_secrets).
+
+Déploiement & ENV
+
+DATABASE_URL, REDIS_URL, ADM_TOKEN ou JWT_SECRET, MEDIA_ROOT/S3_*, MAX_UPLOAD_MB, ALLOWED_ORIGINS, LOG_LEVEL.
+
+uvicorn app.main:app --proxy-headers --forwarded-allow-ips="*".
+
+Alembic: alembic upgrade head.
+
+Créer un admin seed si JWT.
+
+Exemples de réponses
+
+GET /api/jobs
+
+{
+  "data": [
+    {"id":"b6e...","item_id":1,"planned_at":"2025-10-13T12:00:00Z","status":"success","mode":"automated","created_at":"...","updated_at":"...","duration_ms":7420,"last_error":null},
+    {"id":"c1a...","item_id":2,"planned_at":"2025-10-13T16:00:00Z","status":"queued","mode":"manual","created_at":"...","updated_at":"...","duration_ms":null,"last_error":null}
+  ],
+  "error": null,
+  "meta": {"page":1,"page_size":20,"total":2}
+}
+
+
+POST /api/jobs/{id}/retry
+
+{ "data": {"id":"c1a...","status":"queued","updated_at":"..."}, "error": null, "meta": {} }
+
+Critères d’acceptation
+
+Le front peut: lister/filtrer/rechercher jobs & listings, lancer/pause/retry/delete un job, lire les logs en streaming sans refresh, uploader des images en chunks avec progression, envoyer/répondre aux messages, gérer settings.
+
+OpenAPI à jour; tests d’intégration de base (jobs lifecycle, SSE logs, upload complet).
+
+Perf: requêtes courantes < 150 ms (hors upload).
+
+Résilience: erreurs propres + idempotence sur retry.
+
+Livre le code complet FastAPI, schéma SQL (Alembic), config Redis/worker, et un README exécutables (dev + prod).
