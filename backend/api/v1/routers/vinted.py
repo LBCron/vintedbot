@@ -202,47 +202,61 @@ async def check_auth():
         )
 
 
-@router.post("/photos/upload", response_model=PhotoUploadResponse)
+@router.post("/photos/upload")
 @limiter.limit("10/minute")
-async def upload_photo(
-    file: UploadFile = File(...),
+async def upload_photos(
+    files: list[UploadFile] = File(...),
     request: Optional[str] = None
 ):
     """
-    Upload photo for Vinted listing
+    Upload multiple photos for Vinted listing (mobile-friendly)
     
+    Accepts: 1-20 images (JPG, PNG, WEBP)
+    Max size: 15MB per photo
     Rate limited to 10/minute
+    
+    Returns: {"photos": [{"temp_id", "url", "filename"}, ...]}
     """
     try:
-        # Validate file type
-        if not file.content_type or not file.content_type.startswith('image/'):
-            raise HTTPException(status_code=415, detail="Only image files are allowed")
+        if len(files) > 20:
+            raise HTTPException(status_code=400, detail="Maximum 20 photos allowed")
         
-        # Generate temp_id
-        temp_id = f"photo_{secrets.token_urlsafe(16)}"
+        photos = []
         
-        # Save file temporarily
-        import os
-        temp_dir = "backend/data/temp_photos"
-        os.makedirs(temp_dir, exist_ok=True)
-        
-        file_path = f"{temp_dir}/{temp_id}_{file.filename}"
-        
-        with open(file_path, "wb") as f:
+        for file in files:
+            # Validate file type
+            if not file.content_type or not file.content_type.startswith('image/'):
+                raise HTTPException(status_code=415, detail=f"Only image files allowed: {file.filename}")
+            
+            # Check file size (15MB max)
             content = await file.read()
-            f.write(content)
-        
-        print(f"✅ Photo uploaded: {file.filename} -> {temp_id}")
-        
-        # Return photo metadata
-        return PhotoUploadResponse(
-            ok=True,
-            photo={
+            if len(content) > 15 * 1024 * 1024:
+                raise HTTPException(status_code=413, detail=f"File too large (max 15MB): {file.filename}")
+            
+            # Generate temp_id
+            temp_id = f"photo_{secrets.token_urlsafe(16)}"
+            
+            # Save file temporarily
+            import os
+            temp_dir = "backend/data/temp_photos"
+            os.makedirs(temp_dir, exist_ok=True)
+            
+            file_path = f"{temp_dir}/{temp_id}_{file.filename}"
+            
+            with open(file_path, "wb") as f:
+                f.write(content)
+            
+            print(f"✅ Photo uploaded: {file.filename} -> {temp_id}")
+            
+            photos.append({
                 "temp_id": temp_id,
                 "url": f"/temp_photos/{temp_id}_{file.filename}",
                 "filename": file.filename
-            }
-        )
+            })
+        
+        # Return LOVABLE FORMAT: {"photos": [...]}
+        return {"photos": photos}
+        
     except HTTPException:
         raise
     except Exception as e:

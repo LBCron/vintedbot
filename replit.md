@@ -112,6 +112,13 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### Mobile Photo Upload Fix (October 14, 2025)
+- ✅ **Multi-photo upload endpoint**: `/vinted/photos/upload` now accepts 1-20 images simultaneously
+- ✅ **Lovable-compatible format**: Returns `{"photos": [{"temp_id", "url", "filename"}]}` as expected by frontend
+- ✅ **Mobile-friendly**: Accepts JPG, PNG, WEBP up to 15MB per photo
+- ✅ **Rate limiting**: 10 requests/minute protection
+- ✅ **Static file serving**: `/temp_photos` endpoint serves uploaded images
+
 ### Vinted Automation System (October 13, 2025)
 - ✅ **Playwright-based automation**: Full Vinted listing creation and publication
 - ✅ **Encrypted session vault**: Fernet encryption for cookie/user-agent storage (`backend/data/session.enc`)
