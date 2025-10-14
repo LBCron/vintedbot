@@ -2,6 +2,7 @@ import os
 import time
 import psutil
 from fastapi import APIRouter
+from backend.settings import settings
 
 router = APIRouter(tags=["health"])
 
@@ -36,7 +37,7 @@ async def health_check():
             "port": 5000,
             "openai_enabled": bool(os.getenv("OPENAI_API_KEY")),
             "allowed_origins": os.getenv("ALLOWED_ORIGINS", "*"),
-            "mock_mode": os.getenv("MOCK_MODE", "true")
+            "mock_mode": settings.MOCK_MODE
         },
         "scheduler_jobs_count": scheduler_jobs_count
     }

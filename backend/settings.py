@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "dev-secret"
     
     # Mock mode
-    MOCK_MODE: bool = True
+    MOCK_MODE: bool = False
     
     # Scheduler
     SYNC_INTERVAL_MIN: int = 15
