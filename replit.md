@@ -112,6 +112,29 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### AI-Powered Photo Analysis & Draft Generation (October 14, 2025)
+- ✅ **OpenAI GPT-4 Vision Integration**: Using Replit AI Integrations (no API key required, billed to credits)
+- ✅ **Automatic Draft Creation**: Upload photos → AI analyzes → Creates complete drafts with title, price, description
+- ✅ **Multi-Photo Bulk Upload**: `/bulk/photos/analyze` accepts 1-500 photos, groups them by item (4 photos/item default)
+- ✅ **Smart Analysis**: GPT-4o Vision detects category, color, condition, brand, size from photos
+- ✅ **Pricing Intelligence**: AI suggests optimal prices based on category, condition, and detected brands
+- ✅ **Background Processing**: Async jobs with real-time progress tracking via `/bulk/jobs/{job_id}`
+- ✅ **Draft Management**: Full CRUD endpoints for drafts (list, get, update, delete, publish)
+- ✅ **Auto-Analyze on Upload**: `/vinted/photos/upload?auto_analyze=true` triggers AI analysis automatically
+- ✅ **New Modules**:
+  - `backend/core/ai_analyzer.py` - GPT-4 Vision analysis engine
+  - `backend/schemas/bulk.py` - Pydantic models for drafts and jobs
+  - `backend/api/v1/routers/bulk.py` - Bulk upload & draft endpoints
+
+### New Endpoints (October 14, 2025)
+- `POST /bulk/photos/analyze` - Upload multiple photos and create drafts automatically
+- `GET /bulk/jobs/{job_id}` - Get analysis job status with progress percentage
+- `GET /bulk/drafts` - List all drafts (filterable by status)
+- `GET /bulk/drafts/{draft_id}` - Get single draft details
+- `PATCH /bulk/drafts/{draft_id}` - Update draft (edit title, price, description, etc.)
+- `DELETE /bulk/drafts/{draft_id}` - Delete a draft
+- `POST /bulk/drafts/{draft_id}/publish` - Publish draft to Vinted
+
 ### Publish Queue API Fixed (October 14, 2025)
 - ✅ **Publish queue endpoint**: `GET /vinted/publish/queue` now returns Lovable-compatible format (direct array)
 - ✅ **Job actions added**: retry, run, pause, delete endpoints for queue management

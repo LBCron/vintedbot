@@ -69,13 +69,14 @@ async def process_bulk_job(job_id: str, photo_paths: List[str], photos_per_item:
         photo_groups = smart_group_photos(photo_paths, max_per_group=photos_per_item)
         bulk_jobs[job_id]["total_items"] = len(photo_groups)
         
-        # Analyze each group
+        # Analyze each group (run in thread pool to avoid blocking event loop)
         analysis_results = []
         for i, group in enumerate(photo_groups):
             print(f"\n📸 Analyzing item {i+1}/{len(photo_groups)}...")
             
             try:
-                result = analyze_clothing_photos(group)
+                # Run synchronous OpenAI call in thread pool to avoid blocking event loop
+                result = await asyncio.to_thread(analyze_clothing_photos, group)
                 result['group_index'] = i
                 result['photos'] = group
                 analysis_results.append(result)
@@ -138,7 +139,6 @@ async def process_bulk_job(job_id: str, photo_paths: List[str], photos_per_item:
 @router.post("/photos/analyze", response_model=BulkUploadResponse)
 async def bulk_upload_photos(
     files: List[UploadFile] = File(...),
-    background_tasks: Optional[BackgroundTasks] = None,
     photos_per_item: int = Query(default=4, ge=1, le=10)
 ):
     """
@@ -191,17 +191,8 @@ async def bulk_upload_photos(
             "progress_percent": 0.0
         }
         
-        # Start background processing
-        if background_tasks:
-            background_tasks.add_task(
-                process_bulk_job,
-                job_id,
-                photo_paths,
-                photos_per_item
-            )
-        else:
-            # Fallback: process in asyncio task
-            asyncio.create_task(process_bulk_job(job_id, photo_paths, photos_per_item))
+        # Start background processing with asyncio
+        asyncio.create_task(process_bulk_job(job_id, photo_paths, photos_per_item))
         
         print(f"✅ Bulk job {job_id} created: {len(photo_paths)} photos -> ~{estimated_items} items")
         
