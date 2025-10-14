@@ -25,6 +25,7 @@ dependencies = [
     "playwright>=1.55.0",
     "cryptography>=46.0.2",
     "itsdangerous>=2.2.0",
+    "openai>=2.3.0",
 ]
 
 [build-system]
