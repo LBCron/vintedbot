@@ -297,6 +297,106 @@ async def bulk_upload_photos(
         raise HTTPException(status_code=500, detail=f"Bulk upload failed: {str(e)}")
 
 
+@router.post("/analyze", response_model=BulkUploadResponse)
+async def smart_bulk_analyze(
+    files: List[UploadFile] = File(...),
+    style: str = Query(default="classique", description="Description style: minimal, streetwear, or classique")
+):
+    """
+    🧠 INTELLIGENT BULK ANALYSIS - Recommended endpoint
+    
+    Uploads photos and uses AI Vision to intelligently group them by item.
+    
+    **How it works:**
+    1. Sends ALL photos to OpenAI Vision API in one call
+    2. AI analyzes and groups photos showing the SAME item
+    3. Creates one draft per detected item
+    
+    **Example:**
+    - Upload 12 photos
+    - AI detects: 3 photos of Nike t-shirt + 4 photos of jeans + 5 photos of sneakers
+    - Creates 3 drafts with correct photo grouping
+    
+    **Style options:**
+    - `minimal`: Sober, factual descriptions
+    - `streetwear`: Lifestyle tone, emojis
+    - `classique`: Elegant boutique style (default)
+    
+    **Returns:** job_id to track progress
+    """
+    try:
+        if not files:
+            raise HTTPException(status_code=400, detail="No files provided")
+        
+        if len(files) > 50:
+            raise HTTPException(
+                status_code=400, 
+                detail="Maximum 50 photos for intelligent grouping (OpenAI limit)"
+            )
+        
+        # Validation flexible des formats d'images
+        invalid_files = []
+        for file in files:
+            if not validate_image_file(file):
+                invalid_files.append(file.filename or "unknown")
+        
+        if invalid_files:
+            raise HTTPException(
+                status_code=415,
+                detail=f"Formats invalides (JPG/PNG/WEBP/HEIC/GIF/BMP attendus): {', '.join(invalid_files[:5])}"
+            )
+        
+        # Create job
+        job_id = str(uuid.uuid4())[:8]
+        
+        # Save photos
+        photo_paths = save_uploaded_photos(files, job_id)
+        
+        # Initialize job status (smart grouping doesn't know item count until AI responds)
+        bulk_jobs[job_id] = {
+            "job_id": job_id,
+            "status": "queued",
+            "total_photos": len(photo_paths),
+            "processed_photos": len(photo_paths),
+            "total_items": 0,  # Will be updated after AI analysis
+            "completed_items": 0,
+            "failed_items": 0,
+            "drafts": [],
+            "errors": [],
+            "started_at": None,
+            "completed_at": None,
+            "progress_percent": 0.0
+        }
+        
+        # Start background processing with SMART GROUPING enabled
+        asyncio.create_task(
+            process_bulk_job(
+                job_id, 
+                photo_paths, 
+                photos_per_item=4,  # Ignored when smart_grouping=True
+                use_smart_grouping=True,  # ✅ ALWAYS use smart grouping
+                style=style
+            )
+        )
+        
+        print(f"🧠 Smart bulk job {job_id} created: {len(photo_paths)} photos -> AI grouping, style={style}")
+        
+        return BulkUploadResponse(
+            ok=True,
+            job_id=job_id,
+            total_photos=len(photo_paths),
+            estimated_items=0,  # Unknown until AI analyzes
+            status="queued",
+            message=f"AI analyzing {len(photo_paths)} photos to detect items..."
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Smart bulk analyze error: {e}")
+        raise HTTPException(status_code=500, detail=f"Smart analysis failed: {str(e)}")
+
+
 @router.get("/jobs/{job_id}", response_model=BulkJobStatus)
 async def get_bulk_job_status(job_id: str):
     """
