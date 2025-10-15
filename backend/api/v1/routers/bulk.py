@@ -16,7 +16,8 @@ import io
 from backend.core.ai_analyzer import (
     analyze_clothing_photos,
     batch_analyze_photos,
-    smart_group_photos
+    smart_group_photos,
+    smart_analyze_and_group_photos
 )
 from backend.schemas.bulk import (
     BulkUploadResponse,
@@ -91,38 +92,67 @@ def save_uploaded_photos(files: List[UploadFile], job_id: str) -> List[str]:
     return saved_paths
 
 
-async def process_bulk_job(job_id: str, photo_paths: List[str], photos_per_item: int):
+async def process_bulk_job(
+    job_id: str, 
+    photo_paths: List[str], 
+    photos_per_item: int,
+    use_smart_grouping: bool = False,
+    style: str = "classique"
+):
     """
     Background task: Process bulk photos and create drafts
     """
     try:
-        print(f"\n🚀 Starting bulk job {job_id}")
+        print(f"\n🚀 Starting bulk job {job_id} (smart_grouping={use_smart_grouping}, style={style})")
         bulk_jobs[job_id]["status"] = "processing"
         bulk_jobs[job_id]["started_at"] = datetime.utcnow()
         
-        # Group photos into items
-        photo_groups = smart_group_photos(photo_paths, max_per_group=photos_per_item)
-        bulk_jobs[job_id]["total_items"] = len(photo_groups)
-        
-        # Analyze each group (run in thread pool to avoid blocking event loop)
         analysis_results = []
-        for i, group in enumerate(photo_groups):
-            print(f"\n📸 Analyzing item {i+1}/{len(photo_groups)}...")
+        
+        if use_smart_grouping:
+            # INTELLIGENT GROUPING: Let AI analyze all photos and group them
+            print(f"🧠 Using intelligent grouping for {len(photo_paths)} photos...")
             
             try:
-                # Run synchronous OpenAI call in thread pool to avoid blocking event loop
-                result = await asyncio.to_thread(analyze_clothing_photos, group)
-                result['group_index'] = i
-                result['photos'] = group
-                analysis_results.append(result)
+                # Run smart grouping in thread pool (single API call for all photos)
+                analysis_results = await asyncio.to_thread(
+                    smart_analyze_and_group_photos, 
+                    photo_paths, 
+                    style
+                )
                 
-                bulk_jobs[job_id]["completed_items"] += 1
-                bulk_jobs[job_id]["progress_percent"] = (i + 1) / len(photo_groups) * 100
+                bulk_jobs[job_id]["total_items"] = len(analysis_results)
+                bulk_jobs[job_id]["completed_items"] = len(analysis_results)
+                bulk_jobs[job_id]["progress_percent"] = 100.0
                 
             except Exception as e:
-                print(f"❌ Analysis failed for item {i+1}: {e}")
-                bulk_jobs[job_id]["failed_items"] += 1
-                bulk_jobs[job_id]["errors"].append(f"Item {i+1}: {str(e)}")
+                print(f"❌ Smart grouping failed: {e}, falling back to simple grouping")
+                # Fallback to simple grouping
+                use_smart_grouping = False
+        
+        if not use_smart_grouping:
+            # SIMPLE GROUPING: Group by sequence (every N photos = 1 item)
+            photo_groups = smart_group_photos(photo_paths, max_per_group=photos_per_item)
+            bulk_jobs[job_id]["total_items"] = len(photo_groups)
+            
+            # Analyze each group (run in thread pool to avoid blocking event loop)
+            for i, group in enumerate(photo_groups):
+                print(f"\n📸 Analyzing item {i+1}/{len(photo_groups)}...")
+                
+                try:
+                    # Run synchronous OpenAI call in thread pool to avoid blocking event loop
+                    result = await asyncio.to_thread(analyze_clothing_photos, group)
+                    result['group_index'] = i
+                    result['photos'] = group
+                    analysis_results.append(result)
+                    
+                    bulk_jobs[job_id]["completed_items"] += 1
+                    bulk_jobs[job_id]["progress_percent"] = (i + 1) / len(photo_groups) * 100
+                    
+                except Exception as e:
+                    print(f"❌ Analysis failed for item {i+1}: {e}")
+                    bulk_jobs[job_id]["failed_items"] += 1
+                    bulk_jobs[job_id]["errors"].append(f"Item {i+1}: {str(e)}")
         
         # Create drafts from analysis results
         for result in analysis_results:
@@ -174,15 +204,23 @@ async def process_bulk_job(job_id: str, photo_paths: List[str], photos_per_item:
 @router.post("/photos/analyze", response_model=BulkUploadResponse)
 async def bulk_upload_photos(
     files: List[UploadFile] = File(...),
-    photos_per_item: int = Query(default=4, ge=1, le=10)
+    photos_per_item: int = Query(default=4, ge=1, le=10, description="Photos per item (simple grouping only)"),
+    use_smart_grouping: bool = Query(default=False, description="Use AI to intelligently group photos by item"),
+    style: str = Query(default="classique", description="Description style: minimal, streetwear, or classique")
 ):
     """
     Upload multiple photos and analyze them to create drafts
     
     - Accepts 1-500 photos
-    - Automatically groups photos into items (default: 4 photos per item)
+    - **Simple grouping** (default): Groups by sequence (every N photos = 1 item)
+    - **Smart grouping** (use_smart_grouping=true): AI analyzes all photos and groups by visual similarity
     - Analyzes each group with AI to generate title, description, price
     - Creates ready-to-publish drafts
+    
+    **Style options:**
+    - `minimal`: Sober tone, short factual descriptions
+    - `streetwear`: Lifestyle tone, young vocabulary, light emojis
+    - `classique`: Elegant boutique tone, polished descriptions (default)
     
     Returns job_id to track progress
     """
@@ -230,9 +268,18 @@ async def bulk_upload_photos(
         }
         
         # Start background processing with asyncio
-        asyncio.create_task(process_bulk_job(job_id, photo_paths, photos_per_item))
+        asyncio.create_task(
+            process_bulk_job(
+                job_id, 
+                photo_paths, 
+                photos_per_item,
+                use_smart_grouping,
+                style
+            )
+        )
         
-        print(f"✅ Bulk job {job_id} created: {len(photo_paths)} photos -> ~{estimated_items} items")
+        grouping_mode = "smart AI grouping" if use_smart_grouping else f"simple grouping ({photos_per_item} photos/item)"
+        print(f"✅ Bulk job {job_id} created: {len(photo_paths)} photos -> {grouping_mode}, style={style}")
         
         return BulkUploadResponse(
             ok=True,

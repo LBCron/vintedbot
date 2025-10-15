@@ -211,3 +211,143 @@ def smart_group_photos(photo_paths: List[str], max_per_group: int = 6) -> List[L
     
     print(f"📦 Grouped {len(photo_paths)} photos into {len(groups)} items")
     return groups
+
+
+def smart_analyze_and_group_photos(
+    photo_paths: List[str], 
+    style: str = "classique"
+) -> List[Dict[str, Any]]:
+    """
+    INTELLIGENT GROUPING: Analyze ALL photos together and let AI group them by item
+    
+    Args:
+        photo_paths: All photo paths to analyze
+        style: "minimal", "streetwear", or "classique" (default)
+        
+    Returns:
+        List of analyzed items with their grouped photos
+    """
+    try:
+        # Prepare ALL images for API call (limit to 50 photos max)
+        image_contents = []
+        valid_paths = []
+        
+        for path in photo_paths[:50]:  # OpenAI limit
+            if not Path(path).exists():
+                print(f"⚠️ Photo not found: {path}")
+                continue
+                
+            # Encode image to base64
+            base64_image = encode_image_to_base64(path)
+            image_contents.append({
+                "type": "image_url",
+                "image_url": {
+                    "url": f"data:image/jpeg;base64,{base64_image}"
+                }
+            })
+            valid_paths.append(path)
+        
+        if not image_contents:
+            raise ValueError("No valid images found")
+        
+        # Create intelligent grouping prompt
+        prompt = f"""Tu es un assistant IA spécialisé dans l'analyse de photos de vêtements pour Vinted.
+
+MISSION: Analyser un lot de photos et regrouper celles qui montrent le MÊME article/vêtement.
+
+ÉTAPES:
+1. Examine toutes les photos fournies
+2. Identifie les caractéristiques uniques de chaque article (couleur, motif, style, marque visible, défauts)
+3. Regroupe les photos qui montrent clairement le même article
+4. Pour chaque groupe, génère UN SEUL brouillon avec:
+   - title: Description courte et vendeuse (ex: "Jean Levi's 501 bleu délavé")
+   - description: Détaillée, mentionne l'état, les défauts visibles, les atouts
+   - price: Prix suggéré réaliste (analyse le marché Vinted)
+   - brand: Marque si identifiable (sinon "Non spécifié")
+   - size: Taille si visible sur étiquette (sinon "Non spécifié")
+   - condition: "Neuf avec étiquette", "Très bon état", "Bon état", "Satisfaisant" ou "Pour pièces"
+   - color: Couleur dominante
+   - category: "jeans", "t-shirt", "robe", "chaussures", "accessoire", "autre"
+   - confidence: 0.0-1.0 (confiance dans le regroupement)
+   - photo_indices: Array des indices (0, 1, 2...) des photos de cet article
+
+RÈGLES CRITIQUES:
+- Si incertain sur le regroupement (confidence < 0.6), privilégie la séparation
+- Les chaussures: 2-4 photos (paire complète + détails)
+- Les vêtements: 3-6 photos (devant, dos, étiquette, défauts)
+- Accessoires: 2-3 photos suffisent
+- Si étiquette visible avec taille/marque manquante, note: "Taille/marque non précisée sur les photos"
+- Pour jeans/chaussures, toujours mentionner si pointure/taille manquante
+
+STYLE (adapte selon "{style}"):
+- minimal: Ton sobre, descriptions factuelles courtes
+- streetwear: Ton lifestyle, vocabulaire jeune, émojis légers
+- classique: Ton boutique élégant, descriptions soignées
+
+IMPORTANT: Ne renvoie QUE le JSON final avec la structure:
+{{
+  "groups": [
+    {{
+      "title": "...",
+      "description": "...",
+      "price": 25.0,
+      "brand": "...",
+      "size": "...",
+      "condition": "...",
+      "color": "...",
+      "category": "...",
+      "confidence": 0.85,
+      "photo_indices": [0, 1, 2]
+    }}
+  ]
+}}"""
+
+        # Build messages
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    *image_contents
+                ]
+            }
+        ]
+        
+        print(f"🧠 Smart grouping: Analyzing {len(image_contents)} photos together...")
+        
+        # Call OpenAI API with intelligent grouping
+        response = openai_client.chat.completions.create(
+            model="gpt-4o",
+            messages=messages,  # type: ignore
+            max_completion_tokens=3000,  # More tokens for multiple items
+            temperature=0.7,
+            response_format={"type": "json_object"}
+        )
+        
+        # Parse JSON response
+        content = response.choices[0].message.content or "{}"
+        result = json.loads(content)
+        
+        # Map photo indices to actual paths
+        groups = result.get("groups", [])
+        for group in groups:
+            indices = group.pop("photo_indices", [])
+            group["photos"] = [valid_paths[i] for i in indices if i < len(valid_paths)]
+        
+        print(f"✅ Smart grouping complete: {len(groups)} items detected")
+        for i, group in enumerate(groups, 1):
+            print(f"   Item {i}: {group.get('title')} ({len(group.get('photos', []))} photos, confidence: {group.get('confidence', 0):.2f})")
+        
+        return groups
+        
+    except json.JSONDecodeError as e:
+        print(f"❌ JSON parse error: {e}, falling back to simple grouping")
+        # Fallback to simple grouping
+        simple_groups = smart_group_photos(photo_paths, max_per_group=4)
+        return batch_analyze_photos(simple_groups)
+        
+    except Exception as e:
+        print(f"❌ Smart grouping error: {e}, falling back to simple grouping")
+        # Fallback to simple grouping
+        simple_groups = smart_group_photos(photo_paths, max_per_group=4)
+        return batch_analyze_photos(simple_groups)
