@@ -582,22 +582,16 @@ async def get_bulk_job_status(job_id: str):
         if job_id in photo_analysis_cache:
             cache_data = photo_analysis_cache[job_id]
             photo_count = cache_data.get("photo_count", 0)
-            auto_grouping = cache_data.get("auto_grouping", True)
+            estimated_items = cache_data.get("estimated_items", 1)
             
-            # Determine single-item mode
-            force_single_item = (
-                auto_grouping or photo_count <= settings.SINGLE_ITEM_DEFAULT_MAX_PHOTOS
-            )
-            
-            estimated_items = 1 if force_single_item else max(1, photo_count // 4)
-            
+            # Photo analysis is complete, but no drafts generated yet
             return BulkJobStatus(
                 job_id=job_id,
                 status="completed",
                 total_photos=photo_count,
                 processed_photos=photo_count,
                 total_items=estimated_items,
-                completed_items=0,
+                completed_items=estimated_items,  # Analysis complete = all items "analyzed"
                 failed_items=0,
                 drafts=[],
                 errors=[],
@@ -828,6 +822,7 @@ async def analyze_bulk_photos(
             "photo_paths": photo_paths,
             "photo_count": photo_count,
             "auto_grouping": auto_grouping,
+            "estimated_items": estimated_items,
             "created_at": datetime.utcnow()
         }
         
