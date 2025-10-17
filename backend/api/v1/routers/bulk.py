@@ -817,7 +817,9 @@ async def analyze_bulk_photos(
             not auto_grouping or photo_count <= settings.SINGLE_ITEM_DEFAULT_MAX_PHOTOS
         )
         
-        estimated_items = 1 if force_single_item else max(1, photo_count // 4)
+        # Smart estimation: ~5-6 photos per item on average (better UX for frontend)
+        # This is just an initial estimate - GPT-4 Vision will detect the real count
+        estimated_items = max(1, photo_count // 5)
         
         # Save plan to PostgreSQL database for persistence
         save_photo_plan(
