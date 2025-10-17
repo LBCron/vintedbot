@@ -214,11 +214,13 @@ def batch_analyze_photos(photo_groups: List[List[str]]) -> List[Dict[str, Any]]:
         try:
             result = analyze_clothing_photos(group)
             result['group_index'] = i
+            result['photos'] = group  # CRITICAL: Attach photos to result for draft creation
             results.append(result)
         except Exception as e:
             print(f"❌ Group {i+1} failed: {e}")
             fallback = generate_fallback_analysis(group)
             fallback['group_index'] = i
+            fallback['photos'] = group  # CRITICAL: Attach photos to fallback result
             results.append(fallback)
     
     return results
