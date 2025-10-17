@@ -1020,97 +1020,103 @@ async def generate_drafts_from_plan(request: GenerateRequest):
         if not photo_paths:
             raise HTTPException(status_code=400, detail="No photos to process")
         
-        # Analyze photos to generate listing
-        analysis_result = await asyncio.to_thread(
-            analyze_clothing_photos,
-            photo_paths
+        # Use smart grouping to detect MULTIPLE distinct items
+        style = request.style or "classique"
+        grouped_items = await asyncio.to_thread(
+            smart_analyze_and_group_photos,
+            photo_paths,
+            style
         )
         
-        # STRICT VALIDATION
-        validation_errors = []
+        # Process EACH detected item individually
+        created_drafts = []
+        skipped_items = []
+        errors = []
         
-        # Check title length
-        title = analysis_result.get("title", "")
-        if len(title) > 70:
-            validation_errors.append(ValidationError(
-                field="title",
-                issue="Too long",
-                current_value=len(title),
-                expected="≤70 characters"
-            ))
+        for item_index, item in enumerate(grouped_items, 1):
+            try:
+                # STRICT VALIDATION for each item
+                validation_errors = []
+                
+                # Check title length
+                title = item.get("title", "")
+                if len(title) > 70:
+                    validation_errors.append(f"title too long ({len(title)} chars)")
+                
+                # Check hashtags
+                description = item.get("description", "")
+                hashtags = [word for word in description.split() if word.startswith('#')]
+                hashtag_count = len(hashtags)
+                
+                if hashtag_count < 3 or hashtag_count > 5:
+                    validation_errors.append(f"invalid hashtag count ({hashtag_count})")
+                
+                # Check required fields
+                required_fields = ['title', 'description', 'price', 'category', 'brand', 'size']
+                missing_fields = [f for f in required_fields if not item.get(f)]
+                
+                if missing_fields:
+                    validation_errors.append(f"missing: {', '.join(missing_fields)}")
+                
+                # If validation fails for this item → Skip it
+                if validation_errors:
+                    error_msg = f"Item {item_index} ({title[:30]}...): {'; '.join(validation_errors)}"
+                    errors.append(error_msg)
+                    skipped_items.append(item)
+                    print(f"⚠️ Skipped item {item_index}: {error_msg}")
+                    continue
+                
+                # All validations passed → Create draft for this item
+                draft_id = str(uuid.uuid4())
+                draft = DraftItem(
+                    id=draft_id,
+                    title=title,
+                    description=description,
+                    price=float(item.get("price", 0)),
+                    category=item.get("category", "autre"),
+                    condition=item.get("condition", "Bon état"),
+                    color=item.get("color", "Non spécifié"),
+                    brand=item.get("brand", "Non spécifié"),
+                    size=item.get("size", "Non spécifié"),
+                    photos=[path.replace("backend/data/", "/") for path in item.get("photos", [])],
+                    status="ready",
+                    confidence=item.get("confidence", 0.85),
+                    created_at=datetime.utcnow(),
+                    updated_at=datetime.utcnow(),
+                    analysis_result=item
+                )
+                
+                drafts_storage[draft_id] = draft
+                created_drafts.append(draft)
+                
+                print(f"✅ Draft {item_index}/{len(grouped_items)}: {draft.title} ({len(item.get('photos', []))} photos, {hashtag_count} hashtags)")
+                
+            except Exception as e:
+                error_msg = f"Item {item_index} error: {str(e)}"
+                errors.append(error_msg)
+                print(f"❌ {error_msg}")
         
-        # Check hashtags (extract from description)
-        description = analysis_result.get("description", "")
-        hashtags = [word for word in description.split() if word.startswith('#')]
-        hashtag_count = len(hashtags)
+        # Return response with all created drafts
+        success_count = len(created_drafts)
+        skip_count = len(skipped_items)
         
-        if hashtag_count < 3 or hashtag_count > 5:
-            validation_errors.append(ValidationError(
-                field="hashtags",
-                issue="Invalid count",
-                current_value=hashtag_count,
-                expected="3-5 hashtags"
-            ))
-        
-        # Check required fields
-        required_fields = ['title', 'description', 'price', 'category', 'brand', 'size']
-        missing_fields = [f for f in required_fields if not analysis_result.get(f)]
-        
-        if missing_fields:
-            validation_errors.append(ValidationError(
-                field="required_fields",
-                issue="Missing fields",
-                current_value=missing_fields,
-                expected=f"All required: {', '.join(required_fields)}"
-            ))
-        
-        # If ANY validation failed → Return error, NO draft created
-        if validation_errors:
-            error_messages = [
-                f"{err.field}: {err.issue} (current: {err.current_value}, expected: {err.expected})"
-                for err in validation_errors
-            ]
-            
+        if success_count == 0:
             return GenerateResponse(
                 ok=False,
                 generated_count=0,
-                skipped_count=1,
+                skipped_count=skip_count,
                 drafts=[],
-                errors=error_messages,
-                message=f"❌ Validation failed: {'; '.join(error_messages)}"
+                errors=errors,
+                message=f"❌ No valid drafts created. {skip_count} items skipped. Errors: {'; '.join(errors[:3])}"
             )
-        
-        # All validations passed → Create draft
-        draft_id = str(uuid.uuid4())
-        draft = DraftItem(
-            id=draft_id,
-            title=title,
-            description=description,
-            price=float(analysis_result.get("price", 0)),
-            category=analysis_result.get("category", "autre"),
-            condition=analysis_result.get("condition", "Bon état"),
-            color=analysis_result.get("color", "Non spécifié"),
-            brand=analysis_result.get("brand", "Non spécifié"),
-            size=analysis_result.get("size", "Non spécifié"),
-            photos=[path.replace("backend/data/", "/") for path in photo_paths],
-            status="ready",
-            confidence=analysis_result.get("confidence", 0.85),
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
-            analysis_result=analysis_result
-        )
-        
-        drafts_storage[draft_id] = draft
-        
-        print(f"✅ Generated validated draft: {draft.title} ({hashtag_count} hashtags, {len(title)} chars)")
         
         return GenerateResponse(
             ok=True,
-            generated_count=1,
-            skipped_count=0,
-            drafts=[draft],
-            errors=[],
-            message=f"✅ Draft created: {title}"
+            generated_count=success_count,
+            skipped_count=skip_count,
+            drafts=created_drafts,
+            errors=errors,
+            message=f"✅ Created {success_count} draft(s) from {len(grouped_items)} detected items ({skip_count} skipped)"
         )
         
     except HTTPException:

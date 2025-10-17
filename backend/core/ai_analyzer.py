@@ -7,6 +7,9 @@ import base64
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 import json
+import tempfile
+from PIL import Image
+import pillow_heif
 
 # the newest OpenAI model is "gpt-4o" 
 from openai import OpenAI
@@ -15,9 +18,50 @@ from openai import OpenAI
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 print("✅ Using personal OpenAI API key")
 
+# Register HEIF opener with PIL
+pillow_heif.register_heif_opener()
+
+
+def convert_heic_to_jpeg(heic_path: str) -> str:
+    """
+    Convert HEIC/HEIF image to JPEG format for OpenAI compatibility
+    
+    Args:
+        heic_path: Path to HEIC/HEIF file
+        
+    Returns:
+        Path to converted JPEG file (temp file)
+    """
+    try:
+        # Open HEIC image
+        image = Image.open(heic_path)
+        
+        # Convert to RGB if needed
+        if image.mode != 'RGB':
+            image = image.convert('RGB')
+        
+        # Create temp JPEG file
+        temp_jpeg = tempfile.NamedTemporaryFile(suffix='.jpg', delete=False)
+        jpeg_path = temp_jpeg.name
+        
+        # Save as JPEG
+        image.save(jpeg_path, 'JPEG', quality=90)
+        
+        print(f"✅ Converted HEIC → JPEG: {Path(heic_path).name}")
+        return jpeg_path
+        
+    except Exception as e:
+        print(f"❌ HEIC conversion error for {heic_path}: {e}")
+        # Return original path as fallback
+        return heic_path
+
 
 def encode_image_to_base64(image_path: str) -> str:
-    """Convert local image to base64 string"""
+    """Convert local image to base64 string, handles HEIC conversion"""
+    # Convert HEIC/HEIF to JPEG if needed
+    if image_path.lower().endswith(('.heic', '.heif')):
+        image_path = convert_heic_to_jpeg(image_path)
+    
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode('utf-8')
 
