@@ -32,6 +32,7 @@ from backend.schemas.bulk import (
     ValidationError
 )
 from backend.settings import settings
+from backend.database import save_photo_plan, get_photo_plan, delete_photo_plan
 
 router = APIRouter(prefix="/bulk", tags=["bulk"])
 
@@ -578,25 +579,22 @@ async def get_bulk_job_status(job_id: str):
     **Note:** Also checks photo_analysis_cache for jobs created by /bulk/photos/analyze
     """
     try:
-        # First check photo_analysis_cache (for /bulk/photos/analyze jobs)
-        if job_id in photo_analysis_cache:
-            cache_data = photo_analysis_cache[job_id]
-            photo_count = cache_data.get("photo_count", 0)
-            estimated_items = cache_data.get("estimated_items", 1)
-            
+        # First check PostgreSQL database (for /bulk/photos/analyze jobs)
+        photo_plan = get_photo_plan(job_id)
+        if photo_plan:
             # Photo analysis is complete, but no drafts generated yet
             return BulkJobStatus(
                 job_id=job_id,
                 status="completed",
-                total_photos=photo_count,
-                processed_photos=photo_count,
-                total_items=estimated_items,
-                completed_items=estimated_items,  # Analysis complete = all items "analyzed"
+                total_photos=photo_plan.photo_count,
+                processed_photos=photo_plan.photo_count,
+                total_items=photo_plan.estimated_items,
+                completed_items=photo_plan.estimated_items,  # Analysis complete = all items "analyzed"
                 failed_items=0,
                 drafts=[],
                 errors=[],
-                started_at=cache_data.get("created_at"),
-                completed_at=cache_data.get("created_at"),
+                started_at=photo_plan.created_at,
+                completed_at=photo_plan.created_at,
                 progress_percent=100.0
             )
         
@@ -817,16 +815,16 @@ async def analyze_bulk_photos(
         
         estimated_items = 1 if force_single_item else max(1, photo_count // 4)
         
-        # Store plan_id and photo_paths for later use
-        photo_analysis_cache[plan_id] = {
-            "photo_paths": photo_paths,
-            "photo_count": photo_count,
-            "auto_grouping": auto_grouping,
-            "estimated_items": estimated_items,
-            "created_at": datetime.utcnow()
-        }
+        # Save plan to PostgreSQL database for persistence
+        save_photo_plan(
+            plan_id=plan_id,
+            photo_paths=photo_paths,
+            photo_count=photo_count,
+            auto_grouping=auto_grouping,
+            estimated_items=estimated_items
+        )
         
-        print(f"📸 Analyzed {photo_count} photos → plan_id: {plan_id}, estimated: {estimated_items} items")
+        print(f"📸 Analyzed {photo_count} photos → plan_id: {plan_id}, estimated: {estimated_items} items (saved to DB)")
         
         return {
             "job_id": plan_id,
@@ -997,15 +995,19 @@ async def generate_drafts_from_plan(request: GenerateRequest):
         
         # Get photo paths from plan or request
         if plan_id:
-            if plan_id not in grouping_plans:
+            # First check PostgreSQL database (for /bulk/photos/analyze plans)
+            photo_plan = get_photo_plan(plan_id)
+            if photo_plan:
+                photo_paths = photo_plan.photo_paths
+            # Then check grouping_plans (for /bulk/plan plans)
+            elif plan_id in grouping_plans:
+                plan = grouping_plans[plan_id]
+                # Collect all photos from main clusters (skip label-only)
+                for cluster in plan.clusters:
+                    if cluster.cluster_type != "label" or cluster.merge_target:
+                        photo_paths.extend(cluster.photo_paths)
+            else:
                 raise HTTPException(status_code=404, detail=f"Plan {plan_id} not found")
-            
-            plan = grouping_plans[plan_id]
-            
-            # Collect all photos from main clusters (skip label-only)
-            for cluster in plan.clusters:
-                if cluster.cluster_type != "label" or cluster.merge_target:
-                    photo_paths.extend(cluster.photo_paths)
                     
         elif request.photo_paths:
             photo_paths = request.photo_paths

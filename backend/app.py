@@ -13,6 +13,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
 from backend.db import create_tables
+from backend.database import init_db
 from backend.jobs import start_scheduler, stop_scheduler
 from backend.utils.logger import logger, log_request
 from backend.routes import auth, messages, publish, listings, offers, orders, health, ws
@@ -30,8 +31,9 @@ async def lifespan(app: FastAPI):
     """Application lifespan manager"""
     logger.info("🚀 Starting VintedBot Connector Backend...")
     
-    # Initialize database
-    create_tables()
+    # Initialize databases
+    create_tables()  # Legacy JSON database
+    init_db()  # PostgreSQL database
     
     # Start scheduler
     start_scheduler()
