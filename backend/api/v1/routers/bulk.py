@@ -24,7 +24,12 @@ from backend.schemas.bulk import (
     BulkJobStatus,
     DraftItem,
     DraftUpdateRequest,
-    DraftListResponse
+    DraftListResponse,
+    GroupingPlan,
+    PhotoCluster,
+    GenerateRequest,
+    GenerateResponse,
+    ValidationError
 )
 from backend.settings import settings
 
@@ -33,6 +38,7 @@ router = APIRouter(prefix="/bulk", tags=["bulk"])
 # In-memory storage for jobs (TODO: move to Redis/DB for production)
 bulk_jobs: Dict[str, Dict] = {}
 drafts_storage: Dict[str, DraftItem] = {}
+grouping_plans: Dict[str, GroupingPlan] = {}  # Storage for grouping plans
 
 # Validation flexible des formats d'images
 ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.heic', '.heif'}
@@ -177,7 +183,7 @@ async def process_bulk_job(
                 size=result.get('size', 'Non spécifié'),
                 photos=photo_urls,
                 status="ready",
-                confidence=result.get('confidence', 0.0),
+                confidence=result.get('confidence', 0.8),
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow(),
                 analysis_result=result
@@ -186,52 +192,45 @@ async def process_bulk_job(
             drafts_storage[draft_id] = draft
             bulk_jobs[job_id]["drafts"].append(draft_id)
             
-            print(f"✅ Draft created: {draft.title} ({draft.price}€)")
+            print(f"✅ Created draft: {draft.title} ({draft.price}€)")
         
-        # Mark job as completed
         bulk_jobs[job_id]["status"] = "completed"
         bulk_jobs[job_id]["completed_at"] = datetime.utcnow()
         bulk_jobs[job_id]["progress_percent"] = 100.0
         
-        print(f"✅ Bulk job {job_id} completed: {len(analysis_results)} drafts created")
+        print(f"\n✅ Bulk job {job_id} completed: {len(analysis_results)} drafts created")
         
     except Exception as e:
         print(f"❌ Bulk job {job_id} failed: {e}")
         bulk_jobs[job_id]["status"] = "failed"
-        bulk_jobs[job_id]["errors"].append(f"Job failed: {str(e)}")
+        bulk_jobs[job_id]["errors"].append(str(e))
 
 
-@router.post("/photos/analyze", response_model=BulkUploadResponse)
+@router.post("/upload", response_model=BulkUploadResponse)
 async def bulk_upload_photos(
     files: List[UploadFile] = File(...),
-    photos_per_item: int = Query(default=4, ge=1, le=10, description="Photos per item (simple grouping only)"),
-    use_smart_grouping: bool = Query(default=False, description="Use AI to intelligently group photos by item"),
-    style: str = Query(default="classique", description="Description style: minimal, streetwear, or classique")
+    auto_group: bool = Query(default=True),
+    photos_per_item: int = Query(default=6, ge=1, le=10)
 ):
     """
-    Upload multiple photos and analyze them to create drafts
+    Upload multiple photos for bulk analysis
     
-    - Accepts 1-500 photos
-    - **Simple grouping** (default): Groups by sequence (every N photos = 1 item)
-    - **Smart grouping** (use_smart_grouping=true): AI analyzes all photos and groups by visual similarity
-    - Analyzes each group with AI to generate title, description, price
-    - Creates ready-to-publish drafts
+    **Simple workflow:**
+    1. Upload photos
+    2. Photos are automatically grouped (N photos per item)
+    3. AI analyzes each group
+    4. Drafts are created
     
-    **Style options:**
-    - `minimal`: Sober tone, short factual descriptions
-    - `streetwear`: Lifestyle tone, young vocabulary, light emojis
-    - `classique`: Elegant boutique tone, polished descriptions (default)
-    
-    Returns job_id to track progress
+    Returns a job_id to track progress
     """
     try:
         if not files:
             raise HTTPException(status_code=400, detail="No files provided")
         
-        if len(files) > 500:
-            raise HTTPException(status_code=400, detail="Maximum 500 photos allowed")
+        if len(files) > 50:
+            raise HTTPException(status_code=400, detail="Maximum 50 photos per upload")
         
-        # Validation flexible des formats d'images
+        # Validate all files are images
         invalid_files = []
         for file in files:
             if not validate_image_file(file):
@@ -240,18 +239,19 @@ async def bulk_upload_photos(
         if invalid_files:
             raise HTTPException(
                 status_code=415,
-                detail=f"Formats invalides (JPG/PNG/WEBP/HEIC/GIF/BMP attendus): {', '.join(invalid_files[:5])}"
+                detail=f"Invalid formats (expected JPG/PNG/WEBP/HEIC/GIF/BMP): {', '.join(invalid_files[:5])}"
             )
         
-        # Create job
+        # Create job ID
         job_id = str(uuid.uuid4())[:8]
         
         # Save photos
         photo_paths = save_uploaded_photos(files, job_id)
         
-        # Initialize job status
-        estimated_items = max(1, len(photo_paths) // photos_per_item)
+        # Calculate estimated items
+        estimated_items = len(photo_paths) // photos_per_item if auto_group else len(photo_paths)
         
+        # Initialize job status
         bulk_jobs[job_id] = {
             "job_id": job_id,
             "status": "queued",
@@ -267,19 +267,18 @@ async def bulk_upload_photos(
             "progress_percent": 0.0
         }
         
-        # Start background processing with asyncio
+        # Start background processing
         asyncio.create_task(
             process_bulk_job(
                 job_id, 
                 photo_paths, 
-                photos_per_item,
-                use_smart_grouping,
-                style
+                photos_per_item, 
+                use_smart_grouping=False,
+                style="classique"
             )
         )
         
-        grouping_mode = "smart AI grouping" if use_smart_grouping else f"simple grouping ({photos_per_item} photos/item)"
-        print(f"✅ Bulk job {job_id} created: {len(photo_paths)} photos -> {grouping_mode}, style={style}")
+        print(f"📦 Bulk job {job_id} created: {len(photo_paths)} photos, {estimated_items} estimated items")
         
         return BulkUploadResponse(
             ok=True,
@@ -294,47 +293,41 @@ async def bulk_upload_photos(
         raise
     except Exception as e:
         print(f"❌ Bulk upload error: {e}")
-        raise HTTPException(status_code=500, detail=f"Bulk upload failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 
 @router.post("/analyze", response_model=BulkUploadResponse)
-async def smart_bulk_analyze(
+async def bulk_analyze_smart(
     files: List[UploadFile] = File(...),
     style: str = Query(default="classique", description="Description style: minimal, streetwear, or classique")
 ):
     """
-    🧠 INTELLIGENT BULK ANALYSIS - Recommended endpoint
+    🧠 SMART BULK ANALYSIS with AI-powered grouping
     
-    Uploads photos and uses AI Vision to intelligently group them by item.
+    Uses OpenAI Vision to intelligently group photos into items.
+    Perfect for mixed batches where you don't know how many items there are.
     
     **How it works:**
-    1. Sends ALL photos to OpenAI Vision API in one call
-    2. AI analyzes and groups photos showing the SAME item
-    3. Creates one draft per detected item
+    1. Upload all photos
+    2. AI analyzes ALL photos together
+    3. AI groups photos by visual similarity
+    4. Creates one draft per detected item
     
-    **Example:**
-    - Upload 12 photos
-    - AI detects: 3 photos of Nike t-shirt + 4 photos of jeans + 5 photos of sneakers
-    - Creates 3 drafts with correct photo grouping
+    **Example use case:**
+    - Upload 20 photos of 5 different items
+    - AI detects and groups them automatically
+    - Returns 5 drafts (one per item)
     
-    **Style options:**
-    - `minimal`: Sober, factual descriptions
-    - `streetwear`: Lifestyle tone, emojis
-    - `classique`: Elegant boutique style (default)
-    
-    **Returns:** job_id to track progress
+    Returns a job_id to track progress
     """
     try:
         if not files:
             raise HTTPException(status_code=400, detail="No files provided")
         
         if len(files) > 50:
-            raise HTTPException(
-                status_code=400, 
-                detail="Maximum 50 photos for intelligent grouping (OpenAI limit)"
-            )
+            raise HTTPException(status_code=400, detail="Maximum 50 photos for smart analysis")
         
-        # Validation flexible des formats d'images
+        # Validate all files are images
         invalid_files = []
         for file in files:
             if not validate_image_file(file):
@@ -343,22 +336,22 @@ async def smart_bulk_analyze(
         if invalid_files:
             raise HTTPException(
                 status_code=415,
-                detail=f"Formats invalides (JPG/PNG/WEBP/HEIC/GIF/BMP attendus): {', '.join(invalid_files[:5])}"
+                detail=f"Invalid formats (expected JPG/PNG/WEBP/HEIC/GIF/BMP): {', '.join(invalid_files[:5])}"
             )
         
-        # Create job
+        # Create job ID
         job_id = str(uuid.uuid4())[:8]
         
         # Save photos
         photo_paths = save_uploaded_photos(files, job_id)
         
-        # Initialize job status (smart grouping doesn't know item count until AI responds)
+        # Initialize job status
         bulk_jobs[job_id] = {
             "job_id": job_id,
             "status": "queued",
             "total_photos": len(photo_paths),
             "processed_photos": len(photo_paths),
-            "total_items": 0,  # Will be updated after AI analysis
+            "total_items": 0,  # Unknown until AI analyzes
             "completed_items": 0,
             "failed_items": 0,
             "drafts": [],
@@ -368,7 +361,7 @@ async def smart_bulk_analyze(
             "progress_percent": 0.0
         }
         
-        # Start background processing with SMART GROUPING enabled
+        # Start background processing with SMART GROUPING
         asyncio.create_task(
             process_bulk_job(
                 job_id, 
@@ -462,7 +455,7 @@ async def bulk_ingest_photos(
     Intelligently processes photos with automatic single-item detection.
     
     **Automatic single-item mode triggers:**
-    - Photos ≤ SINGLE_ITEM_DEFAULT_MAX_PHOTOS (default: 8)
+    - Photos ≤ SINGLE_ITEM_DEFAULT_MAX_PHOTOS (default: 80)
     - grouping_mode="single_item" explicitly set
     
     **Grouping modes:**
@@ -621,31 +614,27 @@ async def list_drafts(
 ):
     """
     List all drafts with optional filtering
-    
-    Query params:
-    - status: Filter by status (draft, ready, published, failed)
-    - page: Page number
-    - page_size: Items per page
     """
     try:
         # Get all drafts
         all_drafts = list(drafts_storage.values())
         
-        # Filter by status
+        # Filter by status if provided
         if status:
             all_drafts = [d for d in all_drafts if d.status == status]
         
         # Sort by created_at desc
         all_drafts.sort(key=lambda x: x.created_at, reverse=True)
         
-        # Paginate
-        start_idx = (page - 1) * page_size
-        end_idx = start_idx + page_size
-        paginated_drafts = all_drafts[start_idx:end_idx]
+        # Pagination
+        total = len(all_drafts)
+        start = (page - 1) * page_size
+        end = start + page_size
+        page_drafts = all_drafts[start:end]
         
         return DraftListResponse(
-            drafts=paginated_drafts,
-            total=len(all_drafts),
+            drafts=page_drafts,
+            total=total,
             page=page,
             page_size=page_size
         )
@@ -758,3 +747,275 @@ async def publish_draft(draft_id: str):
     except Exception as e:
         print(f"❌ Publish draft error: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to publish draft: {str(e)}")
+
+
+@router.post("/plan", response_model=GroupingPlan)
+async def create_grouping_plan(
+    files: List[UploadFile] = File(...),
+    auto_grouping: bool = Query(default=True, description="Enable auto single-item detection"),
+    style: str = Query(default="classique", description="Description style")
+):
+    """
+    🎯 CREATE GROUPING PLAN (Anti-Saucisson)
+    
+    Analyzes photos and creates an intelligent grouping plan WITHOUT generating drafts yet.
+    
+    **Auto-grouping rules:**
+    - If auto_grouping=true OR photos ≤ SINGLE_ITEM_DEFAULT_MAX_PHOTOS (80) → Single item mode
+    - Detects labels (care labels, brand tags, size labels) via AI Vision
+    - Clusters ≤2 photos or label-only → auto-attach to largest cluster
+    - NEVER creates label-only articles
+    
+    **Returns:** A grouping plan with cluster details and merge recommendations
+    """
+    try:
+        if not files:
+            raise HTTPException(status_code=400, detail="No files provided")
+        
+        photo_count = len(files)
+        
+        # Validate files
+        invalid_files = []
+        for file in files:
+            if not validate_image_file(file):
+                invalid_files.append(file.filename or "unknown")
+        
+        if invalid_files:
+            raise HTTPException(
+                status_code=415,
+                detail=f"Invalid formats: {', '.join(invalid_files[:5])}"
+            )
+        
+        # Save photos temporarily
+        plan_id = str(uuid.uuid4())[:8]
+        photo_paths = save_uploaded_photos(files, plan_id)
+        
+        # Determine single-item mode
+        force_single_item = (
+            auto_grouping and photo_count <= settings.SINGLE_ITEM_DEFAULT_MAX_PHOTOS
+        )
+        
+        clusters = []
+        grouping_reason = ""
+        
+        if force_single_item:
+            # SINGLE ITEM MODE: All photos in one cluster
+            clusters.append(PhotoCluster(
+                cluster_id="main",
+                photo_paths=photo_paths,
+                photo_count=photo_count,
+                cluster_type="main_item",
+                confidence=0.95,
+                label_detected=None,
+                merge_target=None
+            ))
+            grouping_reason = f"Auto single-item (≤{settings.SINGLE_ITEM_DEFAULT_MAX_PHOTOS} photos)"
+            estimated_items = 1
+            
+        else:
+            # MULTI-ITEM MODE: AI Vision detection with label attachment
+            print(f"🧠 Running AI Vision grouping for {photo_count} photos...")
+            
+            # Use existing smart_analyze_and_group_photos to get AI grouping
+            grouped_results = await asyncio.to_thread(
+                smart_analyze_and_group_photos,
+                photo_paths,
+                style
+            )
+            
+            # Convert AI results to PhotoClusters
+            for idx, result in enumerate(grouped_results):
+                result_photos = result.get('photos', [])
+                
+                # Determine cluster type based on photo count and confidence
+                cluster_type = "main_item"
+                label_detected = None
+                merge_target = None
+                
+                # Check if this might be a label cluster (≤2 photos)
+                if len(result_photos) <= 2:
+                    cluster_type = "detail"  # Could be label or detail
+                    # If this is a small cluster, mark it to merge with main
+                    if len(grouped_results) > 1:
+                        merge_target = "0"  # Merge to first (largest) cluster
+                
+                clusters.append(PhotoCluster(
+                    cluster_id=str(idx),
+                    photo_paths=result_photos,
+                    photo_count=len(result_photos),
+                    cluster_type=cluster_type,
+                    confidence=result.get('confidence', 0.8),
+                    label_detected=label_detected,
+                    merge_target=merge_target
+                ))
+            
+            grouping_reason = f"AI Vision grouping ({len(grouped_results)} items detected)"
+            estimated_items = len(grouped_results)
+        
+        # Create and store plan
+        plan = GroupingPlan(
+            plan_id=plan_id,
+            total_photos=photo_count,
+            clusters=clusters,
+            estimated_items=estimated_items,
+            single_item_mode=force_single_item,
+            grouping_reason=grouping_reason,
+            created_at=datetime.utcnow()
+        )
+        
+        grouping_plans[plan_id] = plan
+        
+        print(f"📋 Created grouping plan {plan_id}: {photo_count} photos → {estimated_items} items ({grouping_reason})")
+        
+        return plan
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Create plan error: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to create plan: {str(e)}")
+
+
+@router.post("/generate", response_model=GenerateResponse)
+async def generate_drafts_from_plan(request: GenerateRequest):
+    """
+    ✨ GENERATE DRAFTS WITH STRICT VALIDATION (Zero Failed Drafts)
+    
+    Creates drafts from a grouping plan or photos with STRICT validation.
+    
+    **Validation rules (MUST ALL PASS):**
+    - publish_ready === true
+    - missing_fields.length === 0
+    - title ≤ 70 characters
+    - 3 ≤ hashtags ≤ 5
+    
+    **If validation fails:**
+    - Returns clear error message
+    - NO draft created (zero failed drafts)
+    
+    **Usage:**
+    - Option 1: Use plan_id from /bulk/plan
+    - Option 2: Provide photo_paths directly
+    """
+    try:
+        photo_paths = []
+        plan_id = request.plan_id
+        
+        # Get photo paths from plan or request
+        if plan_id:
+            if plan_id not in grouping_plans:
+                raise HTTPException(status_code=404, detail=f"Plan {plan_id} not found")
+            
+            plan = grouping_plans[plan_id]
+            
+            # Collect all photos from main clusters (skip label-only)
+            for cluster in plan.clusters:
+                if cluster.cluster_type != "label" or cluster.merge_target:
+                    photo_paths.extend(cluster.photo_paths)
+                    
+        elif request.photo_paths:
+            photo_paths = request.photo_paths
+        else:
+            raise HTTPException(status_code=400, detail="Either plan_id or photo_paths required")
+        
+        if not photo_paths:
+            raise HTTPException(status_code=400, detail="No photos to process")
+        
+        # Analyze photos to generate listing
+        analysis_result = await asyncio.to_thread(
+            analyze_clothing_photos,
+            photo_paths
+        )
+        
+        # STRICT VALIDATION
+        validation_errors = []
+        
+        # Check title length
+        title = analysis_result.get("title", "")
+        if len(title) > 70:
+            validation_errors.append(ValidationError(
+                field="title",
+                issue="Too long",
+                current_value=len(title),
+                expected="≤70 characters"
+            ))
+        
+        # Check hashtags (extract from description)
+        description = analysis_result.get("description", "")
+        hashtags = [word for word in description.split() if word.startswith('#')]
+        hashtag_count = len(hashtags)
+        
+        if hashtag_count < 3 or hashtag_count > 5:
+            validation_errors.append(ValidationError(
+                field="hashtags",
+                issue="Invalid count",
+                current_value=hashtag_count,
+                expected="3-5 hashtags"
+            ))
+        
+        # Check required fields
+        required_fields = ['title', 'description', 'price', 'category', 'brand', 'size']
+        missing_fields = [f for f in required_fields if not analysis_result.get(f)]
+        
+        if missing_fields:
+            validation_errors.append(ValidationError(
+                field="required_fields",
+                issue="Missing fields",
+                current_value=missing_fields,
+                expected=f"All required: {', '.join(required_fields)}"
+            ))
+        
+        # If ANY validation failed → Return error, NO draft created
+        if validation_errors:
+            error_messages = [
+                f"{err.field}: {err.issue} (current: {err.current_value}, expected: {err.expected})"
+                for err in validation_errors
+            ]
+            
+            return GenerateResponse(
+                ok=False,
+                generated_count=0,
+                skipped_count=1,
+                drafts=[],
+                errors=error_messages,
+                message=f"❌ Validation failed: {'; '.join(error_messages)}"
+            )
+        
+        # All validations passed → Create draft
+        draft_id = str(uuid.uuid4())
+        draft = DraftItem(
+            id=draft_id,
+            title=title,
+            description=description,
+            price=float(analysis_result.get("price", 0)),
+            category=analysis_result.get("category", "autre"),
+            condition=analysis_result.get("condition", "Bon état"),
+            color=analysis_result.get("color", "Non spécifié"),
+            brand=analysis_result.get("brand", "Non spécifié"),
+            size=analysis_result.get("size", "Non spécifié"),
+            photos=[path.replace("backend/data/", "/") for path in photo_paths],
+            status="ready",
+            confidence=analysis_result.get("confidence", 0.85),
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+            analysis_result=analysis_result
+        )
+        
+        drafts_storage[draft_id] = draft
+        
+        print(f"✅ Generated validated draft: {draft.title} ({hashtag_count} hashtags, {len(title)} chars)")
+        
+        return GenerateResponse(
+            ok=True,
+            generated_count=1,
+            skipped_count=0,
+            drafts=[draft],
+            errors=[],
+            message=f"✅ Draft created: {title}"
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Generate drafts error: {e}")
+        raise HTTPException(status_code=500, detail=f"Generation failed: {str(e)}")

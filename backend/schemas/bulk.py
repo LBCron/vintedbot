@@ -95,3 +95,51 @@ class DraftListResponse(BaseModel):
     total: int
     page: int = 1
     page_size: int = 50
+
+
+class PhotoCluster(BaseModel):
+    """A cluster of photos representing a potential item"""
+    cluster_id: str
+    photo_paths: List[str]
+    photo_count: int
+    cluster_type: str  # "main_item", "label", "detail", "merged"
+    confidence: float = Field(ge=0.0, le=1.0)
+    label_detected: Optional[str] = None  # "care_label", "brand_tag", "size_label", etc.
+    merge_target: Optional[str] = None  # cluster_id to merge into
+
+
+class GroupingPlan(BaseModel):
+    """Plan for grouping photos into items (anti-saucisson)"""
+    plan_id: str
+    total_photos: int
+    clusters: List[PhotoCluster]
+    estimated_items: int
+    single_item_mode: bool
+    grouping_reason: str  # Why this grouping was chosen
+    created_at: datetime
+
+
+class GenerateRequest(BaseModel):
+    """Request to generate drafts from a plan or photos"""
+    plan_id: Optional[str] = None  # Use existing plan
+    photo_paths: Optional[List[str]] = None  # Or provide photos directly
+    style: str = Field(default="classique", description="Description style")
+    auto_grouping: bool = Field(default=True, description="Auto-detect single item mode")
+    
+    
+class GenerateResponse(BaseModel):
+    """Response from draft generation"""
+    ok: bool
+    generated_count: int
+    skipped_count: int
+    drafts: List[DraftItem]
+    errors: List[str] = []
+    message: Optional[str] = None
+
+
+class ValidationError(BaseModel):
+    """Validation error details"""
+    field: str
+    issue: str
+    current_value: Any
+    expected: str

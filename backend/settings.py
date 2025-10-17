@@ -60,7 +60,7 @@ class Settings(BaseSettings):
     
     # Safe Defaults & Bulk Processing
     SAFE_DEFAULTS: bool = True
-    SINGLE_ITEM_DEFAULT_MAX_PHOTOS: int = 8
+    SINGLE_ITEM_DEFAULT_MAX_PHOTOS: int = 80
     
     # Clustering Configuration
     BULK_CLUSTER_EPS: float = 0.33
