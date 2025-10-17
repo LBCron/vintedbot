@@ -15,7 +15,11 @@ Preferred communication style: Simple, everyday language.
 - **JSONResponse wrapper** ensures consistent JSON formatting and CORS compatibility.
 
 ### Data Storage
-- **File-based JSON database** (`backend/data/items.json`) serves as the persistent storage for all inventory items, eliminating the need for an external database.
+- **PostgreSQL Database** for persistent photo plan storage (`backend/database.py`):
+  - Table `photo_plans`: Stores plan_id, photo_paths, photo_count, auto_grouping, estimated_items, created_at
+  - Survives backend restarts (no more 404 plan_id errors)
+  - Used by `/bulk/photos/analyze`, `/bulk/jobs/{job_id}`, and `/bulk/generate`
+- **File-based JSON database** (`backend/data/items.json`) serves as the persistent storage for all inventory items.
 - A custom `Database` class handles CRUD operations, using UUIDs for unique item identification.
 
 ### AI & Image Processing
