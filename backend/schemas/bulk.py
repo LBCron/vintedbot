@@ -1,8 +1,8 @@
 """
 Pydantic schemas for bulk photo analysis and draft generation
 """
-from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field
+from typing import List, Optional, Dict, Any, Self
+from pydantic import BaseModel, Field, model_validator
 from datetime import datetime
 
 
@@ -125,6 +125,19 @@ class GenerateRequest(BaseModel):
     photo_paths: Optional[List[str]] = None  # Or provide photos directly
     style: str = Field(default="classique", description="Description style")
     auto_grouping: bool = Field(default=True, description="Auto-detect single item mode")
+    
+    @model_validator(mode="after")
+    def check_exactly_one_source(self) -> Self:
+        """Ensure exactly one of plan_id or photo_paths is provided"""
+        has_plan = self.plan_id is not None
+        has_photos = self.photo_paths is not None and len(self.photo_paths) > 0
+        
+        if not has_plan and not has_photos:
+            raise ValueError("Either plan_id or photo_paths must be provided")
+        if has_plan and has_photos:
+            raise ValueError("Cannot provide both plan_id and photo_paths")
+        
+        return self
     
     
 class GenerateResponse(BaseModel):

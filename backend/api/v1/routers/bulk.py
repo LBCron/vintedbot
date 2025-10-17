@@ -790,9 +790,9 @@ async def create_grouping_plan(
         plan_id = str(uuid.uuid4())[:8]
         photo_paths = save_uploaded_photos(files, plan_id)
         
-        # Determine single-item mode
+        # Determine single-item mode (auto_grouping OR ≤80 photos)
         force_single_item = (
-            auto_grouping and photo_count <= settings.SINGLE_ITEM_DEFAULT_MAX_PHOTOS
+            auto_grouping or photo_count <= settings.SINGLE_ITEM_DEFAULT_MAX_PHOTOS
         )
         
         clusters = []

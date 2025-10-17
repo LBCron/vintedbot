@@ -51,6 +51,9 @@ Preferred communication style: Simple, everyday language.
     - `/import`: CSV import functionality.
     - `/stats`: Analytics and health monitoring.
     - `/bulk`: Multi-photo analysis and draft creation.
+        - `/bulk/plan`: Create grouping plan with anti-saucisson rules (AI Vision clustering)
+        - `/bulk/generate`: Generate validated drafts from plan (strict validation: title≤70, hashtags 3-5)
+        - `/bulk/ingest`: Smart single/multi-item detection and processing
     - `/vinted`: Vinted-specific automation (session management, photo upload, listing prepare/publish).
 
 ### UI/UX and Design
@@ -65,7 +68,9 @@ Preferred communication style: Simple, everyday language.
 - Supports **idempotency** to prevent duplicate publications.
 
 ### Production Safeguards & Optimizations (October 2025)
-- **Smart Single-Item Detection**: `/bulk/ingest` endpoint auto-detects when ≤8 photos represent a single item (configurable via `SINGLE_ITEM_DEFAULT_MAX_PHOTOS`)
+- **Smart Single-Item Detection**: `/bulk/ingest` and `/bulk/plan` auto-detect when ≤80 photos represent a single item (configurable via `SINGLE_ITEM_DEFAULT_MAX_PHOTOS=80`)
+- **Anti-Saucisson Grouping** (`/bulk/plan`): AI Vision clustering with label detection (care labels, brand tags, size labels). Clusters ≤2 photos auto-merge to largest cluster. Never creates label-only articles.
+- **Strict Draft Validation** (`/bulk/generate`): Only creates drafts if publish_ready=true, missing_fields=0, title≤70, hashtags 3-5. Returns clear error otherwise (zero failed drafts).
 - **Label Auto-Attachment**: AI Vision automatically detects care labels, brand tags, and size labels, then attaches them to the main clothing item (never creates label-only articles)
 - **Publication Validation**: `/vinted/listings/prepare` enforces strict validations (title ≤70 chars, 3-5 hashtags, price_suggestion.min|target|max, flags.publish_ready=true) and returns `{ok:false, reason:"NOT_READY"}` on failure
 - **Idempotency Protection**: `/vinted/listings/publish` requires `Idempotency-Key` header to prevent duplicate publications
