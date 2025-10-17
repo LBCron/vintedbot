@@ -31,6 +31,7 @@ from backend.schemas.bulk import (
     GenerateResponse,
     ValidationError
 )
+from backend.schemas.vinted import PublishFlags
 from backend.settings import settings
 from backend.database import save_photo_plan, get_photo_plan, delete_photo_plan
 
@@ -1083,7 +1084,13 @@ async def generate_drafts_from_plan(request: GenerateRequest):
                     confidence=item.get("confidence", 0.85),
                     created_at=datetime.utcnow(),
                     updated_at=datetime.utcnow(),
-                    analysis_result=item
+                    analysis_result=item,
+                    flags=PublishFlags(
+                        publish_ready=True,
+                        ai_validated=True,
+                        photos_validated=True
+                    ),
+                    missing_fields=[]
                 )
                 
                 drafts_storage[draft_id] = draft

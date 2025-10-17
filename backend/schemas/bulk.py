@@ -4,6 +4,7 @@ Pydantic schemas for bulk photo analysis and draft generation
 from typing import List, Optional, Dict, Any, Self
 from pydantic import BaseModel, Field, model_validator
 from datetime import datetime
+from backend.schemas.vinted import PublishFlags
 
 
 class AnalysisResult(BaseModel):
@@ -41,6 +42,10 @@ class DraftItem(BaseModel):
     # Analysis metadata
     analysis_result: Optional[Dict[str, Any]] = None
     error: Optional[str] = None
+    
+    # Publication readiness
+    flags: Optional[PublishFlags] = None
+    missing_fields: List[str] = Field(default_factory=list)
 
 
 class BulkUploadRequest(BaseModel):

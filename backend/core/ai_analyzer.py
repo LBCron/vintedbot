@@ -305,7 +305,7 @@ MISSION: Analyser un lot de photos et regrouper celles qui montrent le MÊME art
 3. Regroupe les photos qui montrent clairement le même article
 4. Pour chaque groupe, génère UN SEUL brouillon avec:
    - title: Description courte et vendeuse (ex: "Jean Levi's 501 bleu délavé")
-   - description: Détaillée, mentionne l'état, les défauts visibles, les atouts
+   - description: Détaillée, mentionne l'état, les défauts visibles, les atouts. AJOUTE 3-5 HASHTAGS pertinents à la fin (ex: #vintage #designer #mode)
    - price: Prix suggéré réaliste (analyse le marché Vinted)
    - brand: Marque si identifiable (sinon "Non spécifié")
    - size: Taille si visible sur étiquette (sinon "Non spécifié")
@@ -316,6 +316,7 @@ MISSION: Analyser un lot de photos et regrouper celles qui montrent le MÊME art
    - photo_indices: Array des indices (0, 1, 2...) des photos de cet article
 
 RÈGLES CRITIQUES:
+- HASHTAGS OBLIGATOIRES: Chaque description DOIT contenir 3-5 hashtags pertinents à la fin (ex: #mode #vintage #designer)
 - Si incertain sur le regroupement (confidence < 0.6), privilégie la séparation
 - Les chaussures: 2-4 photos (paire complète + détails)
 - Les vêtements: 3-6 photos (devant, dos, étiquette, défauts)
@@ -340,16 +341,16 @@ IMPORTANT: Ne renvoie QUE le JSON final avec la structure:
 {{
   "groups": [
     {{
-      "title": "...",
-      "description": "...",
-      "price": 25.0,
-      "brand": "...",
-      "size": "...",
-      "condition": "...",
-      "color": "...",
-      "category": "...",
-      "confidence": 0.85,
-      "photo_indices": [0, 1, 2]
+      "title": "Jean Levi's 501 bleu vintage",
+      "description": "Superbe jean Levi's 501 bleu vintage en excellent état. Coupe droite classique, fermeture boutons. Petite usure légère aux genoux (voir photos). Parfait pour un look casual-chic. #vintage #levis #denim #mode #jeans",
+      "price": 35.0,
+      "brand": "Levi's",
+      "size": "W32/L34",
+      "condition": "Très bon état",
+      "color": "Bleu",
+      "category": "jeans",
+      "confidence": 0.90,
+      "photo_indices": [0, 1, 2, 3]
     }}
   ]
 }}"""
