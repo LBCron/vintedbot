@@ -57,6 +57,20 @@ class Settings(BaseSettings):
     # Rate limiting
     RATE_LIMIT_GLOBAL: str = "60/minute"
     RATE_LIMIT_UPLOAD: str = "10/minute"
+    
+    # Safe Defaults & Bulk Processing
+    SAFE_DEFAULTS: bool = True
+    SINGLE_ITEM_DEFAULT_MAX_PHOTOS: int = 8
+    
+    # Clustering Configuration
+    BULK_CLUSTER_EPS: float = 0.33
+    BULK_MIN_SAMPLES: int = 2
+    
+    # Label Detection & Auto-Merge
+    BULK_LABEL_SCORE_MIN: float = 0.55
+    BULK_LABEL_ATTACH: bool = True
+    BULK_MERGE_SINGLETONS: bool = True
+    BULK_LABEL_MAX_PER_ITEM: int = 3
 
 
 settings = Settings()
