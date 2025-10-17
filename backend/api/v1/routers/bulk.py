@@ -808,9 +808,12 @@ async def analyze_bulk_photos(
         plan_id = str(uuid.uuid4())[:8]
         photo_paths = save_uploaded_photos(files, plan_id)
         
-        # Determine single-item mode (auto_grouping OR ≤80 photos)
+        # Determine single-item mode:
+        # - If auto_grouping=False → Force single-item (all photos = 1 article)
+        # - If auto_grouping=True AND ≤80 photos → Single-item by default
+        # - If auto_grouping=True AND >80 photos → Multi-item (GPT-4 Vision analysis)
         force_single_item = (
-            auto_grouping or photo_count <= settings.SINGLE_ITEM_DEFAULT_MAX_PHOTOS
+            not auto_grouping or photo_count <= settings.SINGLE_ITEM_DEFAULT_MAX_PHOTOS
         )
         
         estimated_items = 1 if force_single_item else max(1, photo_count // 4)

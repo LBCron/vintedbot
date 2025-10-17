@@ -70,7 +70,7 @@ IMPORTANT: Réponds UNIQUEMENT avec un objet JSON valide, sans markdown ni texte
 Format de réponse requis:
 {
     "title": "Titre accrocheur (max 60 caractères, inclut marque si visible, catégorie, couleur)",
-    "description": "Description détaillée et professionnelle (150-300 mots) : état, matières, détails, style, comment le porter. Ajoute émojis pertinents.",
+    "description": "Description détaillée et professionnelle (150-300 mots) : état, matières, détails, style, comment le porter. Ajoute émojis pertinents. TERMINE PAR 3-5 HASHTAGS pertinents (#mode #streetwear #vintage etc.)",
     "price": 25,
     "category": "t-shirt|hoodie|sweatshirt|joggers|jeans|pantalon|short|veste|manteau|parka|chemise|polo|robe|jupe|casquette|sneakers|chaussures|sac|autre",
     "condition": "Neuf avec étiquette|Très bon état|Bon état|Satisfaisant",
@@ -140,7 +140,7 @@ def generate_fallback_analysis(photo_paths: List[str]) -> Dict[str, Any]:
     """
     return {
         "title": "Vêtement à identifier",
-        "description": "Article en bon état. Photos réelles. Envoi rapide depuis Grenoble. N'hésitez pas à poser vos questions ! 📦",
+        "description": "Article en bon état. Photos réelles. Envoi rapide depuis Grenoble. N'hésitez pas à poser vos questions ! 📦\n\n#mode #vinted #bonplan",
         "price": 20,
         "category": "autre",
         "condition": "Bon état",
