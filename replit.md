@@ -56,9 +56,13 @@ Preferred communication style: Simple, everyday language.
     - `/stats`: Analytics and health monitoring.
     - `/bulk`: Multi-photo analysis and draft creation.
         - `/bulk/photos/analyze`: Frontend-compatible photo analysis (returns job_id, plan_id, estimated_items)
-        - `/bulk/jobs/{job_id}`: Job status polling (supports both photo_analysis_cache and bulk_jobs)
+            - `auto_grouping=false`: Force single-item (all photos = 1 article)
+            - `auto_grouping=true` AND ≤80 photos: Single-item by default
+            - `auto_grouping=true` AND >80 photos: Multi-item (GPT-4 Vision clustering)
+        - `/bulk/jobs/{job_id}`: Job status polling (reads from PostgreSQL photo_plans)
         - `/bulk/plan`: Create grouping plan with anti-saucisson rules (AI Vision clustering)
         - `/bulk/generate`: Generate validated drafts from plan (strict validation: title≤70, hashtags 3-5)
+            - GPT-4 automatically generates 3-5 hashtags in description
         - `/bulk/ingest`: Smart single/multi-item detection and processing
     - `/vinted`: Vinted-specific automation (session management, photo upload, listing prepare/publish).
 
