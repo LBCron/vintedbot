@@ -574,8 +574,39 @@ async def get_bulk_job_status(job_id: str):
     - Progress percentage
     - List of completed drafts
     - Errors if any
+    
+    **Note:** Also checks photo_analysis_cache for jobs created by /bulk/photos/analyze
     """
     try:
+        # First check photo_analysis_cache (for /bulk/photos/analyze jobs)
+        if job_id in photo_analysis_cache:
+            cache_data = photo_analysis_cache[job_id]
+            photo_count = cache_data.get("photo_count", 0)
+            auto_grouping = cache_data.get("auto_grouping", True)
+            
+            # Determine single-item mode
+            force_single_item = (
+                auto_grouping or photo_count <= settings.SINGLE_ITEM_DEFAULT_MAX_PHOTOS
+            )
+            
+            estimated_items = 1 if force_single_item else max(1, photo_count // 4)
+            
+            return BulkJobStatus(
+                job_id=job_id,
+                status="completed",
+                total_photos=photo_count,
+                processed_photos=photo_count,
+                total_items=estimated_items,
+                completed_items=0,
+                failed_items=0,
+                drafts=[],
+                errors=[],
+                started_at=cache_data.get("created_at"),
+                completed_at=cache_data.get("created_at"),
+                progress_percent=100.0
+            )
+        
+        # Then check bulk_jobs (for /bulk/ingest jobs)
         if job_id not in bulk_jobs:
             raise HTTPException(status_code=404, detail="Job not found")
         

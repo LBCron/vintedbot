@@ -52,6 +52,7 @@ Preferred communication style: Simple, everyday language.
     - `/stats`: Analytics and health monitoring.
     - `/bulk`: Multi-photo analysis and draft creation.
         - `/bulk/photos/analyze`: Frontend-compatible photo analysis (returns job_id, plan_id, estimated_items)
+        - `/bulk/jobs/{job_id}`: Job status polling (supports both photo_analysis_cache and bulk_jobs)
         - `/bulk/plan`: Create grouping plan with anti-saucisson rules (AI Vision clustering)
         - `/bulk/generate`: Generate validated drafts from plan (strict validation: title≤70, hashtags 3-5)
         - `/bulk/ingest`: Smart single/multi-item detection and processing
