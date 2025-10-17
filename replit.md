@@ -51,6 +51,7 @@ Preferred communication style: Simple, everyday language.
     - `/import`: CSV import functionality.
     - `/stats`: Analytics and health monitoring.
     - `/bulk`: Multi-photo analysis and draft creation.
+        - `/bulk/photos/analyze`: Frontend-compatible photo analysis (returns job_id, plan_id, estimated_items)
         - `/bulk/plan`: Create grouping plan with anti-saucisson rules (AI Vision clustering)
         - `/bulk/generate`: Generate validated drafts from plan (strict validation: title≤70, hashtags 3-5)
         - `/bulk/ingest`: Smart single/multi-item detection and processing

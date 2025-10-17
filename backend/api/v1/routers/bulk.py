@@ -8,7 +8,7 @@ import asyncio
 from datetime import datetime
 from typing import List, Dict, Optional
 from pathlib import Path
-from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Query
+from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Query, Form
 from fastapi.responses import JSONResponse
 from PIL import Image
 import io
@@ -39,6 +39,7 @@ router = APIRouter(prefix="/bulk", tags=["bulk"])
 bulk_jobs: Dict[str, Dict] = {}
 drafts_storage: Dict[str, DraftItem] = {}
 grouping_plans: Dict[str, GroupingPlan] = {}  # Storage for grouping plans
+photo_analysis_cache: Dict[str, Dict] = {}  # Temporary storage for analyzed photos
 
 # Validation flexible des formats d'images
 ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.heic', '.heif'}
@@ -747,6 +748,73 @@ async def publish_draft(draft_id: str):
     except Exception as e:
         print(f"❌ Publish draft error: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to publish draft: {str(e)}")
+
+
+@router.post("/photos/analyze")
+async def analyze_bulk_photos(
+    files: List[UploadFile] = File(...),
+    auto_grouping: bool = Form(default=True)
+):
+    """
+    📸 ANALYZE PHOTOS (Frontend-compatible endpoint)
+    
+    Analyzes uploaded photos and returns grouping info.
+    This endpoint is called by the Lovable frontend.
+    
+    **Returns:** {job_id, status, total_photos, estimated_items, plan_id}
+    """
+    try:
+        if not files:
+            raise HTTPException(status_code=400, detail="No files provided")
+        
+        photo_count = len(files)
+        
+        # Validate files
+        invalid_files = []
+        for file in files:
+            if not validate_image_file(file):
+                invalid_files.append(file.filename or "unknown")
+        
+        if invalid_files:
+            raise HTTPException(
+                status_code=415,
+                detail=f"Invalid formats: {', '.join(invalid_files[:5])}"
+            )
+        
+        # Save photos temporarily and create plan
+        plan_id = str(uuid.uuid4())[:8]
+        photo_paths = save_uploaded_photos(files, plan_id)
+        
+        # Determine single-item mode (auto_grouping OR ≤80 photos)
+        force_single_item = (
+            auto_grouping or photo_count <= settings.SINGLE_ITEM_DEFAULT_MAX_PHOTOS
+        )
+        
+        estimated_items = 1 if force_single_item else max(1, photo_count // 4)
+        
+        # Store plan_id and photo_paths for later use
+        photo_analysis_cache[plan_id] = {
+            "photo_paths": photo_paths,
+            "photo_count": photo_count,
+            "auto_grouping": auto_grouping,
+            "created_at": datetime.utcnow()
+        }
+        
+        print(f"📸 Analyzed {photo_count} photos → plan_id: {plan_id}, estimated: {estimated_items} items")
+        
+        return {
+            "job_id": plan_id,
+            "plan_id": plan_id,
+            "status": "completed",
+            "total_photos": photo_count,
+            "estimated_items": estimated_items
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Analyze photos error: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to analyze photos: {str(e)}")
 
 
 @router.post("/plan", response_model=GroupingPlan)
