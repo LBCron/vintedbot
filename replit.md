@@ -64,6 +64,14 @@ Preferred communication style: Simple, everyday language.
 - Implements a **two-phase workflow** (prepare and publish) with captcha detection and dry-run capabilities.
 - Supports **idempotency** to prevent duplicate publications.
 
+### Production Safeguards & Optimizations (October 2025)
+- **Smart Single-Item Detection**: `/bulk/ingest` endpoint auto-detects when ≤8 photos represent a single item (configurable via `SINGLE_ITEM_DEFAULT_MAX_PHOTOS`)
+- **Label Auto-Attachment**: AI Vision automatically detects care labels, brand tags, and size labels, then attaches them to the main clothing item (never creates label-only articles)
+- **Publication Validation**: `/vinted/listings/prepare` enforces strict validations (title ≤70 chars, 3-5 hashtags, price_suggestion.min|target|max, flags.publish_ready=true) and returns `{ok:false, reason:"NOT_READY"}` on failure
+- **Idempotency Protection**: `/vinted/listings/publish` requires `Idempotency-Key` header to prevent duplicate publications
+- **Secure Logging**: All logs redact sensitive data (cookies, user-agents) - only metadata (lengths, status, latency) is logged
+- **Safe Defaults**: All production features enabled via `SAFE_DEFAULTS=true` environment variable
+
 ## External Dependencies
 
 ### Core Framework & Data Validation
