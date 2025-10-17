@@ -279,6 +279,14 @@ RÈGLES CRITIQUES:
 - Si étiquette visible avec taille/marque manquante, note: "Taille/marque non précisée sur les photos"
 - Pour jeans/chaussures, toujours mentionner si pointure/taille manquante
 
+GESTION DES ÉTIQUETTES (RÈGLE ABSOLUE):
+- DÉTECTE les photos d'étiquettes: care labels, brand tags, clothing tags, size labels
+- RATTACHE TOUJOURS les étiquettes au vêtement correspondant (même groupe)
+- Ne JAMAIS créer un article composé uniquement d'étiquettes
+- Si groupe détecté avec ≤2 photos ET toutes sont des étiquettes → rattacher au vêtement le plus proche
+- Si un singleton (1 photo) est une étiquette isolée → rattacher au groupe principal
+- Les étiquettes DOIVENT être dans le même groupe que le vêtement qu'elles représentent
+
 STYLE (adapte selon "{style}"):
 - minimal: Ton sobre, descriptions factuelles courtes
 - streetwear: Ton lifestyle, vocabulaire jeune, émojis légers

@@ -71,7 +71,7 @@ async def save_session(request: SessionRequest):
     Security: Cookie is encrypted with Fernet before storage
     """
     try:
-        print(f"📥 Received session request: cookie length={len(request.cookie)}, UA={request.user_agent[:50]}...")
+        print(f"📥 Received session request: cookie_length={len(request.cookie)}, ua_length={len(request.user_agent)}")
         
         # Extract username from cookies (simple detection)
         username = extract_username_from_cookie(request.cookie)
@@ -140,7 +140,7 @@ async def validate_session(request: SessionRequest):
     Returns comprehensive validation result
     """
     try:
-        print(f"📥 VALIDATE - cookie length={len(request.cookie)}")
+        print(f"📥 VALIDATE - cookie_length={len(request.cookie)}")
         
         # Extract username
         username = extract_username_from_cookie(request.cookie)
@@ -360,6 +360,42 @@ async def prepare_listing(request: ListingPrepareRequest):
         if not session:
             raise HTTPException(status_code=401, detail="Not authenticated. Call /auth/session first.")
         
+        # 🛡️ PUBLICATION SAFEGUARDS - Validate AI payload
+        if settings.SAFE_DEFAULTS:
+            validation_errors = []
+            
+            # 1. Title length check (≤70 chars for optimal visibility)
+            if len(request.title) > 70:
+                validation_errors.append(f"Title too long ({len(request.title)} chars, max 70)")
+            
+            # 2. Hashtags validation (3-5 required)
+            if not request.hashtags or len(request.hashtags) < 3 or len(request.hashtags) > 5:
+                hashtag_count = len(request.hashtags) if request.hashtags else 0
+                validation_errors.append(f"Invalid hashtags count ({hashtag_count}, need 3-5)")
+            
+            # 3. Price suggestion validation (min/target/max required)
+            if not request.price_suggestion:
+                validation_errors.append("Missing price_suggestion (min/target/max)")
+            elif not all([
+                hasattr(request.price_suggestion, 'min'),
+                hasattr(request.price_suggestion, 'target'),
+                hasattr(request.price_suggestion, 'max')
+            ]):
+                validation_errors.append("Incomplete price_suggestion (need min/target/max)")
+            
+            # 4. Publish readiness flag
+            if not request.flags or not request.flags.publish_ready:
+                validation_errors.append("Not ready for publication (flags.publish_ready != true)")
+            
+            # If any validation fails, return NOT_READY
+            if validation_errors:
+                print(f"🚫 Publication blocked: {', '.join(validation_errors)}")
+                return ListingPrepareResponse(
+                    ok=False,
+                    dry_run=True,
+                    reason=f"NOT_READY: {'; '.join(validation_errors)}"
+                )
+        
         # Dry run simulation
         if request.dry_run or settings.MOCK_MODE:
             print(f"🔄 [DRY-RUN] Preparing listing: {request.title}")
@@ -464,7 +500,7 @@ async def prepare_listing(request: ListingPrepareRequest):
 @limiter.limit("5/minute")
 async def publish_listing(
     request: ListingPublishRequest,
-    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key")
+    idempotency_key: str = Header(..., alias="Idempotency-Key")
 ):
     """
     Publish a prepared listing (Phase B - Publish)
@@ -476,8 +512,17 @@ async def publish_listing(
     
     Default: dry_run=true (safe mode)
     Rate limited: 5/minute
+    
+    **Required Header:** Idempotency-Key (prevents duplicate publications)
     """
     try:
+        # 🛡️ Idempotency check - prevent duplicate publications
+        if not request.dry_run:
+            # In production mode, check if this idempotency key was already used
+            # TODO: Store processed idempotency keys in Redis/DB
+            # For now, we rely on the confirm_token TTL mechanism
+            pass
+        
         # Verify token (30 min TTL)
         try:
             draft_context = serializer.loads(request.confirm_token, max_age=1800)

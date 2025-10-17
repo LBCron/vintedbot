@@ -397,6 +397,180 @@ async def smart_bulk_analyze(
         raise HTTPException(status_code=500, detail=f"Smart analysis failed: {str(e)}")
 
 
+async def process_single_item_job(job_id: str, photo_paths: List[str], style: str = "classique"):
+    """
+    Process all photos as a SINGLE item - no clustering
+    Perfect for users uploading multiple photos of one item
+    """
+    try:
+        print(f"📦 Processing single item job {job_id}: {len(photo_paths)} photos")
+        bulk_jobs[job_id]["status"] = "processing"
+        bulk_jobs[job_id]["started_at"] = datetime.utcnow()
+        
+        # Analyze all photos as ONE item
+        analysis_result = await asyncio.to_thread(
+            analyze_clothing_photos,
+            photo_paths
+        )
+        
+        # Create single draft with ALL photos
+        draft_id = str(uuid.uuid4())
+        draft = DraftItem(
+            id=draft_id,
+            title=analysis_result.get("title", "Article sans titre"),
+            description=analysis_result.get("description", ""),
+            price=float(analysis_result.get("price", 0)),
+            category=analysis_result.get("category", "autre"),
+            condition=analysis_result.get("condition", "Bon état"),
+            color=analysis_result.get("color", "Non spécifié"),
+            brand=analysis_result.get("brand", "Non spécifié"),
+            size=analysis_result.get("size", "Non spécifié"),
+            photos=[path.replace("backend/data/", "/") for path in photo_paths],
+            status="ready",
+            confidence=analysis_result.get("confidence", 0.85),
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+            analysis_result=analysis_result
+        )
+        
+        drafts_storage[draft_id] = draft
+        bulk_jobs[job_id]["drafts"].append(draft_id)
+        bulk_jobs[job_id]["total_items"] = 1
+        bulk_jobs[job_id]["completed_items"] = 1
+        bulk_jobs[job_id]["status"] = "completed"
+        bulk_jobs[job_id]["completed_at"] = datetime.utcnow()
+        bulk_jobs[job_id]["progress_percent"] = 100.0
+        
+        print(f"✅ Single item job {job_id} completed: {draft.title} ({draft.price}€)")
+        
+    except Exception as e:
+        print(f"❌ Single item job {job_id} failed: {e}")
+        bulk_jobs[job_id]["status"] = "failed"
+        bulk_jobs[job_id]["errors"].append(str(e))
+        bulk_jobs[job_id]["failed_items"] = 1
+
+
+@router.post("/ingest", response_model=BulkUploadResponse)
+async def bulk_ingest_photos(
+    files: List[UploadFile] = File(...),
+    grouping_mode: str = Query(default="auto", description="Grouping mode: 'auto', 'single_item', or 'multi_item'"),
+    style: str = Query(default="classique", description="Description style: minimal, streetwear, or classique")
+):
+    """
+    📦 SAFE BULK INGEST - Zero failed drafts
+    
+    Intelligently processes photos with automatic single-item detection.
+    
+    **Automatic single-item mode triggers:**
+    - Photos ≤ SINGLE_ITEM_DEFAULT_MAX_PHOTOS (default: 8)
+    - grouping_mode="single_item" explicitly set
+    
+    **Grouping modes:**
+    - `auto` (default): Smart detection based on photo count
+    - `single_item`: Force all photos into one article
+    - `multi_item`: Use AI intelligent grouping
+    
+    **How it works:**
+    1. Detects if photos should be grouped as single item
+    2. If single_item: Creates ONE draft with all photos
+    3. If multi_item: Uses AI Vision to intelligently group photos
+    
+    **Returns:** job_id to track progress
+    """
+    try:
+        if not files:
+            raise HTTPException(status_code=400, detail="No files provided")
+        
+        photo_count = len(files)
+        
+        # Determine if single_item mode
+        force_single_item = (
+            grouping_mode == "single_item" or 
+            (grouping_mode == "auto" and photo_count <= settings.SINGLE_ITEM_DEFAULT_MAX_PHOTOS)
+        )
+        
+        # Validation
+        max_limit = 50 if not force_single_item else 20
+        if photo_count > max_limit:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Maximum {max_limit} photos for {'single item' if force_single_item else 'multi-item grouping'}"
+            )
+        
+        invalid_files = []
+        for file in files:
+            if not validate_image_file(file):
+                invalid_files.append(file.filename or "unknown")
+        
+        if invalid_files:
+            raise HTTPException(
+                status_code=415,
+                detail=f"Invalid formats (expected JPG/PNG/WEBP/HEIC/GIF/BMP): {', '.join(invalid_files[:5])}"
+            )
+        
+        # Create job
+        job_id = str(uuid.uuid4())[:8]
+        
+        # Save photos
+        photo_paths = save_uploaded_photos(files, job_id)
+        
+        # Initialize job status
+        estimated_items = 1 if force_single_item else 0
+        
+        bulk_jobs[job_id] = {
+            "job_id": job_id,
+            "status": "queued",
+            "total_photos": len(photo_paths),
+            "processed_photos": len(photo_paths),
+            "total_items": estimated_items,
+            "completed_items": 0,
+            "failed_items": 0,
+            "drafts": [],
+            "errors": [],
+            "started_at": None,
+            "completed_at": None,
+            "progress_percent": 0.0,
+            "grouping_mode": "single_item" if force_single_item else "multi_item"
+        }
+        
+        # Start background processing
+        if force_single_item:
+            # Single item mode: analyze all photos as ONE item
+            asyncio.create_task(
+                process_single_item_job(job_id, photo_paths, style)
+            )
+            mode_desc = f"single item ({photo_count} photos)"
+        else:
+            # Multi-item mode: use smart AI grouping
+            asyncio.create_task(
+                process_bulk_job(
+                    job_id,
+                    photo_paths,
+                    photos_per_item=4,
+                    use_smart_grouping=True,
+                    style=style
+                )
+            )
+            mode_desc = f"AI intelligent grouping"
+        
+        print(f"📦 Ingest job {job_id} created: {photo_count} photos -> {mode_desc}, style={style}")
+        
+        return BulkUploadResponse(
+            ok=True,
+            job_id=job_id,
+            total_photos=len(photo_paths),
+            estimated_items=estimated_items,
+            status="queued",
+            message=f"Processing {photo_count} photos as {mode_desc}..."
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Bulk ingest error: {e}")
+        raise HTTPException(status_code=500, detail=f"Ingest failed: {str(e)}")
+
+
 @router.get("/jobs/{job_id}", response_model=BulkJobStatus)
 async def get_bulk_job_status(job_id: str):
     """

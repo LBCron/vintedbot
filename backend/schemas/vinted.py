@@ -40,6 +40,20 @@ class PhotoUploadResponse(BaseModel):
     )
 
 
+class PriceSuggestion(BaseModel):
+    """AI price suggestion with min/target/max"""
+    min: float = Field(..., gt=0)
+    target: float = Field(..., gt=0)
+    max: float = Field(..., gt=0)
+
+
+class PublishFlags(BaseModel):
+    """Publication readiness flags"""
+    publish_ready: bool = Field(default=False, description="True if all validations passed")
+    ai_validated: bool = Field(default=False)
+    photos_validated: bool = Field(default=False)
+
+
 class ListingPrepareRequest(BaseModel):
     """Request to prepare a listing (draft)"""
     title: str = Field(..., min_length=1, max_length=160)
@@ -51,6 +65,12 @@ class ListingPrepareRequest(BaseModel):
     color: Optional[str] = None
     category_hint: Optional[str] = None
     photos: List[str] = Field(default=[], description="List of photo temp_ids or URLs")
+    
+    # AI-enriched fields for validation
+    hashtags: Optional[List[str]] = Field(default=None, description="3-5 hashtags for better visibility")
+    price_suggestion: Optional[PriceSuggestion] = None
+    flags: Optional[PublishFlags] = None
+    
     dry_run: bool = Field(default=True, description="If true, don't actually prepare")
 
 
@@ -62,6 +82,7 @@ class ListingPrepareResponse(BaseModel):
     preview_url: Optional[str] = None
     screenshot_b64: Optional[str] = None
     draft_context: Optional[Dict[str, Any]] = None
+    reason: Optional[str] = None
 
 
 class ListingPublishRequest(BaseModel):
