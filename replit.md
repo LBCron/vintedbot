@@ -24,9 +24,12 @@ Preferred communication style: Simple, everyday language.
 
 ### AI & Image Processing
 - **Dual-mode AI service**: Integrates with OpenAI (GPT-4o Vision) for photo analysis and listing generation when an API key is available, and provides an intelligent mock mode otherwise.
+- **HEIC/HEIF→JPEG Auto-Conversion**: All HEIC/HEIF images are automatically converted to JPEG before OpenAI Vision API calls (via `encode_image_to_base64()`)
+- **Multi-Item Detection via GPT-4 Vision**: `smart_analyze_and_group_photos()` analyzes ALL photos together to detect multiple distinct items in one batch (e.g., 5 items detected from 38 photos)
 - **Smart AI Grouping**: Analyzes and groups multiple photos by visual similarity to create single listings, identifying unique characteristics and providing confidence scores.
+- **Hashtag Generation**: GPT-4 Vision automatically generates 3-5 relevant hashtags in description for better visibility
+- **Robust Fallback**: If GPT-4 fails (JSON error, API timeout), `batch_analyze_photos()` ensures photos are preserved in fallback results
 - **Image hash-based duplicate detection** (pHash) and **text similarity matching** (rapidfuzz) are used to prevent redundant listings.
-- Supports both image URLs and direct file uploads, including automatic HEIC/HEIF conversion to JPG.
 - **AI Chat Endpoint**: `/ai/chat` provides a conversational assistant for resale advice.
 
 ### Pricing Strategy
@@ -80,7 +83,11 @@ Preferred communication style: Simple, everyday language.
 ### Production Safeguards & Optimizations (October 2025)
 - **Smart Single-Item Detection**: `/bulk/ingest` and `/bulk/plan` auto-detect when ≤80 photos represent a single item (configurable via `SINGLE_ITEM_DEFAULT_MAX_PHOTOS=80`)
 - **Anti-Saucisson Grouping** (`/bulk/plan`): AI Vision clustering with label detection (care labels, brand tags, size labels). Clusters ≤2 photos auto-merge to largest cluster. Never creates label-only articles.
-- **Strict Draft Validation** (`/bulk/generate`): Only creates drafts if publish_ready=true, missing_fields=0, title≤70, hashtags 3-5. Returns clear error otherwise (zero failed drafts).
+- **Strict Draft Validation** (`/bulk/generate`): 
+  - Validates title≤70 chars, hashtags 3-5, all required fields present
+  - Sets `flags.publish_ready=true` only after ALL validations pass
+  - `DraftItem` schema includes `flags: PublishFlags` and `missing_fields: List[str]` for validation tracking
+  - Skips invalid items with clear error messages (zero failed drafts)
 - **Label Auto-Attachment**: AI Vision automatically detects care labels, brand tags, and size labels, then attaches them to the main clothing item (never creates label-only articles)
 - **Publication Validation**: `/vinted/listings/prepare` enforces strict validations (title ≤70 chars, 3-5 hashtags, price_suggestion.min|target|max, flags.publish_ready=true) and returns `{ok:false, reason:"NOT_READY"}` on failure
 - **Idempotency Protection**: `/vinted/listings/publish` requires `Idempotency-Key` header to prevent duplicate publications
