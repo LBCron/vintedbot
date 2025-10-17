@@ -139,10 +139,13 @@ def save_photo_plan(plan_id: str, photo_paths: List[str], photo_count: int,
         return plan
 
 
-def get_photo_plan(plan_id: str) -> Optional[PhotoPlan]:
+def get_photo_plan(plan_id: str) -> Optional[dict]:
     """Retrieve a photo plan from the database"""
     with get_db_context() as db:
-        return db.query(PhotoPlan).filter(PhotoPlan.plan_id == plan_id).first()
+        plan = db.query(PhotoPlan).filter(PhotoPlan.plan_id == plan_id).first()
+        if plan:
+            return plan.to_dict()
+        return None
 
 
 def delete_photo_plan(plan_id: str) -> bool:

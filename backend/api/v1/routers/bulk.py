@@ -586,15 +586,15 @@ async def get_bulk_job_status(job_id: str):
             return BulkJobStatus(
                 job_id=job_id,
                 status="completed",
-                total_photos=photo_plan.photo_count,
-                processed_photos=photo_plan.photo_count,
-                total_items=photo_plan.estimated_items,
-                completed_items=photo_plan.estimated_items,  # Analysis complete = all items "analyzed"
+                total_photos=photo_plan["photo_count"],
+                processed_photos=photo_plan["photo_count"],
+                total_items=photo_plan["estimated_items"],
+                completed_items=photo_plan["estimated_items"],  # Analysis complete = all items "analyzed"
                 failed_items=0,
                 drafts=[],
                 errors=[],
-                started_at=photo_plan.created_at,
-                completed_at=photo_plan.created_at,
+                started_at=photo_plan["created_at"],
+                completed_at=photo_plan["created_at"],
                 progress_percent=100.0
             )
         
@@ -998,7 +998,7 @@ async def generate_drafts_from_plan(request: GenerateRequest):
             # First check PostgreSQL database (for /bulk/photos/analyze plans)
             photo_plan = get_photo_plan(plan_id)
             if photo_plan:
-                photo_paths = photo_plan.photo_paths
+                photo_paths = photo_plan["photo_paths"]
             # Then check grouping_plans (for /bulk/plan plans)
             elif plan_id in grouping_plans:
                 plan = grouping_plans[plan_id]
