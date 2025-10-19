@@ -47,6 +47,10 @@ Zero failed drafts requirement - all drafts must pass strict validation before c
   - **Title Format**: ≤70 chars, format "Catégorie Couleur Marque? Taille? – État"
   - **Description Structure**: 5-8 factual lines (what it is, condition, material, size+equivalence, measurements needed, shipping)
   - **Size Normalization**: Child/teen sizes (16Y, 165cm) auto-converted to adult equivalents (≈ XS) with confidence notes
+  - **MANDATORY Fields (October 2025)**: 
+    - **condition**: ALWAYS filled (default "Bon état" if impossible to determine)
+    - **size**: ALWAYS filled (default "Taille non visible" if impossible to read)
+    - AI is instructed to NEVER leave these fields null/empty/undefined
 - **Hashtag Generation**: GPT-4 Vision automatically generates 3-5 relevant hashtags at END of description for better visibility
 - **Robust Fallback**: If GPT-4 fails (JSON error, API timeout), `batch_analyze_photos()` ensures photos are preserved in fallback results
 - **Image hash-based duplicate detection** (pHash) and **text similarity matching** (rapidfuzz) are used to prevent redundant listings.
@@ -111,10 +115,10 @@ Zero failed drafts requirement - all drafts must pass strict validation before c
   - `DraftItem` schema includes `flags: PublishFlags` and `missing_fields: List[str]` for validation tracking
   - Skips invalid items with clear error messages (zero failed drafts)
 - **Realistic Pricing System (October 2025)**:
-  - Premium brands (Ralph Lauren, Karl Lagerfeld, Diesel): ×2.0 to ×2.5 multiplier
-  - Luxury brands (Burberry, Dior, Gucci): ×3.0 to ×5.0 multiplier
-  - Streetwear (Essentials, Supreme): ×2.5 to ×3.5 multiplier
-  - Example: Short Ralph Lauren bon état = 39€ (not 19€)
+  - Premium brands (Ralph Lauren, **Karl Lagerfeld**, Diesel, Tommy Hilfiger, Lacoste, Hugo Boss): ×2.0 to ×2.5 multiplier
+  - Luxury brands (Burberry, Dior, Gucci, LV, Prada): ×3.0 to ×5.0 multiplier
+  - Streetwear (Fear of God Essentials, Supreme, Off-White): ×2.5 to ×3.5 multiplier
+  - Example: Short Ralph Lauren bon état = 39€ (not 19€), Hoodie Karl Lagerfeld très bon = 69€
 - **Label Auto-Attachment**: AI Vision automatically detects care labels, brand tags, and size labels, then attaches them to the main clothing item (never creates label-only articles)
 - **Size Normalization**: Child/teen sizes (16Y, 165cm) auto-converted to adult size equivalents (XS/S/M) with confidence tracking
 - **Publication Validation**: `/vinted/listings/prepare` enforces strict validations (title ≤70 chars, 3-5 hashtags, price_suggestion.min|target|max, flags.publish_ready=true) and returns `{ok:false, reason:"NOT_READY"}` on failure

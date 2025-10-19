@@ -190,16 +190,17 @@ def generate_fallback_analysis(photo_paths: List[str]) -> Dict[str, Any]:
     """
     Generate a basic fallback analysis when AI fails
     Uses simple heuristics - MUST comply with strict quality gates
+    Ensures condition and size are ALWAYS filled (never null/empty)
     """
     return {
         "title": "Vêtement à identifier – bon état",
         "description": "Article en bon état visible sur photos. Matière et détails à préciser selon photos fournies. Taille à vérifier. Mesures recommandées pour confirmation avant achat. Envoi rapide. Remise possible si achat groupé. #mode #vinted #occasion",
         "price": 20,
         "category": "autre",
-        "condition": "Bon état",
+        "condition": "Bon état",  # MANDATORY: Default value if AI fails
         "color": "Non spécifié",
         "brand": "Non spécifié",
-        "size": "Non spécifié",
+        "size": "Taille non visible",  # MANDATORY: Default value if AI fails (changed from "Non spécifié")
         "confidence": 0.3,
         "fallback": True
     }
@@ -361,25 +362,44 @@ def _analyze_single_batch(
         if not image_contents:
             raise ValueError("No valid images found")
         
-        # Create intelligent grouping prompt with strict quality rules
+        # Create intelligent grouping prompt with REINFORCED quality rules (condition & size MANDATORY)
         prompt = f"""Tu es l'assistant "Photo → Listing" de VintedBot Studio. Tu reçois {len(image_contents)} photos et tu dois les GROUPER intelligemment par pièce/vêtement, puis générer un listing pour chaque groupe.
 
-RÈGLES DE GROUPEMENT (anti-saucisson):
-1. Si ≤80 photos OU confidence de séparation <0.6 → TOUJOURS grouper en 1 seul article
-2. Détecter les mini-clusters ≤2 photos (étiquettes/détails/macros) → les fusionner automatiquement avec le plus grand groupe
-3. Pour chaque groupe, analyser : même vêtement/objet, même couleur dominante, même style
-4. INTERDICTION: Ne JAMAIS créer un article composé uniquement d'étiquettes (care labels, brand tags, size labels)
-5. Les étiquettes DOIVENT être rattachées au vêtement principal correspondant
+RÈGLES DE GROUPEMENT CRITIQUES (anti-saucisson):
+1. **UNE PIÈCE = UN ARTICLE** : Regrouper TOUTES les photos d'une même pièce/vêtement dans un seul article pour maximiser la visualisation acheteur.
+2. **PLUSIEURS PIÈCES = PLUSIEURS GROUPES** : Si tu détectes plusieurs pièces distinctes (marques différentes, couleurs/coupes/logos différents, tailles adultes différentes) → créer OBLIGATOIREMENT plusieurs groupes séparés, un par pièce.
+3. **JAMAIS de listing multi-pièces** : Interdiction absolue de créer "lot de 2 t-shirts" ou combiner plusieurs vêtements dans un article.
+4. **Détecter les détails** : Les photos de détails/étiquettes/macros (≤2 photos isolées) doivent être fusionnées avec le groupe principal du même vêtement.
+5. Les étiquettes (care labels, brand tags, size labels) DOIVENT être rattachées au vêtement principal correspondant - JAMAIS créer d'article "étiquette seule".
 
-TAILLES (normalisation tops/vêtements) :
+CHAMPS OBLIGATOIRES (NE JAMAIS LAISSER VIDE):
+
+**condition** (OBLIGATOIRE - TOUJOURS REMPLIR):
+  Déterminer l'état selon les photos. TOUJOURS remplir ce champ.
+  Valeurs autorisées UNIQUEMENT:
+  • "Neuf avec étiquette" : étiquette visible sur la photo
+  • "Neuf sans étiquette" : article impeccable, jamais porté
+  • "Très bon état" : légères traces d'usage, propre
+  • "Bon état" : usure visible mais bon état général
+  • "Satisfaisant" : défauts visibles (tâches, trous, décoloration)
+  **SI IMPOSSIBLE À DÉTERMINER** : utiliser "Bon état" par défaut (JAMAIS null/undefined/vide)
+
+**size** (OBLIGATOIRE - TOUJOURS REMPLIR):
+  TOUJOURS remplir ce champ en cherchant l'étiquette de taille sur les photos.
+  Examiner attentivement TOUTES les photos pour trouver la taille (étiquette cousue, tag papier, inscription visible).
+  **Si impossible à lire** : "Taille non visible" (JAMAIS null/undefined/vide)
+
+TAILLES (normalisation tops/vêtements):
 - Conserver original_size (ex. 16Y / 165 cm)
-- Si taille enfant/ado (\\d+Y, ans) ou hauteur (cm), calculer normalized_size adulte XS/S/M/L…
-- Règles génériques unisex (tops) : 152–158 cm → XXS ; 160–166 cm → XS ; 167–172 cm → S
+- Si taille enfant/ado (\\d+Y, ans) ou hauteur (cm), calculer normalized_size adulte XS/S/M/L… avec confidence et range_cm approximatif
+- Règles génériques unisex (tops) : 152–158 cm → XXS (0.7) ; 160–166 cm → XS (0.8) ; 167–172 cm → S (0.7)
+- Ajuster d'une demi-taille si brand_tier=premium ou fit "oversize/fit slim", et baisser confidence de 0.1
 - Ajouter size_notes (ex. « ≈ XS adulte, équiv. 16Y/165 cm ; vérifier mesures »)
+- Quality gate taille : si seule la taille enfant est connue mais normalized_size.confidence ≥ 0.6, publish_ready peut rester true ; sinon false et ajouter dans missing_fields: mesures poitrine/longueur
 
 LISTING POUR CHAQUE GROUPE:
 
-title (≤70 chars, format « {{Catégorie}} {{Couleur}} {{Marque?}} {{Taille?}} – {{État}} »)
+title (≤70 chars, format « {{Catégorie}} {{Couleur}} {{Marque?}} {{Taille?}} – {{État}} » ; si taille normalisée disponible, l'inclure : « XS (≈ 16Y/165 cm) »)
   Exemple: "T-shirt noir Burberry XS (≈ 16Y/165 cm) – très bon état"
   INTERDITS: emojis, superlatifs ("magnifique", "parfait"), marketing ("découvrez", "idéal pour")
 
@@ -392,9 +412,9 @@ description (5–8 lignes, FR, style humain minimal, ZÉRO emoji, ZÉRO marketin
   5) invite à vérifier mesures en cm
   6) logistique + remise lot
   
-  Exemple: "T-shirt Burberry noir, logo imprimé devant, coupe classique. Très bon état : matière propre, couleur uniforme, pas de trou ou tâche visibles. Coton confortable, col rond. Taille d'origine : 16Y / 165 cm — équiv. XS adulte selon le guide générique. Mesures conseillées à ajouter : poitrine (à plat) et longueur dos, en cm. Envoi rapide ; remise possible si achat de plusieurs pièces. #burberry #tshirt #noir #xs #streetwear"
+  Exemple: "T-shirt Burberry noir, logo imprimé devant, coupe classique. Très bon état : matière propre, couleur uniforme, pas de trou ou tâche visibles. Coton confortable, col rond. Taille d'origine : 16Y / 165 cm — équiv. XS adulte selon le guide générique. Mesures conseillées à ajouter : poitrine (à plat) et longueur dos, en cm. Envoi rapide ; remise possible si achat de plusieurs pièces."
   
-  INTERDITS ABSOLUS: emojis, phrases marketing ("parfait pour", "style tendance", "casual chic", "look"), superlatifs
+  INTERDITS ABSOLUS: emojis, phrases marketing ("parfait pour", "style tendance", "casual chic", "look", "découvrez", "idéal"), superlatifs
 
 hashtags (3–5 pertinents, OBLIGATOIRE, À LA FIN de la description)
   Format: #marque #catégorie #couleur #taille #style
@@ -402,47 +422,53 @@ hashtags (3–5 pertinents, OBLIGATOIRE, À LA FIN de la description)
 
 price (suggéré en euros, bases réalistes Vinted 2025)
   BASES CATÉGORIES:
-  - T-shirt/polo: 15€ | Chemise: 20€ | Pull/sweat: 25€ | Hoodie: 35€
-  - Pantalon/jean: 30€ | Short: 25€ | Jogging: 30€
-  - Veste légère: 40€ | Manteau: 60€ | Doudoune: 70€
+  - T-shirt/polo: 18€ | Chemise: 20€ | Pull/sweat: 25€ | Hoodie: 38€
+  - Pantalon/jean: 32€ | Short: 25€ | Jogging: 28€
+  - Veste légère: 55€ | Manteau: 60€ | Doudoune: 70€
   
   MULTIPLICATEURS MARQUE (très important pour premium):
   - Luxe (Burberry, Dior, Gucci, LV, Prada): ×3.0 à ×5.0
-  - Premium (Ralph Lauren, Karl Lagerfeld, Diesel, Tommy, Lacoste): ×2.0 à ×2.5
-  - Streetwear (Fear of God, Essentials, Supreme, Off-White): ×2.5 à ×3.5
+  - **Premium (Ralph Lauren, Karl Lagerfeld, Diesel, Tommy Hilfiger, Lacoste, Hugo Boss): ×2.0 à ×2.5**
+  - Streetwear (Fear of God Essentials, Supreme, Off-White): ×2.5 à ×3.5
   - Sportswear premium (Adidas Yeezy, Nike Jordan): ×2.0 à ×2.8
   - Standard (Zara, H&M, Uniqlo, marques connues): ×1.0
-  - Entrée de gamme (no-name, basique): ×0.7
+  - Entrée de gamme (no-name, basique): ×0.8
   
   MULTIPLICATEURS CONDITION:
-  - Neuf avec étiquettes: ×1.0
+  - Neuf avec étiquettes: ×1.00
   - Très bon état: ×0.85
-  - Bon état: ×0.75
-  - État correct: ×0.60
+  - Bon état: ×0.70
+  - Satisfaisant: ×0.55
   
   ARRONDIS PSYCHOLOGIQUES:
-  - <50€ → finit par 9 (ex: 19€, 29€, 39€, 49€)
-  - 50-99€ → 59/69/79/89/99€
+  - <40€ → finit par 9 (ex: 19€, 29€, 39€)
+  - 40–99€ → 49/59/69/79/89/99€
   - ≥100€ → 99/119/129/149/199€
   
   EXEMPLES CONCRETS:
-  - Short Ralph Lauren bon état: 25€ × 2.2 × 0.75 = 41€ → 39€
-  - Hoodie Karl Lagerfeld très bon: 35€ × 2.2 × 0.85 = 65€ → 69€
-  - T-shirt Burberry correct: 15€ × 3.5 × 0.60 = 31€ → 29€
-  - Veste Essentials bon état: 40€ × 2.8 × 0.75 = 84€ → 89€
+  - Short Ralph Lauren bon état: 25€ × 2.0 × 0.70 = 35€ → 39€
+  - Hoodie Karl Lagerfeld très bon: 38€ × 2.2 × 0.85 = 71€ → 69€
+  - T-shirt Burberry satisfaisant: 18€ × 3.5 × 0.55 = 35€ → 39€
+  - Veste Essentials bon état: 55€ × 2.8 × 0.70 = 108€ → 99€
 
 STYLE (adapte selon "{style}"):
 - minimal: Ton sobre, descriptions factuelles courtes
 - streetwear: Ton lifestyle direct, sans emojis ni marketing
 - classique: Ton boutique sobre, descriptions soignées
 
-QUALITY GATE (SANS-ÉCHEC):
+QUALITY GATE (CRITÈRES SANS-ÉCHEC):
 - title.length ≤70
 - 3 ≤ hashtags.length ≤5
 - AUCUN emoji dans title/description
-- AUCUN superlatif ("magnifique", "prestigieuse", "haute qualité", "parfait", "tendance", "idéal")
-- AUCUNE phrase marketing ("parfait pour", "style tendance", "casual chic", "look")
+- AUCUN superlatif ("magnifique", "prestigieuse", "haute qualité", "parfait pour", "tendance", "idéal")
+- AUCUNE phrase marketing ("parfait pour", "style tendance", "casual chic", "look", "découvrez")
+- **condition doit être rempli (valeur par défaut: "Bon état" si impossible à déterminer)**
+- **size doit être rempli (valeur par défaut: "Taille non visible" si impossible à lire)**
 - Hashtags UNIQUEMENT à la fin de la description
+
+INTERDITS ABSOLUS: emojis, marketing creux ("découvrez", "parfait pour", "style tendance", slogans), liens/contacts, promesses hors plateforme, "authentique/original" sans preuve.
+
+STYLE HUMAIN MINIMAL : aucune phrase creuse ni slogan. Si emoji/superlatif détecté, régénère la même sortie en les supprimant. La description doit tenir en 5–8 lignes factuelles : 1) quoi + couleur/coupe, 2) état concret, 3) matière/détails (col, bords-côtes, poches), 4) taille + repère morpho approximatif, 5) mesures à fournir, 6) logistique/remise lot.
 
 SORTIE JSON OBLIGATOIRE:
 {{
