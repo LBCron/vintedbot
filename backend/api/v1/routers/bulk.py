@@ -5,11 +5,13 @@ Handles mass photo uploads, automatic analysis, and draft creation
 import os
 import uuid
 import asyncio
+import json
+import zipfile
 from datetime import datetime
 from typing import List, Dict, Optional
 from pathlib import Path
 from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Query, Form
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from PIL import Image
 import io
 
@@ -19,6 +21,7 @@ from backend.core.ai_analyzer import (
     smart_group_photos,
     smart_analyze_and_group_photos
 )
+from backend.core.storage import get_store
 from backend.schemas.bulk import (
     BulkUploadResponse,
     BulkJobStatus,
@@ -648,24 +651,59 @@ async def list_drafts(
     page_size: int = Query(50, ge=1, le=100)
 ):
     """
-    List all drafts with optional filtering
+    List all drafts with optional filtering (reads from SQLite + in-memory fallback)
     """
     try:
-        # Get all drafts
-        all_drafts = list(drafts_storage.values())
+        # Get drafts from SQLite storage first
+        db_drafts_raw = get_store().get_drafts(status=status, limit=1000)
         
-        # Filter by status if provided
+        # Convert SQLite rows to DraftItem objects
+        db_drafts = []
+        for row in db_drafts_raw:
+            if row["item_json"]:
+                item_data = row["item_json"]
+                draft = DraftItem(
+                    id=row["id"],
+                    title=row["title"],
+                    description=row["description"],
+                    price=row["price"],
+                    brand=row["brand"],
+                    size=row["size"],
+                    color=row["color"],
+                    category=row["category"],
+                    photos=item_data.get("photos", []),
+                    status=row["status"],
+                    created_at=datetime.fromisoformat(row["created_at"]),
+                    updated_at=datetime.fromisoformat(row["updated_at"]),
+                    analysis_result=item_data,
+                    flags=PublishFlags(**row["flags_json"]) if row["flags_json"] else PublishFlags(),
+                    missing_fields=[]
+                )
+                db_drafts.append(draft)
+        
+        # Merge with in-memory drafts (for backward compatibility)
+        all_drafts = db_drafts + list(drafts_storage.values())
+        
+        # Remove duplicates (prefer SQLite version)
+        seen_ids = set()
+        unique_drafts = []
+        for d in all_drafts:
+            if d.id not in seen_ids:
+                seen_ids.add(d.id)
+                unique_drafts.append(d)
+        
+        # Filter by status if provided (for in-memory fallback)
         if status:
-            all_drafts = [d for d in all_drafts if d.status == status]
+            unique_drafts = [d for d in unique_drafts if d.status == status]
         
         # Sort by created_at desc
-        all_drafts.sort(key=lambda x: x.created_at, reverse=True)
+        unique_drafts.sort(key=lambda x: x.created_at, reverse=True)
         
         # Pagination
-        total = len(all_drafts)
+        total = len(unique_drafts)
         start = (page - 1) * page_size
         end = start + page_size
-        page_drafts = all_drafts[start:end]
+        page_drafts = unique_drafts[start:end]
         
         return DraftListResponse(
             drafts=page_drafts,
@@ -1105,6 +1143,27 @@ async def generate_drafts_from_plan(request: GenerateRequest):
                     missing_fields=[]
                 )
                 
+                # Save draft to SQLite storage
+                get_store().save_draft(
+                    draft_id=draft_id,
+                    title=title,
+                    description=description,
+                    price=float(item.get("price", 0)),
+                    brand=item.get("brand"),
+                    size=item.get("size"),
+                    color=item.get("color"),
+                    category=item.get("category"),
+                    item_json=item,
+                    listing_json=None,
+                    flags_json={
+                        "publish_ready": True,
+                        "ai_validated": True,
+                        "photos_validated": True
+                    },
+                    status="ready"
+                )
+                
+                # Also keep in-memory for backward compatibility
                 drafts_storage[draft_id] = draft
                 created_drafts.append(draft)
                 
@@ -1150,3 +1209,163 @@ async def generate_drafts_from_plan(request: GenerateRequest):
     except Exception as e:
         print(f"❌ Generate drafts error: {e}")
         raise HTTPException(status_code=500, detail=f"Generation failed: {str(e)}")
+
+
+
+# ==================== EXPORT/IMPORT ENDPOINTS ====================
+
+@router.get("/export/drafts")
+async def export_drafts(
+    status: Optional[str] = Query(None, description="Filter by status: ready, pending, all")
+):
+    """
+    Export drafts as ZIP archive (SQLite-based, zero cost)
+    
+    Returns:
+    - drafts.json: Minimal draft data (title, price, brand, size, etc.)
+    - readme.txt: Instructions for reimporting
+    
+    **Status filters:**
+    - ready: Only drafts ready to publish
+    - pending: Drafts needing review
+    - all: Everything
+    """
+    try:
+        # Get drafts from SQLite
+        if status == "all":
+            drafts_raw = get_store().get_drafts(status=None, limit=10000)
+        else:
+            drafts_raw = get_store().get_drafts(status=status or "ready", limit=10000)
+        
+        # Convert to minimal format (exclude heavy fields like photos)
+        drafts_export = []
+        for draft in drafts_raw:
+            drafts_export.append({
+                "id": draft["id"],
+                "title": draft["title"],
+                "description": draft["description"],
+                "price": draft["price"],
+                "brand": draft["brand"],
+                "size": draft["size"],
+                "color": draft["color"],
+                "category": draft["category"],
+                "status": draft["status"],
+                "created_at": draft["created_at"]
+            })
+        
+        # Create ZIP in memory
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            # Add drafts.json
+            drafts_json = json.dumps(drafts_export, indent=2, ensure_ascii=False)
+            zip_file.writestr("drafts.json", drafts_json)
+            
+            # Add readme.txt
+            readme = f"""VintedBot Drafts Export
+========================
+
+Exported on: {datetime.utcnow().isoformat()}
+Total drafts: {len(drafts_export)}
+Status filter: {status or 'ready'}
+
+HOW TO IMPORT:
+1. POST this ZIP to /import/drafts
+2. Or extract drafts.json and POST the JSON directly
+
+Note: Photos are NOT included (reference only).
+This is a metadata-only backup for quick restoration.
+"""
+            zip_file.writestr("readme.txt", readme)
+        
+        zip_buffer.seek(0)
+        
+        filename = f"vintedbot_drafts_{status or 'ready'}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.zip"
+        
+        return StreamingResponse(
+            io.BytesIO(zip_buffer.getvalue()),
+            media_type="application/zip",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+        
+    except Exception as e:
+        print(f"❌ Export error: {e}")
+        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
+
+
+@router.post("/import/drafts")
+async def import_drafts(
+    file: UploadFile = File(..., description="ZIP archive or JSON file with drafts")
+):
+    """
+    Import drafts from ZIP or JSON (SQLite-based, zero cost)
+    
+    Accepts:
+    - ZIP archive (from /export/drafts)
+    - JSON file with draft array
+    
+    Creates new drafts WITHOUT changing existing ones.
+    """
+    try:
+        content = await file.read()
+        filename = file.filename or ""
+        
+        drafts_data = []
+        
+        # Parse ZIP or JSON
+        if filename.endswith(".zip"):
+            # Extract JSON from ZIP
+            with zipfile.ZipFile(io.BytesIO(content)) as zip_file:
+                if "drafts.json" not in zip_file.namelist():
+                    raise HTTPException(status_code=400, detail="ZIP must contain drafts.json")
+                
+                json_content = zip_file.read("drafts.json").decode("utf-8")
+                drafts_data = json.loads(json_content)
+        
+        elif filename.endswith(".json"):
+            # Direct JSON import
+            drafts_data = json.loads(content.decode("utf-8"))
+        
+        else:
+            raise HTTPException(status_code=400, detail="File must be .zip or .json")
+        
+        # Import drafts
+        imported_count = 0
+        skipped_count = 0
+        
+        for draft in drafts_data:
+            try:
+                # Generate new ID to avoid conflicts
+                draft_id = str(uuid.uuid4())
+                
+                # Create draft in SQLite
+                get_store().save_draft(
+                    draft_id=draft_id,
+                    title=draft["title"],
+                    description=draft.get("description", ""),
+                    price=float(draft["price"]),
+                    brand=draft.get("brand"),
+                    size=draft.get("size"),
+                    color=draft.get("color"),
+                    category=draft.get("category"),
+                    status="pending"  # Force pending for review
+                )
+                
+                imported_count += 1
+                
+            except Exception as e:
+                print(f"⚠️ Skipped draft {draft.get('id')}: {e}")
+                skipped_count += 1
+        
+        return JSONResponse({
+            "ok": True,
+            "imported": imported_count,
+            "skipped": skipped_count,
+            "message": f"✅ Imported {imported_count} drafts ({skipped_count} skipped)"
+        })
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Import error: {e}")
+        raise HTTPException(status_code=500, detail=f"Import failed: {str(e)}")
+

@@ -124,52 +124,35 @@ def get_db_context():
         db.close()
 
 
-# Helper functions
+# ==================== MIGRATED TO SQLITE ====================
+# The following functions now use SQLiteStore instead of PostgreSQL
+# This eliminates dependency on external databases (100% local storage)
+
+from backend.core.storage import get_store
+
 def save_photo_plan(plan_id: str, photo_paths: List[str], photo_count: int, 
-                    auto_grouping: bool, estimated_items: int) -> PhotoPlan:
-    """Save a photo plan to the database"""
-    with get_db_context() as db:
-        plan = PhotoPlan(
-            plan_id=plan_id,
-            photo_paths=photo_paths,
-            photo_count=photo_count,
-            auto_grouping=auto_grouping,
-            estimated_items=estimated_items,
-            created_at=datetime.utcnow()
-        )
-        db.add(plan)
-        db.commit()
-        db.refresh(plan)
-        return plan
+                    auto_grouping: bool, estimated_items: int):
+    """Save a photo plan to SQLite storage (migrated from PostgreSQL)"""
+    get_store().save_photo_plan(plan_id, photo_paths, photo_count, auto_grouping, estimated_items)
+    return get_photo_plan(plan_id)  # Return dict for backward compatibility
 
 
 def get_photo_plan(plan_id: str) -> Optional[dict]:
-    """Retrieve a photo plan from the database"""
-    with get_db_context() as db:
-        plan = db.query(PhotoPlan).filter(PhotoPlan.plan_id == plan_id).first()
-        if plan:
-            return plan.to_dict()
-        return None
+    """Retrieve a photo plan from SQLite storage (migrated from PostgreSQL)"""
+    return get_store().get_photo_plan(plan_id)
 
 
 def update_photo_plan_results(plan_id: str, detected_items: int, draft_ids: List[str]) -> bool:
-    """Update photo plan with real analysis results"""
-    with get_db_context() as db:
-        plan = db.query(PhotoPlan).filter(PhotoPlan.plan_id == plan_id).first()
-        if plan:
-            plan.detected_items = detected_items
-            plan.draft_ids = draft_ids
-            db.commit()
-            return True
+    """Update photo plan with real analysis results (SQLite)"""
+    try:
+        get_store().update_photo_plan(plan_id, detected_items=detected_items, draft_ids=draft_ids)
+        return True
+    except:
         return False
 
 
 def delete_photo_plan(plan_id: str) -> bool:
-    """Delete a photo plan from the database"""
-    with get_db_context() as db:
-        plan = db.query(PhotoPlan).filter(PhotoPlan.plan_id == plan_id).first()
-        if plan:
-            db.delete(plan)
-            db.commit()
-            return True
-        return False
+    """Delete a photo plan from SQLite storage (currently not needed, TTL handles cleanup)"""
+    # Note: Plans are now purged automatically via TTL (vacuum_and_prune job)
+    # This function kept for API compatibility but not actively used
+    return True

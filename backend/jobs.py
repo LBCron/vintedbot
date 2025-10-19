@@ -7,6 +7,7 @@ from backend.utils.logger import logger
 from backend.db import get_db_session
 from backend.models import Session, Listing, ListingStatus
 from backend.vinted_connector import fetch_inbox, validate_session_cookie
+from backend.core.storage import get_store
 from sqlmodel import select
 
 scheduler = AsyncIOScheduler()
@@ -105,6 +106,27 @@ async def price_drop_job():
         logger.error(f"Price drop job error: {e}")
 
 
+async def vacuum_and_prune_job():
+    """
+    Daily SQLite maintenance job (runs at 02:00)
+    - Deletes old published/error drafts (TTL_DRAFTS_DAYS)
+    - Purges old publish logs (TTL_PUBLISH_LOG_DAYS)
+    - VACUUM database to reclaim space
+    """
+    logger.info("🧹 Running SQLite vacuum and prune job")
+    
+    try:
+        result = get_store().vacuum_and_prune()
+        logger.info(
+            f"✅ Vacuum completed: "
+            f"{result['deleted_drafts']} drafts deleted (TTL={result['draft_ttl_days']}d), "
+            f"{result['deleted_logs']} logs purged (TTL={result['log_ttl_days']}d)"
+        )
+    
+    except Exception as e:
+        logger.error(f"Vacuum and prune job error: {e}")
+
+
 def start_scheduler():
     """Start the APScheduler with all jobs"""
     
@@ -135,11 +157,21 @@ def start_scheduler():
         replace_existing=True
     )
     
+    # SQLite vacuum and prune - daily at 2 AM
+    scheduler.add_job(
+        vacuum_and_prune_job,
+        trigger=CronTrigger(hour=2, minute=0),
+        id="vacuum_prune",
+        name="SQLite Vacuum & Prune",
+        replace_existing=True
+    )
+    
     scheduler.start()
     logger.info(f"⏰ Scheduler started with {len(scheduler.get_jobs())} jobs")
     logger.info(f"   - Inbox sync: every {SYNC_INTERVAL_MIN} minutes")
     logger.info(f"   - Publish poll: every 30 seconds")
     logger.info(f"   - Price drop: {PRICE_DROP_CRON}")
+    logger.info(f"   - Vacuum & Prune: 0 2 * * * (daily at 02:00)")
 
 
 def stop_scheduler():

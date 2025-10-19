@@ -21,6 +21,7 @@ register_heif_opener()
 from backend.settings import settings
 from backend.core.session import SessionVault, VintedSession
 from backend.core.vinted_client import VintedClient, CaptchaDetected
+from backend.core.storage import get_store
 from backend.schemas.vinted import (
     SessionRequest,
     SessionResponse,
@@ -516,12 +517,27 @@ async def publish_listing(
     **Required Header:** Idempotency-Key (prevents duplicate publications)
     """
     try:
-        # 🛡️ Idempotency check - prevent duplicate publications
+        # 🛡️ Idempotency protection - ATOMIC reservation before publish
+        # This MUST happen before the external Vinted API call to prevent race conditions
         if not request.dry_run:
-            # In production mode, check if this idempotency key was already used
-            # TODO: Store processed idempotency keys in Redis/DB
-            # For now, we rely on the confirm_token TTL mechanism
-            pass
+            # Try to reserve the idempotency key atomically (UNIQUE constraint)
+            # If another concurrent request has the same key, this will raise IntegrityError
+            try:
+                import uuid as uuid_lib
+                log_id = str(uuid_lib.uuid4())
+                get_store().reserve_publish_key(
+                    log_id=log_id,
+                    idempotency_key=idempotency_key,
+                    confirm_token=request.confirm_token
+                )
+            except Exception as e:
+                # UNIQUE constraint violation = duplicate request
+                if "UNIQUE constraint" in str(e) or "IntegrityError" in str(e):
+                    raise HTTPException(
+                        status_code=409,
+                        detail="Idempotency key already used - duplicate publish attempt blocked"
+                    )
+                raise  # Other errors bubble up
         
         # Verify token (30 min TTL)
         try:
@@ -595,6 +611,36 @@ async def publish_listing(
             listing_url = page.url if listing_id else None
             
             print(f"✅ Published: ID={listing_id}, URL={listing_url}")
+            
+            # Log successful publish to SQLite
+            draft_id = draft_context.get("draft_id")
+            if draft_id:
+                # Log publish result
+                import uuid as uuid_lib
+                log_id = str(uuid_lib.uuid4())
+                get_store().log_publish(
+                    log_id=log_id,
+                    draft_id=draft_id,
+                    idempotency_key=idempotency_key,
+                    confirm_token=request.confirm_token,
+                    dry_run=False,
+                    status="ok",
+                    listing_url=listing_url
+                )
+                
+                # Update draft status to published
+                get_store().update_draft_status(draft_id, "published")
+                
+                # Upsert listing record
+                if listing_id:
+                    get_store().upsert_listing(
+                        listing_id=draft_id,  # Use draft_id as listing_id
+                        title=draft_context.get("title", ""),
+                        price=float(draft_context.get("price", 0)),
+                        vinted_id=listing_id,
+                        listing_url=listing_url,
+                        status="active"
+                    )
             
             return ListingPublishResponse(
                 ok=True,

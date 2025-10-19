@@ -252,6 +252,27 @@ class SQLiteStore:
     
     # ==================== PUBLISH LOG ====================
     
+    def reserve_publish_key(
+        self,
+        log_id: str,
+        idempotency_key: str,
+        confirm_token: str,
+        user_id: Optional[str] = None
+    ):
+        """
+        ATOMICALLY reserve an idempotency key before publish (raises sqlite3.IntegrityError on duplicate).
+        This MUST be called BEFORE the external Vinted API call to prevent race conditions.
+        """
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            # NO ON CONFLICT - this will raise IntegrityError if key exists
+            cursor.execute("""
+                INSERT INTO publish_log (id, user_id, draft_id, idempotency_key, confirm_token, 
+                                        dry_run, status, listing_url, error_json)
+                VALUES (?, ?, NULL, ?, ?, 0, 'pending', NULL, NULL)
+            """, (log_id, user_id, idempotency_key, confirm_token))
+            conn.commit()
+    
     def log_publish(
         self,
         log_id: str,
@@ -264,7 +285,7 @@ class SQLiteStore:
         error_json: Optional[Dict] = None,
         user_id: Optional[str] = None
     ):
-        """Log publish attempt with idempotency protection"""
+        """Update publish log after external publish (upserts if not exists)"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
@@ -272,6 +293,7 @@ class SQLiteStore:
                                         dry_run, status, listing_url, error_json)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(idempotency_key) DO UPDATE SET
+                    draft_id = excluded.draft_id,
                     status = excluded.status,
                     listing_url = excluded.listing_url,
                     error_json = excluded.error_json
