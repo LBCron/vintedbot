@@ -400,10 +400,36 @@ hashtags (3–5 pertinents, OBLIGATOIRE, À LA FIN de la description)
   Format: #marque #catégorie #couleur #taille #style
   Exemple: #burberry #tshirt #noir #xs #streetwear
 
-price (suggéré en euros, bases: t-shirt 10€, hoodie 25€, jeans 25€, veste 35€)
-  Multiplicateurs condition: neuf 1.00 / Très bon 0.85 / Bon 0.70 / Correct 0.55
-  Multiplicateurs marque: premium 1.30 / standard 1.00 / entrée 0.80
-  Arrondis psychologiques : <40€ finit par 9 ; 40–99€ → 49/59/69/79/89/99
+price (suggéré en euros, bases réalistes Vinted 2025)
+  BASES CATÉGORIES:
+  - T-shirt/polo: 15€ | Chemise: 20€ | Pull/sweat: 25€ | Hoodie: 35€
+  - Pantalon/jean: 30€ | Short: 25€ | Jogging: 30€
+  - Veste légère: 40€ | Manteau: 60€ | Doudoune: 70€
+  
+  MULTIPLICATEURS MARQUE (très important pour premium):
+  - Luxe (Burberry, Dior, Gucci, LV, Prada): ×3.0 à ×5.0
+  - Premium (Ralph Lauren, Karl Lagerfeld, Diesel, Tommy, Lacoste): ×2.0 à ×2.5
+  - Streetwear (Fear of God, Essentials, Supreme, Off-White): ×2.5 à ×3.5
+  - Sportswear premium (Adidas Yeezy, Nike Jordan): ×2.0 à ×2.8
+  - Standard (Zara, H&M, Uniqlo, marques connues): ×1.0
+  - Entrée de gamme (no-name, basique): ×0.7
+  
+  MULTIPLICATEURS CONDITION:
+  - Neuf avec étiquettes: ×1.0
+  - Très bon état: ×0.85
+  - Bon état: ×0.75
+  - État correct: ×0.60
+  
+  ARRONDIS PSYCHOLOGIQUES:
+  - <50€ → finit par 9 (ex: 19€, 29€, 39€, 49€)
+  - 50-99€ → 59/69/79/89/99€
+  - ≥100€ → 99/119/129/149/199€
+  
+  EXEMPLES CONCRETS:
+  - Short Ralph Lauren bon état: 25€ × 2.2 × 0.75 = 41€ → 39€
+  - Hoodie Karl Lagerfeld très bon: 35€ × 2.2 × 0.85 = 65€ → 69€
+  - T-shirt Burberry correct: 15€ × 3.5 × 0.60 = 31€ → 29€
+  - Veste Essentials bon état: 40€ × 2.8 × 0.75 = 84€ → 89€
 
 STYLE (adapte selon "{style}"):
 - minimal: Ton sobre, descriptions factuelles courtes
