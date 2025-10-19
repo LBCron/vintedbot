@@ -104,10 +104,16 @@ Zero failed drafts requirement - all drafts must pass strict validation before c
   - Sets `flags.publish_ready=true` only after ALL validations pass
   - `DraftItem` schema includes `flags: PublishFlags` and `missing_fields: List[str]` for validation tracking
   - Skips invalid items with clear error messages (zero failed drafts)
+- **Realistic Pricing System (October 2025)**:
+  - Premium brands (Ralph Lauren, Karl Lagerfeld, Diesel): ×2.0 to ×2.5 multiplier
+  - Luxury brands (Burberry, Dior, Gucci): ×3.0 to ×5.0 multiplier
+  - Streetwear (Essentials, Supreme): ×2.5 to ×3.5 multiplier
+  - Example: Short Ralph Lauren bon état = 39€ (not 19€)
 - **Label Auto-Attachment**: AI Vision automatically detects care labels, brand tags, and size labels, then attaches them to the main clothing item (never creates label-only articles)
 - **Size Normalization**: Child/teen sizes (16Y, 165cm) auto-converted to adult size equivalents (XS/S/M) with confidence tracking
 - **Publication Validation**: `/vinted/listings/prepare` enforces strict validations (title ≤70 chars, 3-5 hashtags, price_suggestion.min|target|max, flags.publish_ready=true) and returns `{ok:false, reason:"NOT_READY"}` on failure
 - **Idempotency Protection**: `/vinted/listings/publish` requires `Idempotency-Key` header to prevent duplicate publications
+- **Production Mode Enabled**: `dry_run=false` by default - all publications are REAL (not simulations)
 - **Secure Logging**: All logs redact sensitive data (cookies, user-agents) - only metadata (lengths, status, latency) is logged
 - **Safe Defaults**: All production features enabled via `SAFE_DEFAULTS=true` environment variable
 

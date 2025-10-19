@@ -71,7 +71,7 @@ class ListingPrepareRequest(BaseModel):
     price_suggestion: Optional[PriceSuggestion] = None
     flags: Optional[PublishFlags] = None
     
-    dry_run: bool = Field(default=True, description="If true, don't actually prepare")
+    dry_run: bool = Field(default=False, description="If true, don't actually prepare")
 
 
 class ListingPrepareResponse(BaseModel):
@@ -88,7 +88,7 @@ class ListingPrepareResponse(BaseModel):
 class ListingPublishRequest(BaseModel):
     """Request to publish a prepared listing"""
     confirm_token: str = Field(..., description="Token from prepare endpoint")
-    dry_run: bool = Field(default=True, description="If false, actually publish")
+    dry_run: bool = Field(default=False, description="If false, actually publish")
 
 
 class ListingPublishResponse(BaseModel):
