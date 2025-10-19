@@ -17,9 +17,11 @@ Zero failed drafts requirement - all drafts must pass strict validation before c
 
 ### Data Storage
 - **PostgreSQL Database** for persistent photo plan storage (`backend/database.py`):
-  - Table `photo_plans`: Stores plan_id, photo_paths, photo_count, auto_grouping, estimated_items, created_at
+  - Table `photo_plans`: Stores plan_id, photo_paths, photo_count, auto_grouping, estimated_items, **detected_items** (real GPT-4 count), **draft_ids**, created_at
+  - **Real-time updates**: After `/bulk/generate`, updates plan with actual detected items count (not estimation)
   - Survives backend restarts (no more 404 plan_id errors)
   - Used by `/bulk/photos/analyze`, `/bulk/jobs/{job_id}`, and `/bulk/generate`
+  - **Frontend display**: `/bulk/jobs/{job_id}` returns REAL detected count instead of hardcoded estimation
 - **File-based JSON database** (`backend/data/items.json`) serves as the persistent storage for all inventory items.
 - A custom `Database` class handles CRUD operations, using UUIDs for unique item identification.
 

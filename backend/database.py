@@ -41,6 +41,8 @@ class PhotoPlan(Base):
     photo_count = Column(Integer, nullable=False)
     auto_grouping = Column(Boolean, default=False)
     estimated_items = Column(Integer, nullable=False)
+    detected_items = Column(Integer, nullable=True)  # REAL count from GPT-4 analysis
+    draft_ids = Column(JSON, default=list)  # List of generated draft IDs
     created_at = Column(DateTime, default=datetime.utcnow)
     
     def to_dict(self):
@@ -51,6 +53,8 @@ class PhotoPlan(Base):
             "photo_count": self.photo_count,
             "auto_grouping": self.auto_grouping,
             "estimated_items": self.estimated_items,
+            "detected_items": self.detected_items,
+            "draft_ids": self.draft_ids if self.draft_ids is not None else [],
             "created_at": self.created_at.isoformat() if self.created_at is not None else None
         }
 
@@ -146,6 +150,18 @@ def get_photo_plan(plan_id: str) -> Optional[dict]:
         if plan:
             return plan.to_dict()
         return None
+
+
+def update_photo_plan_results(plan_id: str, detected_items: int, draft_ids: List[str]) -> bool:
+    """Update photo plan with real analysis results"""
+    with get_db_context() as db:
+        plan = db.query(PhotoPlan).filter(PhotoPlan.plan_id == plan_id).first()
+        if plan:
+            plan.detected_items = detected_items
+            plan.draft_ids = draft_ids
+            db.commit()
+            return True
+        return False
 
 
 def delete_photo_plan(plan_id: str) -> bool:

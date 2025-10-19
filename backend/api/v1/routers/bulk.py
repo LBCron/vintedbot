@@ -33,7 +33,7 @@ from backend.schemas.bulk import (
 )
 from backend.schemas.vinted import PublishFlags
 from backend.settings import settings
-from backend.database import save_photo_plan, get_photo_plan, delete_photo_plan
+from backend.database import save_photo_plan, get_photo_plan, delete_photo_plan, update_photo_plan_results
 
 router = APIRouter(prefix="/bulk", tags=["bulk"])
 
@@ -583,16 +583,26 @@ async def get_bulk_job_status(job_id: str):
         # First check PostgreSQL database (for /bulk/photos/analyze jobs)
         photo_plan = get_photo_plan(job_id)
         if photo_plan:
-            # Photo analysis is complete, but no drafts generated yet
+            # Use REAL detected count if available, otherwise fallback to estimation
+            detected_items = photo_plan.get("detected_items") or photo_plan["estimated_items"]
+            draft_ids = photo_plan.get("draft_ids", [])
+            
+            # Retrieve actual draft objects if available
+            draft_objects = []
+            for did in draft_ids:
+                if did in drafts_storage:
+                    draft_objects.append(drafts_storage[did])
+            
+            # Photo analysis is complete, drafts may or may not be generated yet
             return BulkJobStatus(
                 job_id=job_id,
                 status="completed",
                 total_photos=photo_plan["photo_count"],
                 processed_photos=photo_plan["photo_count"],
-                total_items=photo_plan["estimated_items"],
-                completed_items=photo_plan["estimated_items"],  # Analysis complete = all items "analyzed"
+                total_items=detected_items,  # Use REAL count, not estimation!
+                completed_items=detected_items,
                 failed_items=0,
-                drafts=[],
+                drafts=draft_objects,
                 errors=[],
                 started_at=photo_plan["created_at"],
                 completed_at=photo_plan["created_at"],
@@ -1108,6 +1118,13 @@ async def generate_drafts_from_plan(request: GenerateRequest):
         # Return response with all created drafts
         success_count = len(created_drafts)
         skip_count = len(skipped_items)
+        detected_count = len(grouped_items)
+        
+        # Update photo plan with REAL results (if plan_id exists)
+        if plan_id:
+            draft_ids_list = [d.id for d in created_drafts]
+            update_photo_plan_results(plan_id, detected_count, draft_ids_list)
+            print(f"📊 Updated plan {plan_id}: {detected_count} detected items, {success_count} valid drafts")
         
         if success_count == 0:
             return GenerateResponse(
@@ -1125,7 +1142,7 @@ async def generate_drafts_from_plan(request: GenerateRequest):
             skipped_count=skip_count,
             drafts=created_drafts,
             errors=errors,
-            message=f"✅ Created {success_count} draft(s) from {len(grouped_items)} detected items ({skip_count} skipped)"
+            message=f"✅ Created {success_count} draft(s) from {detected_count} detected items ({skip_count} skipped)"
         )
         
     except HTTPException:
