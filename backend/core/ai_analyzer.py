@@ -106,32 +106,41 @@ def analyze_clothing_photos(photo_paths: List[str]) -> Dict[str, Any]:
         if not image_contents:
             raise ValueError("No valid images found")
         
-        # Create prompt for clothing analysis
-        prompt = """Tu es un expert en vêtements et mode. Analyse ces photos de vêtement et génère un brouillon d'annonce Vinted optimisée.
+        # Create prompt for single-item clothing analysis
+        prompt = """Tu es l'assistant VintedBot. Analyse ces photos d'UN SEUL vêtement et génère un listing Vinted conforme.
 
-IMPORTANT: Réponds UNIQUEMENT avec un objet JSON valide, sans markdown ni texte supplémentaire.
+RÈGLES STRICTES (QUALITY GATE):
+- title: ≤70 chars, format "Catégorie Couleur Marque? Taille? – État", ZÉRO emoji, ZÉRO superlatif
+- description: 5-8 lignes factuelles, ZÉRO emoji, ZÉRO marketing ("parfait pour", "style tendance", "look")
+- hashtags: 3-5 hashtags À LA FIN de la description (#marque #catégorie #couleur)
+- price: Prix réaliste (t-shirt 10€, hoodie 25€, jeans 25€, veste 35€) × multiplicateurs
+- INTERDITS ABSOLUS: emojis, superlatifs ("magnifique", "parfait", "tendance"), phrases marketing
 
-Format de réponse requis:
+TAILLES (normalisation):
+- Si taille enfant/ado (16Y, 165cm), calculer équivalence adulte (ex: 16Y ≈ XS)
+- Noter : "16Y / 165 cm (≈ XS adulte)"
+
+DESCRIPTION (structure obligatoire):
+1) Ce que c'est (catégorie/coupe/logo)
+2) État factuel + défauts précis
+3) Matière/fit/détails
+4) Taille + équivalence si calculée
+5) Mesures à ajouter
+6) Logistique + remise lot
+Exemple: "T-shirt Burberry noir, logo imprimé devant, coupe classique. Très bon état : matière propre, pas de trou. Coton confortable, col rond. Taille 16Y / 165 cm — équiv. XS adulte. Mesures conseillées : poitrine et longueur en cm. Envoi rapide. #burberry #tshirt #noir #xs #streetwear"
+
+SORTIE JSON OBLIGATOIRE:
 {
-    "title": "Titre accrocheur (max 60 caractères, inclut marque si visible, catégorie, couleur)",
-    "description": "Description détaillée et professionnelle (150-300 mots) : état, matières, détails, style, comment le porter. Ajoute émojis pertinents. TERMINE PAR 3-5 HASHTAGS pertinents (#mode #streetwear #vintage etc.)",
-    "price": 25,
-    "category": "t-shirt|hoodie|sweatshirt|joggers|jeans|pantalon|short|veste|manteau|parka|chemise|polo|robe|jupe|casquette|sneakers|chaussures|sac|autre",
-    "condition": "Neuf avec étiquette|Très bon état|Bon état|Satisfaisant",
-    "color": "noir|blanc|gris|bleu|rouge|vert|jaune|beige|marron|rose|violet|orange|multicolore",
-    "brand": "Nom de la marque si visible, sinon 'Non spécifié'",
-    "size": "XS|S|M|L|XL|XXL|nombre si visible, sinon 'Non spécifié'",
-    "confidence": 0.95
+    "title": "T-shirt noir Burberry XS – très bon état",
+    "description": "T-shirt Burberry noir, logo imprimé devant. Très bon état : matière propre, pas de trou. Coton, col rond. Taille 16Y / 165 cm (≈ XS). Mesures à ajouter : poitrine et longueur. Envoi rapide. #burberry #tshirt #noir #xs #streetwear",
+    "price": 50,
+    "category": "t-shirt",
+    "condition": "Très bon état",
+    "color": "noir",
+    "brand": "Burberry",
+    "size": "16Y / 165 cm (≈ XS)",
+    "confidence": 0.90
 }
-
-Règles de pricing:
-- T-shirt/polo: 8-15€
-- Hoodie/sweatshirt: 20-35€
-- Jeans/pantalon: 20-40€
-- Veste/manteau: 30-80€
-- Chaussures/sneakers: 25-60€
-- Sac: 15-50€
-- Si marque premium visible (Nike, Adidas, Zara, etc.): +30%
 
 Analyse les photos et génère le JSON:"""
 
@@ -180,11 +189,11 @@ Analyse les photos et génère le JSON:"""
 def generate_fallback_analysis(photo_paths: List[str]) -> Dict[str, Any]:
     """
     Generate a basic fallback analysis when AI fails
-    Uses simple heuristics based on filename and basic detection
+    Uses simple heuristics - MUST comply with strict quality gates
     """
     return {
-        "title": "Vêtement à identifier",
-        "description": "Article en bon état. Photos réelles. Envoi rapide depuis Grenoble. N'hésitez pas à poser vos questions ! 📦\n\n#mode #vinted #bonplan",
+        "title": "Vêtement à identifier – bon état",
+        "description": "Article en bon état visible sur photos. Matière et détails à préciser selon photos fournies. Taille à vérifier. Mesures recommandées pour confirmation avant achat. Envoi rapide. Remise possible si achat groupé. #mode #vinted #occasion",
         "price": 20,
         "category": "autre",
         "condition": "Bon état",
@@ -296,66 +305,82 @@ def smart_analyze_and_group_photos(
         if not image_contents:
             raise ValueError("No valid images found")
         
-        # Create intelligent grouping prompt
-        prompt = f"""Tu es un assistant IA spécialisé dans l'analyse de photos de vêtements pour Vinted.
+        # Create intelligent grouping prompt with strict quality rules
+        prompt = f"""Tu es l'assistant "Photo → Listing" de VintedBot Studio. Tu reçois un ensemble de photos et tu dois d'abord les GROUPER intelligemment, puis générer un listing pour chaque groupe.
 
-MISSION: Analyser un lot de photos et regrouper celles qui montrent le MÊME article/vêtement.
+RÈGLES DE GROUPEMENT (anti-saucisson):
+1. Si ≤80 photos OU confidence de séparation <0.6 → TOUJOURS grouper en 1 seul article
+2. Détecter les mini-clusters ≤2 photos (étiquettes/détails/macros) → les fusionner automatiquement avec le plus grand groupe
+3. Pour chaque groupe, analyser : même vêtement/objet, même couleur dominante, même style
+4. INTERDICTION: Ne JAMAIS créer un article composé uniquement d'étiquettes (care labels, brand tags, size labels)
+5. Les étiquettes DOIVENT être rattachées au vêtement principal correspondant
 
-ÉTAPES:
-1. Examine toutes les photos fournies
-2. Identifie les caractéristiques uniques de chaque article (couleur, motif, style, marque visible, défauts)
-3. Regroupe les photos qui montrent clairement le même article
-4. Pour chaque groupe, génère UN SEUL brouillon avec:
-   - title: Description courte et vendeuse (ex: "Jean Levi's 501 bleu délavé")
-   - description: Détaillée, mentionne l'état, les défauts visibles, les atouts. AJOUTE 3-5 HASHTAGS pertinents à la fin (ex: #vintage #designer #mode)
-   - price: Prix suggéré réaliste (analyse le marché Vinted)
-   - brand: Marque si identifiable (sinon "Non spécifié")
-   - size: Taille si visible sur étiquette (sinon "Non spécifié")
-   - condition: "Neuf avec étiquette", "Très bon état", "Bon état", "Satisfaisant" ou "Pour pièces"
-   - color: Couleur dominante
-   - category: "jeans", "t-shirt", "robe", "chaussures", "accessoire", "autre"
-   - confidence: 0.0-1.0 (confiance dans le regroupement)
-   - photo_indices: Array des indices (0, 1, 2...) des photos de cet article
+TAILLES (normalisation tops/vêtements) :
+- Conserver original_size (ex. 16Y / 165 cm)
+- Si taille enfant/ado (\\d+Y, ans) ou hauteur (cm), calculer normalized_size adulte XS/S/M/L…
+- Règles génériques unisex (tops) : 152–158 cm → XXS ; 160–166 cm → XS ; 167–172 cm → S
+- Ajouter size_notes (ex. « ≈ XS adulte, équiv. 16Y/165 cm ; vérifier mesures »)
 
-RÈGLES CRITIQUES:
-- HASHTAGS OBLIGATOIRES: Chaque description DOIT contenir 3-5 hashtags pertinents à la fin (ex: #mode #vintage #designer)
-- Si incertain sur le regroupement (confidence < 0.6), privilégie la séparation
-- Les chaussures: 2-4 photos (paire complète + détails)
-- Les vêtements: 3-6 photos (devant, dos, étiquette, défauts)
-- Accessoires: 2-3 photos suffisent
-- Si étiquette visible avec taille/marque manquante, note: "Taille/marque non précisée sur les photos"
-- Pour jeans/chaussures, toujours mentionner si pointure/taille manquante
+LISTING POUR CHAQUE GROUPE:
 
-GESTION DES ÉTIQUETTES (RÈGLE ABSOLUE):
-- DÉTECTE les photos d'étiquettes: care labels, brand tags, clothing tags, size labels
-- RATTACHE TOUJOURS les étiquettes au vêtement correspondant (même groupe)
-- Ne JAMAIS créer un article composé uniquement d'étiquettes
-- Si groupe détecté avec ≤2 photos ET toutes sont des étiquettes → rattacher au vêtement le plus proche
-- Si un singleton (1 photo) est une étiquette isolée → rattacher au groupe principal
-- Les étiquettes DOIVENT être dans le même groupe que le vêtement qu'elles représentent
+title (≤70 chars, format « {{Catégorie}} {{Couleur}} {{Marque?}} {{Taille?}} – {{État}} »)
+  Exemple: "T-shirt noir Burberry XS (≈ 16Y/165 cm) – très bon état"
+  INTERDITS: emojis, superlatifs ("magnifique", "parfait"), marketing ("découvrez", "idéal pour")
+
+description (5–8 lignes, FR, style humain minimal, ZÉRO emoji, ZÉRO marketing)
+  Structure: 
+  1) ce que c'est (catégorie/coupe/logo)
+  2) état factuel + défauts précis
+  3) matière/fit/saison/extras
+  4) taille d'origine + équivalence adulte si calculée
+  5) invite à vérifier mesures en cm
+  6) logistique + remise lot
+  
+  Exemple: "T-shirt Burberry noir, logo imprimé devant, coupe classique. Très bon état : matière propre, couleur uniforme, pas de trou ou tâche visibles. Coton confortable, col rond. Taille d'origine : 16Y / 165 cm — équiv. XS adulte selon le guide générique. Mesures conseillées à ajouter : poitrine (à plat) et longueur dos, en cm. Envoi rapide ; remise possible si achat de plusieurs pièces. #burberry #tshirt #noir #xs #streetwear"
+  
+  INTERDITS ABSOLUS: emojis, phrases marketing ("parfait pour", "style tendance", "casual chic", "look"), superlatifs
+
+hashtags (3–5 pertinents, OBLIGATOIRE, À LA FIN de la description)
+  Format: #marque #catégorie #couleur #taille #style
+  Exemple: #burberry #tshirt #noir #xs #streetwear
+
+price (suggéré en euros, bases: t-shirt 10€, hoodie 25€, jeans 25€, veste 35€)
+  Multiplicateurs condition: neuf 1.00 / Très bon 0.85 / Bon 0.70 / Correct 0.55
+  Multiplicateurs marque: premium 1.30 / standard 1.00 / entrée 0.80
+  Arrondis psychologiques : <40€ finit par 9 ; 40–99€ → 49/59/69/79/89/99
 
 STYLE (adapte selon "{style}"):
 - minimal: Ton sobre, descriptions factuelles courtes
-- streetwear: Ton lifestyle, vocabulaire jeune, émojis légers
-- classique: Ton boutique élégant, descriptions soignées
+- streetwear: Ton lifestyle direct, sans emojis ni marketing
+- classique: Ton boutique sobre, descriptions soignées
 
-IMPORTANT: Ne renvoie QUE le JSON final avec la structure:
+QUALITY GATE (SANS-ÉCHEC):
+- title.length ≤70
+- 3 ≤ hashtags.length ≤5
+- AUCUN emoji dans title/description
+- AUCUN superlatif ("magnifique", "prestigieuse", "haute qualité", "parfait", "tendance", "idéal")
+- AUCUNE phrase marketing ("parfait pour", "style tendance", "casual chic", "look")
+- Hashtags UNIQUEMENT à la fin de la description
+
+SORTIE JSON OBLIGATOIRE:
 {{
   "groups": [
     {{
-      "title": "Jean Levi's 501 bleu vintage",
-      "description": "Superbe jean Levi's 501 bleu vintage en excellent état. Coupe droite classique, fermeture boutons. Petite usure légère aux genoux (voir photos). Parfait pour un look casual-chic. #vintage #levis #denim #mode #jeans",
-      "price": 35.0,
-      "brand": "Levi's",
-      "size": "W32/L34",
+      "title": "T-shirt noir Burberry XS – très bon état",
+      "description": "T-shirt Burberry noir, logo imprimé devant, coupe classique. Très bon état : matière propre, couleur uniforme, pas de trou ou tâche visibles. Coton confortable, col rond. Taille d'origine : 16Y / 165 cm — équiv. XS adulte. Mesures à ajouter : poitrine et longueur. Envoi rapide. #burberry #tshirt #noir #xs #streetwear",
+      "price": 50.0,
+      "brand": "Burberry",
+      "size": "16Y / 165 cm (≈ XS)",
       "condition": "Très bon état",
-      "color": "Bleu",
-      "category": "jeans",
+      "color": "Noir",
+      "category": "t-shirt",
       "confidence": 0.90,
-      "photo_indices": [0, 1, 2, 3]
+      "photo_indices": [0, 1]
     }}
   ]
-}}"""
+}}
+
+Analyse les photos et génère le JSON:"""
 
         # Build messages
         messages = [

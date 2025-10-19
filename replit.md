@@ -4,7 +4,8 @@
 VintedBot is a FastAPI-based backend system designed to automate and streamline the process of creating and managing clothing resale listings, primarily for platforms like Vinted. It leverages AI to analyze clothing photos, generate comprehensive product listings with pricing suggestions, and manage inventory. The system features automated price adjustments, duplicate detection, and multi-format export capabilities, aiming to simplify the resale workflow and optimize listing creation.
 
 ## User Preferences
-Preferred communication style: Simple, everyday language.
+Preferred communication style: Simple, everyday language (French speaker).
+Zero failed drafts requirement - all drafts must pass strict validation before creation.
 
 ## System Architecture
 
@@ -27,7 +28,14 @@ Preferred communication style: Simple, everyday language.
 - **HEIC/HEIF→JPEG Auto-Conversion**: All HEIC/HEIF images are automatically converted to JPEG before OpenAI Vision API calls (via `encode_image_to_base64()`)
 - **Multi-Item Detection via GPT-4 Vision**: `smart_analyze_and_group_photos()` analyzes ALL photos together to detect multiple distinct items in one batch (e.g., 5 items detected from 38 photos)
 - **Smart AI Grouping**: Analyzes and groups multiple photos by visual similarity to create single listings, identifying unique characteristics and providing confidence scores.
-- **Hashtag Generation**: GPT-4 Vision automatically generates 3-5 relevant hashtags in description for better visibility
+- **Strict AI Prompt System (October 2025)**:
+  - **ZERO emojis, ZERO marketing phrases** ("parfait pour", "style tendance", "casual chic", "look", "découvrez", "idéal")
+  - **ZERO superlatifs** ("magnifique", "prestigieuse", "haute qualité", "parfait", "tendance")
+  - **Hashtag Rules**: EXACTLY 3-5 hashtags, ALWAYS at end of description
+  - **Title Format**: ≤70 chars, format "Catégorie Couleur Marque? Taille? – État"
+  - **Description Structure**: 5-8 factual lines (what it is, condition, material, size+equivalence, measurements needed, shipping)
+  - **Size Normalization**: Child/teen sizes (16Y, 165cm) auto-converted to adult equivalents (≈ XS) with confidence notes
+- **Hashtag Generation**: GPT-4 Vision automatically generates 3-5 relevant hashtags at END of description for better visibility
 - **Robust Fallback**: If GPT-4 fails (JSON error, API timeout), `batch_analyze_photos()` ensures photos are preserved in fallback results
 - **Image hash-based duplicate detection** (pHash) and **text similarity matching** (rapidfuzz) are used to prevent redundant listings.
 - **AI Chat Endpoint**: `/ai/chat` provides a conversational assistant for resale advice.
@@ -81,14 +89,16 @@ Preferred communication style: Simple, everyday language.
 - Supports **idempotency** to prevent duplicate publications.
 
 ### Production Safeguards & Optimizations (October 2025)
+- **Smart Estimation Algorithm**: Frontend shows realistic counts via `max(1, photo_count // 5)` instead of hardcoded "1 article" (18 photos → "3-4 articles estimés")
 - **Smart Single-Item Detection**: `/bulk/ingest` and `/bulk/plan` auto-detect when ≤80 photos represent a single item (configurable via `SINGLE_ITEM_DEFAULT_MAX_PHOTOS=80`)
 - **Anti-Saucisson Grouping** (`/bulk/plan`): AI Vision clustering with label detection (care labels, brand tags, size labels). Clusters ≤2 photos auto-merge to largest cluster. Never creates label-only articles.
 - **Strict Draft Validation** (`/bulk/generate`): 
-  - Validates title≤70 chars, hashtags 3-5, all required fields present
+  - Validates title≤70 chars, hashtags 3-5, NO emojis, NO marketing phrases, all required fields present
   - Sets `flags.publish_ready=true` only after ALL validations pass
   - `DraftItem` schema includes `flags: PublishFlags` and `missing_fields: List[str]` for validation tracking
   - Skips invalid items with clear error messages (zero failed drafts)
 - **Label Auto-Attachment**: AI Vision automatically detects care labels, brand tags, and size labels, then attaches them to the main clothing item (never creates label-only articles)
+- **Size Normalization**: Child/teen sizes (16Y, 165cm) auto-converted to adult size equivalents (XS/S/M) with confidence tracking
 - **Publication Validation**: `/vinted/listings/prepare` enforces strict validations (title ≤70 chars, 3-5 hashtags, price_suggestion.min|target|max, flags.publish_ready=true) and returns `{ok:false, reason:"NOT_READY"}` on failure
 - **Idempotency Protection**: `/vinted/listings/publish` requires `Idempotency-Key` header to prevent duplicate publications
 - **Secure Logging**: All logs redact sensitive data (cookies, user-agents) - only metadata (lengths, status, latency) is logged
