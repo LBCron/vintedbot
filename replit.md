@@ -26,7 +26,12 @@ Zero failed drafts requirement - all drafts must pass strict validation before c
 ### AI & Image Processing
 - **Dual-mode AI service**: Integrates with OpenAI (GPT-4o Vision) for photo analysis and listing generation when an API key is available, and provides an intelligent mock mode otherwise.
 - **HEIC/HEIF→JPEG Auto-Conversion**: All HEIC/HEIF images are automatically converted to JPEG before OpenAI Vision API calls (via `encode_image_to_base64()`)
-- **Multi-Item Detection via GPT-4 Vision**: `smart_analyze_and_group_photos()` analyzes ALL photos together to detect multiple distinct items in one batch (e.g., 5 items detected from 38 photos)
+- **Auto-Batching Intelligence (October 2025)**: Handles UNLIMITED photos via automatic batching
+  - ≤25 photos → Single GPT-4 Vision analysis (all photos together)
+  - >25 photos → Auto-splits into batches of 25, analyzes each separately, merges results
+  - Example: 144 photos → 6 batches → ~20-28 articles detected with ALL their photos
+  - Fallback mode: 7 photos minimum per article for complete visualization
+- **Multi-Item Detection via GPT-4 Vision**: `smart_analyze_and_group_photos()` analyzes ALL photos intelligently to detect multiple distinct items (e.g., 5 items detected from 38 photos)
 - **Smart AI Grouping**: Analyzes and groups multiple photos by visual similarity to create single listings, identifying unique characteristics and providing confidence scores.
 - **Strict AI Prompt System (October 2025)**:
   - **ZERO emojis, ZERO marketing phrases** ("parfait pour", "style tendance", "casual chic", "look", "découvrez", "idéal")

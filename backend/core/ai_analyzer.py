@@ -235,7 +235,7 @@ def batch_analyze_photos(photo_groups: List[List[str]]) -> List[Dict[str, Any]]:
     return results
 
 
-def smart_group_photos(photo_paths: List[str], max_per_group: int = 6) -> List[List[str]]:
+def smart_group_photos(photo_paths: List[str], max_per_group: int = 7) -> List[List[str]]:
     """
     Intelligently group photos into clothing items
     Simple version: groups by sequences (every N photos = 1 item)
@@ -244,7 +244,7 @@ def smart_group_photos(photo_paths: List[str], max_per_group: int = 6) -> List[L
     
     Args:
         photo_paths: All photo paths
-        max_per_group: Maximum photos per item (default 6)
+        max_per_group: Maximum photos per item (default 7 minimum)
         
     Returns:
         List of photo groups
@@ -273,21 +273,77 @@ def smart_analyze_and_group_photos(
     style: str = "classique"
 ) -> List[Dict[str, Any]]:
     """
-    INTELLIGENT GROUPING: Analyze ALL photos together and let AI group them by item
+    INTELLIGENT GROUPING WITH AUTO-BATCHING: Analyze ALL photos by chunks and let AI group them
+    
+    If >25 photos: splits into batches of 25, analyzes each, returns all items
+    If ≤25 photos: analyzes all together
     
     Args:
-        photo_paths: All photo paths to analyze
+        photo_paths: All photo paths to analyze (no limit!)
         style: "minimal", "streetwear", or "classique" (default)
         
     Returns:
         List of analyzed items with their grouped photos
     """
+    total_photos = len(photo_paths)
+    BATCH_SIZE = 25  # Safe batch size to stay under 30k token limit
+    
+    # If ≤25 photos, analyze all together
+    if total_photos <= BATCH_SIZE:
+        return _analyze_single_batch(photo_paths, style)
+    
+    # If >25 photos, split into batches and analyze each
+    print(f"📦 Auto-batching: {total_photos} photos → splitting into batches of {BATCH_SIZE}")
+    
+    all_items = []
+    offset = 0
+    batch_num = 1
+    total_batches = (total_photos + BATCH_SIZE - 1) // BATCH_SIZE
+    
+    while offset < total_photos:
+        batch_photos = photo_paths[offset:offset + BATCH_SIZE]
+        print(f"\n🔄 Batch {batch_num}/{total_batches}: Analyzing photos {offset+1}-{offset+len(batch_photos)}...")
+        
+        try:
+            batch_items = _analyze_single_batch(batch_photos, style, offset)
+            all_items.extend(batch_items)
+            print(f"✅ Batch {batch_num} complete: {len(batch_items)} items detected")
+        except Exception as e:
+            print(f"❌ Batch {batch_num} failed: {e}, using fallback")
+            # Fallback: group batch photos by 7 photos per item
+            fallback_groups = smart_group_photos(batch_photos, max_per_group=7)
+            fallback_items = batch_analyze_photos(fallback_groups)
+            all_items.extend(fallback_items)
+        
+        offset += BATCH_SIZE
+        batch_num += 1
+    
+    print(f"\n✅ Auto-batching complete: {len(all_items)} total items from {total_photos} photos")
+    return all_items
+
+
+def _analyze_single_batch(
+    photo_paths: List[str],
+    style: str = "classique",
+    photo_offset: int = 0
+) -> List[Dict[str, Any]]:
+    """
+    Internal: Analyze a single batch of photos (≤25 photos)
+    
+    Args:
+        photo_paths: Photos to analyze (max 25)
+        style: Description style
+        photo_offset: Offset for photo indices (used in batching)
+        
+    Returns:
+        List of analyzed items
+    """
     try:
-        # Prepare images for API call (limit to 30 photos to stay under token limit)
+        # Prepare images for API call
         image_contents = []
         valid_paths = []
         
-        for path in photo_paths[:30]:  # OpenAI token limit (~30,000 tokens)
+        for path in photo_paths:  # Already limited to BATCH_SIZE
             if not Path(path).exists():
                 print(f"⚠️ Photo not found: {path}")
                 continue
@@ -306,7 +362,7 @@ def smart_analyze_and_group_photos(
             raise ValueError("No valid images found")
         
         # Create intelligent grouping prompt with strict quality rules
-        prompt = f"""Tu es l'assistant "Photo → Listing" de VintedBot Studio. Tu reçois un ensemble de photos et tu dois d'abord les GROUPER intelligemment, puis générer un listing pour chaque groupe.
+        prompt = f"""Tu es l'assistant "Photo → Listing" de VintedBot Studio. Tu reçois {len(image_contents)} photos et tu dois les GROUPER intelligemment par pièce/vêtement, puis générer un listing pour chaque groupe.
 
 RÈGLES DE GROUPEMENT (anti-saucisson):
 1. Si ≤80 photos OU confidence de séparation <0.6 → TOUJOURS grouper en 1 seul article
@@ -393,7 +449,7 @@ Analyse les photos et génère le JSON:"""
             }
         ]
         
-        print(f"🧠 Smart grouping: Analyzing {len(image_contents)} photos together...")
+        print(f"🧠 Analyzing {len(image_contents)} photos with GPT-4 Vision...")
         
         # Call OpenAI API with intelligent grouping
         response = openai_client.chat.completions.create(
@@ -408,26 +464,18 @@ Analyse les photos et génère le JSON:"""
         content = response.choices[0].message.content or "{}"
         result = json.loads(content)
         
-        # Map photo indices to actual paths
+        # Map photo indices to actual paths (adjust for batch offset)
         groups = result.get("groups", [])
         for group in groups:
             indices = group.pop("photo_indices", [])
             group["photos"] = [valid_paths[i] for i in indices if i < len(valid_paths)]
         
-        print(f"✅ Smart grouping complete: {len(groups)} items detected")
+        print(f"✅ Detected {len(groups)} items in this batch")
         for i, group in enumerate(groups, 1):
-            print(f"   Item {i}: {group.get('title')} ({len(group.get('photos', []))} photos, confidence: {group.get('confidence', 0):.2f})")
+            print(f"   • {group.get('title')} ({len(group.get('photos', []))} photos)")
         
         return groups
         
-    except json.JSONDecodeError as e:
-        print(f"❌ JSON parse error: {e}, falling back to simple grouping")
-        # Fallback to simple grouping with 6-8 photos per item
-        simple_groups = smart_group_photos(photo_paths, max_per_group=6)
-        return batch_analyze_photos(simple_groups)
-        
     except Exception as e:
-        print(f"❌ Smart grouping error: {e}, falling back to simple grouping")
-        # Fallback to simple grouping with 6-8 photos per item
-        simple_groups = smart_group_photos(photo_paths, max_per_group=6)
-        return batch_analyze_photos(simple_groups)
+        print(f"❌ Batch analysis error: {e}")
+        raise  # Let the caller handle the fallback

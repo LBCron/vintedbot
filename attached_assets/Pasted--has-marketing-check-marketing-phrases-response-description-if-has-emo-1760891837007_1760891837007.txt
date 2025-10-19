@@ -1,0 +1,75 @@
+        has_marketing = check_marketing_phrases(response.description)
+        
+        if (has_emojis or has_marketing) and attempt < max_retries:
+            print(f"Retry {attempt + 1}: emoji/marketing detected")
+            continue
+        
+        return response
+Dis-moi si tu as besoin du code Python complet ou si tu gères !
+
+
+
+
+cest toutjours 28 articles
+
+Lovable
+6:19 PM on Oct 19
+
+Thought for 12 seconds
+Je vais vérifier les logs pour comprendre le problème avec le comptage des articles.
+
+Show all
+2 tools used
+Je vais vérifier le code de la page de bulk upload pour comprendre pourquoi il détecte toujours 28 articles.
+
+Show all
+2 tools used
+Le problème vient du backend Python. Il détecte toujours 28 articles car auto_grouping est désactivé dans le frontend et le backend utilise probablement des données mock.
+
+Je vais activer l'auto-grouping et vous devrez vérifier votre backend Replit :
+
+Show all
+1 edit made
+Auto-grouping activé, mais le problème vient du backend Replit.
+
+Vérifiez votre backend Python (/bulk/photos/analyze) :
+
+Il utilise peut-être des données mock → Vérifiez qu'il analyse bien les vraies photos uploadées
+Vérifiez le prompt OpenAI → Assurez-vous qu'il utilise bien le SYSTEM_PROMPT que je vous ai donné
+Logs backend → Regardez les logs Replit pour voir combien de photos sont reçues et analysées
+Le backend doit appeler OpenAI Vision avec toutes les photos pour détecter le nombre d'articles automatiquement, pas retourner un nombre fixe.
+
+
+Restore
+
+Code
+
+Fix: Ensure correct article count
+Preview
+
+
+
+
+il faut que chaques pieces soit un articles pas de plusieurs pieces dans un articles et dans chaques articles il doit contenir un max de photos pour que les acheteurs visualsent ce quils achetent
+
+Lovable
+6:22 PM on Oct 19
+
+Thought for 12 seconds
+Je vais renforcer le prompt pour garantir qu'une pièce = un article avec toutes ses photos.
+
+Show all
+3 edits made
+J'ai mis à jour les règles de groupement front + backend.
+
+✅ Frontend : Auto-grouping activé, règles strictes "1 pièce = 1 article avec max photos"
+✅ Backend Python : Nouveau prompt créé dans BACKEND_PROMPT_PYTHON.md
+
+Prochaine étape :
+Copiez le prompt du fichier ci-dessous dans votre backend Replit (SYSTEM_PROMPT de l'appel OpenAI Vision) :
+
+Le backend doit maintenant :
+
+Appeler OpenAI avec TOUTES les photos en une fois
+Créer autant d'articles que de pièces détectées
+Inclure toutes les photos de chaque pièce dans son article
