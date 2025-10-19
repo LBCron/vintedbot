@@ -64,6 +64,7 @@ Zero failed drafts requirement - all drafts must pass strict validation before c
 ### Data Models (Pydantic Schemas)
 - Core models include `Item`, `ItemStatus` (draft, listed, sold, archived), `Condition`, `PriceSuggestion`, and `PriceHistory`.
 - Additional models for bulk operations, drafts, and job management.
+- **DraftItem Frontend Compatibility (October 2025)**: Added default values for `condition="Bon état"` and `confidence=0.8` to prevent validation errors when legacy drafts are missing these fields. Ensures seamless Lovable.dev frontend integration.
 
 ### Export System
 - Supports **multi-format exports**: CSV, JSON, PDF (using ReportLab), and Vinted-specific CSV with custom field mapping.

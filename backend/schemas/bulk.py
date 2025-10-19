@@ -29,13 +29,13 @@ class DraftItem(BaseModel):
     description: str
     price: float
     category: str
-    condition: str
+    condition: str = "Bon état"  # Default value for legacy drafts
     color: str
     brand: str
     size: str
     photos: List[str]  # URLs or temp_ids
     status: str = "draft"  # draft, ready, published, failed
-    confidence: float
+    confidence: float = 0.8  # Default value for legacy drafts
     created_at: datetime
     updated_at: datetime
     
