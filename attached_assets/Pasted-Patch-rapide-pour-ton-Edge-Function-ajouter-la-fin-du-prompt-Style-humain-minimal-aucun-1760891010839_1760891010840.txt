@@ -1,0 +1,271 @@
+Patch rapide pour ton Edge Function (à ajouter à la fin du prompt)
+
+
+Style humain minimal : aucune phrase creuse ni slogan (“découvrez”, “parfait pour”, “style tendance”, etc.). Interdits : emojis, superlatifs génériques. Si l’un apparaît, régénère la même sortie en les supprimant. La description doit tenir en 5–8 lignes factuelles : 1) quoi + couleur/coupe, 2) état concret, 3) matière/détails (col, bords-côtes, poches), 4) taille + repère morpho approximatif, 5) mesures à fournir, 6) logistique/remise lot. Retourne uniquement le JSON conforme au schéma.Prompt à coller (fin de ton System Prompt – Edge Function)
+
+
+Garde-fou multi-article : si les photos/métadonnées indiquent plus d’un article (ex. >1 marque, >1 taille adulte, couleurs/logos clairement distincts), ne génère pas un listing combiné. Renvoyer un JSON avec flags.publish_ready:false, flags.missing_fields:["split_required"] et split_hint (liste des articles supposés : {brand, size, color, count, photo_indices}). Aucun emoji, aucun marketing creux. Toujours UN SEUL JSON strict conforme au schéma.
+
+
+Règle UI (Lovable)
+
+
+Si split_required dans la sortie → afficher “2 articles détectés” + bouton “Scinder en 2 listings” qui répartit les photos et relance la génération par article.
+
+
+Bloquer Publish tant que publish_ready!==true.
+
+Lovable
+4:09 PM on Oct 19
+
+Thought for 14 seconds
+Je vais mettre à jour l'Edge Function avec les gardes-fous anti-emojis/superlatifs et la détection multi-articles, puis adapter l'UI pour gérer la scission.
+
+Show all
+3 edits made
+Prompt mis à jour avec le garde-fou multi-article et le style humain renforcé, UI adaptée pour détecter et bloquer la publication si plusieurs articles distincts sont détectés.
+
+
+Restore
+
+Code
+
+Update system prompt for listing generation
+Preview
+
+
+
+
+Informations du produit
+Titre
+36/200
+Sweatshirt Karl Lagerfeld vert clair
+Prix (€)
+35
+€
+Description
+524/2000
+Découvrez ce sweatshirt Karl Lagerfeld en très bon état, parfait pour un look décontracté et élégant. Confectionné à 100% en coton, il offre un confort exceptionnel et une douceur agréable au toucher. La couleur vert clair est idéale pour apporter une touche de fraîcheur à votre garde-robe. Ce modèle à col rond présente des finitions soignées et un design minimaliste avec le logo discret de la marque. Associez-le à un jean ou un pantalon chino pour un style chic et moderne. 🌿👕 #KarlLagerfeld #ModeÉlégante #CasualChic
+État
+Catégorie
+sweatshirt
+Marque
+Karl Lagerfeld
+Taille
+L
+Couleur toujours pas les types de description que je te demanndais au dessus, si cets le probleme de back tu me dis sinon tu corriges ca tout de suite et pour chaque article il y a que 4 photos cest pas normal il faut en avoir plus
+
+Lovable
+4:46 PM on Oct 19
+
+Thought for 20 seconds
+Je vais corriger le système de validation backend pour bloquer les emojis/superlatifs et vérifier le problème des photos.
+
+Show all
+2 tools used
+Je vais corriger le système de validation backend pour bloquer strictement les emojis/superlatifs avec retry automatique, et vérifier le problème des photos.
+
+Show all
+1 edit made
+Validation backend renforcée avec retry automatique (3 tentatives max) et détection stricte des emojis/phrases marketing. Vérifions maintenant le problème des 4 photos.
+
+Show all
+5 tools used
+J'ai trouvé le problème ! Les photos sont passées via URL query params (ligne 629 BulkDrafts.tsx), ce qui a une limite de ~2000 caractères. Les URLs longues sont tronquées, d'où seulement 4 photos. Je vais corriger en utilisant le state de navigation React Router.
+
+Show all
+2 edits made
+✅ Corrigé ! Backend renforcé avec retry automatique (3 tentatives) et détection stricte des emojis/phrases marketing. Le problème des 4 photos venait de la limite des URL query params (~2000 chars) - maintenant on utilise React Router state pour passer toutes les photos.
+
+
+Restore
+
+Code
+
+Fix description and photo count
+Preview
+
+
+
+
+si tu veux me donner des prompts pour le backend tu me dis je lui dis quoi comme prompt
+
+Lovable
+4:49 PM on Oct 19
+
+Thought for 24 seconds
+Oui, si ton backend Python (sur Replit) appelle aussi OpenAI pour générer les listings initiaux (via /bulk/generate), il faut mettre à jour son prompt système aussi.
+
+Voici le prompt à utiliser côté backend Python (remplace ton SYSTEM_PROMPT actuel) :
+
+
+SYSTEM_PROMPT = """Tu es l'assistant "Photo → Listing" de VintedBot Studio. Tu reçois un ensemble de photos et tu dois d'abord les GROUPER intelligemment, puis générer un listing pour chaque groupe.
+
+RÈGLES DE GROUPEMENT (auto_grouping):
+1. Si ≤80 photos OU confidence de séparation <0.6 → TOUJOURS grouper en 1 seul article
+2. Détecter les mini-clusters ≤2 photos (étiquettes/détails/macros) → les fusionner automatiquement avec le plus grand groupe
+3. Pour chaque groupe, analyser : même vêtement/objet, même couleur dominante, même style
+4. Retourner { group_count, groups[] } où chaque groupe contient:
+   - photo_indices: [0,1,2,3] (indices des photos dans le tableau d'entrée)
+   - confidence: 0.0-1.0 (confiance du groupement)
+   - item_json: { category, condition, brand_tier, color, size, measurements, defects, auth_proof }
+   - listing_json: { title, description, hashtags, price_suggestion, qa_macros, ab_titles, metadata, flags }
+
+TAILLES (normalisation tops/vêtements) :
+- Conserver original_size (ex. 16Y / 165 cm)
+- Si taille enfant/ado (\\d+Y, ans) ou hauteur (cm), calculer normalized_size adulte XS/S/M/L… avec confidence et range_cm approximatif
+- Règles génériques unisex (tops) : 152–158 cm → XXS (0.7) ; 160–166 cm → XS (0.8) ; 167–172 cm → S (0.7)
+- Ajuster d'une demi-taille si brand_tier=premium ou fit "oversize/fit slim", et baisser confidence de 0.1
+- Ajouter size_notes (ex. « ≈ XS adulte, équiv. 16Y/165 cm ; vérifier mesures »)
+- Quality gate taille : si seule la taille enfant est connue mais normalized_size.confidence ≥ 0.6, publish_ready peut rester true ; sinon false et ajouter dans missing_fields: mesures poitrine/longueur
+
+LISTING_JSON (pour chaque groupe):
+
+title (≤70 chars, format « {Catégorie} {Couleur} {Marque?} {Taille?} – {État} » ; si taille normalisée disponible, l'inclure : « XS (≈ 16Y/165 cm) »)
+  Exemple: "T-shirt noir Burberry XS (≈ 16Y/165 cm) – très bon état"
+
+description (5–8 lignes, FR, style humain minimal, sans emojis ni superlatifs)
+  Structure: 
+  1) ce que c'est (catégorie/coupe/logo)
+  2) état factuel + défauts précis
+  3) matière/fit/saison/extras
+  4) taille d'origine + équivalence adulte si calculée
+  5) invite à vérifier mesures en cm
+  6) logistique + remise lot
+  
+  Exemple: "T-shirt Burberry noir, logo imprimé devant, coupe classique. Très bon état : matière propre, couleur uniforme, pas de trou ou tâche visibles. Coton confortable, col rond. Taille d'origine : 16Y / 165 cm — équiv. XS adulte selon le guide générique. Mesures conseillées à ajouter : poitrine (à plat) et longueur dos, en cm. Envoi rapide ; remise possible si achat de plusieurs pièces."
+
+hashtags (3–5 pertinents : #marque #catégorie #taille #couleur + #streetwear|#basics|#vintage)
+  Exemple: #burberry #tshirt #noir #xs #streetwear
+
+price_suggestion {min,target,max,rationale≤180c}
+  Bases catégorie : t-shirt 10€, hoodie 25€, jeans 25€, veste 35€, joggers 18€, sneakers 45€
+  Multiplicateurs :
+  • condition: neuf 1.00 / Très bon 0.85 / Bon 0.70 / Correct 0.55
+  • brand_tier: premium 1.30 / standard 1.00 / entrée 0.80
+  • bonus matière: +0.15 (laine/cachemire/cuir) ou +0.20 (down/gore-tex/tech)
+  • age_trend: up +0.10 / flat 0 / down −0.10
+  • photos_adj: −0.05 si photos_count<3
+  Si comps_price_median, rapprocher target ±10%
+  Si cost_basis, imposer plancher cost_basis*(1+(target_margin||0.25))
+  Arrondis psychologiques : <40€ finit par 9 ; 40–99€ → 49/59/69/79/89/99 ; ≥100€ entier propre
+  Exemple: min 49€ · target 59€ · max 69€ · rationale: "t-shirt premium, très bon état, arrondis psychologiques"
+
+ab_titles (3 variantes : marque d'abord / catégorie d'abord / taille-fit d'abord)
+
+qa_macros {availability, bundle, shipping, negotiation}
+
+metadata {keywords[], highlights[], defects_noted:bool, photo_checklist[]}
+
+flags {missing_fields[], risky_content[], auth_claim_allowed:bool (true si auth_proof:true), publish_ready:bool}
+
+QUALITY GATE (critères Sans-Échec):
+- title.length ≤70
+- 3 ≤ hashtags.length ≤5
+- AUCUN emoji dans title/description
+- AUCUN superlatif dans title/description ("magnifique", "prestigieuse", "haute qualité", "parfait pour", "tendance", "découvrez", "idéal", "élégant", "chic")
+- AUCUNE phrase marketing ("parfait pour", "idéal pour", "style tendance", "casual chic", "look", "garde-robe")
+- Si seule la taille enfant est connue mais normalized_size.confidence ≥ 0.6, publish_ready peut rester true
+- Sinon publish_ready:false et ajouter dans missing_fields
+- flags.missing_fields.length === 0 pour publish_ready:true
+
+INTERDITS ABSOLUS: emojis, marketing creux ("découvrez", "parfait pour", "style tendance", slogans), liens/contacts, promesses hors plateforme, "authentique/original" sans preuve.
+
+STYLE HUMAIN MINIMAL : aucune phrase creuse ni slogan. Si emoji/superlatif détecté, régénère la même sortie en les supprimant. La description doit tenir en 5–8 lignes factuelles : 1) quoi + couleur/coupe, 2) état concret, 3) matière/détails (col, bords-côtes, poches), 4) taille + repère morpho approximatif, 5) mesures à fournir, 6) logistique/remise lot.
+
+GARDE-FOU MULTI-ARTICLE : si les photos/métadonnées indiquent plus d'un article (ex. >1 marque, >1 taille adulte, couleurs/logos clairement distincts), ne génère PAS un listing combiné. Renvoie un JSON avec flags.publish_ready:false, flags.missing_fields:["split_required"] et split_hint:{count, items:[{brand, size, color, photo_indices}]} listant les articles supposés.
+
+SORTIE OBLIGATOIRE : UN SEUL objet JSON valide conforme au schéma. Ne "cherche pas sur Internet" : applique seulement ces règles."""
+Ensuite, ajoute aussi un système de retry dans ton code Python qui appelle OpenAI, similaire à ce que j'ai fait :
+
+
+async def generate_with_retry(photos, metadata, max_retries=2):
+    for attempt in range(max_retries + 1):
+        is_retry_clean = attempt > 0
+        
+        user_prompt = f"Analyse ces {len(photos)} photos et génère un listing Vinted."
+        if is_retry_clean:
+            user_prompt += f" ⚠️ CRITIQUE: Tentative {attempt + 1}/3. ZÉRO emoji, ZÉRO phrase marketing. Description FACTUELLE uniquement."
+        
+        # Appel OpenAI...
+        response = await openai_client.chat.completions.create(...)
+        
+        # Valider la réponse
+        has_emojis = check_emojis(response.description)
+        has_marketing = check_marketing_phrases(response.description)
+        
+        if (has_emojis or has_marketing) and attempt < max_retries:
+            print(f"Retry {attempt + 1}: emoji/marketing detected")
+            continue
+        
+        return response
+Dis-moi si tu as besoin du code Python complet ou si tu gères !
+
+
+
+
+cest toutjours 28 articles
+
+Lovable
+6:19 PM on Oct 19
+
+Thought for 12 seconds
+Je vais vérifier les logs pour comprendre le problème avec le comptage des articles.
+
+Show all
+2 tools used
+Je vais vérifier le code de la page de bulk upload pour comprendre pourquoi il détecte toujours 28 articles.
+
+Show all
+2 tools used
+Le problème vient du backend Python. Il détecte toujours 28 articles car auto_grouping est désactivé dans le frontend et le backend utilise probablement des données mock.
+
+Je vais activer l'auto-grouping et vous devrez vérifier votre backend Replit :
+
+Show all
+1 edit made
+Auto-grouping activé, mais le problème vient du backend Replit.
+
+Vérifiez votre backend Python (/bulk/photos/analyze) :
+
+Il utilise peut-être des données mock → Vérifiez qu'il analyse bien les vraies photos uploadées
+Vérifiez le prompt OpenAI → Assurez-vous qu'il utilise bien le SYSTEM_PROMPT que je vous ai donné
+Logs backend → Regardez les logs Replit pour voir combien de photos sont reçues et analysées
+Le backend doit appeler OpenAI Vision avec toutes les photos pour détecter le nombre d'articles automatiquement, pas retourner un nombre fixe.
+
+
+Restore
+
+Code
+
+Fix: Ensure correct article count
+Preview
+
+
+
+
+il faut que chaques pieces soit un articles pas de plusieurs pieces dans un articles et dans chaques articles il doit contenir un max de photos pour que les acheteurs visualsent ce quils achetent
+
+Lovable
+6:22 PM on Oct 19
+
+Thought for 12 seconds
+Je vais renforcer le prompt pour garantir qu'une pièce = un article avec toutes ses photos.
+
+Je vais renforcer le prompt pour garantir qu'une pièce = un article avec toutes ses photos.
+
+Show all
+3 edits made
+J'ai mis à jour les règles de groupement front + backend.
+
+✅ Frontend : Auto-grouping activé, règles strictes "1 pièce = 1 article avec max photos"
+✅ Backend Python : Nouveau prompt créé dans BACKEND_PROMPT_PYTHON.md
+
+Prochaine étape :
+Copiez le prompt du fichier ci-dessous dans votre backend Replit (SYSTEM_PROMPT de l'appel OpenAI Vision) :
+
+Le backend doit maintenant :
+
+Appeler OpenAI avec TOUTES les photos en une fois
+Créer autant d'articles que de pièces détectées
+Inclure toutes les photos de chaque pièce dans son article

@@ -283,11 +283,11 @@ def smart_analyze_and_group_photos(
         List of analyzed items with their grouped photos
     """
     try:
-        # Prepare ALL images for API call (limit to 50 photos max)
+        # Prepare images for API call (limit to 30 photos to stay under token limit)
         image_contents = []
         valid_paths = []
         
-        for path in photo_paths[:50]:  # OpenAI limit
+        for path in photo_paths[:30]:  # OpenAI token limit (~30,000 tokens)
             if not Path(path).exists():
                 print(f"⚠️ Photo not found: {path}")
                 continue
@@ -422,12 +422,12 @@ Analyse les photos et génère le JSON:"""
         
     except json.JSONDecodeError as e:
         print(f"❌ JSON parse error: {e}, falling back to simple grouping")
-        # Fallback to simple grouping
-        simple_groups = smart_group_photos(photo_paths, max_per_group=4)
+        # Fallback to simple grouping with 6-8 photos per item
+        simple_groups = smart_group_photos(photo_paths, max_per_group=6)
         return batch_analyze_photos(simple_groups)
         
     except Exception as e:
         print(f"❌ Smart grouping error: {e}, falling back to simple grouping")
-        # Fallback to simple grouping
-        simple_groups = smart_group_photos(photo_paths, max_per_group=4)
+        # Fallback to simple grouping with 6-8 photos per item
+        simple_groups = smart_group_photos(photo_paths, max_per_group=6)
         return batch_analyze_photos(simple_groups)
