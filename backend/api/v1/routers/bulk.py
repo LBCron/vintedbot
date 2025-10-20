@@ -186,7 +186,7 @@ async def process_bulk_job(
                 condition=result.get('condition', 'Bon état'),
                 color=result.get('color', 'Non spécifié'),
                 brand=result.get('brand', 'Non spécifié'),
-                size=result.get('size', 'Non spécifié'),
+                size=result.get('size', 'Taille non visible'),  # Use new default
                 photos=photo_urls,
                 status="ready",
                 confidence=result.get('confidence', 0.8),
@@ -195,10 +195,36 @@ async def process_bulk_job(
                 analysis_result=result
             )
             
+            # Save draft to in-memory storage
             drafts_storage[draft_id] = draft
             bulk_jobs[job_id]["drafts"].append(draft_id)
             
-            print(f"✅ Created draft: {draft.title} ({draft.price}€)")
+            # Save draft to SQLite for persistence
+            try:
+                # Store additional fields in item_json
+                item_json = {
+                    "condition": draft.condition,
+                    "photos": photo_urls,
+                    "confidence": draft.confidence,
+                    "category": draft.category,
+                    "analysis_result": result
+                }
+                
+                get_store().save_draft(
+                    draft_id=draft_id,
+                    title=draft.title,
+                    description=draft.description,
+                    price=draft.price,
+                    category=draft.category,
+                    color=draft.color,
+                    brand=draft.brand,
+                    size=draft.size,
+                    item_json=item_json,
+                    status="ready"
+                )
+                print(f"✅ Created draft (SQLite + memory): {draft.title} ({draft.price}€)")
+            except Exception as e:
+                print(f"⚠️ Failed to save draft to SQLite: {e} (continuing with in-memory only)")
         
         bulk_jobs[job_id]["status"] = "completed"
         bulk_jobs[job_id]["completed_at"] = datetime.utcnow()
@@ -828,12 +854,13 @@ async def analyze_bulk_photos(
     auto_grouping: bool = Form(default=True)
 ):
     """
-    📸 ANALYZE PHOTOS (Frontend-compatible endpoint)
+    📸 ANALYZE PHOTOS WITH REAL AI (Frontend-compatible endpoint)
     
-    Analyzes uploaded photos and returns grouping info.
+    Uploads photos and launches REAL AI analysis in background.
     This endpoint is called by the Lovable frontend.
     
     **Returns:** {job_id, status, total_photos, estimated_items, plan_id}
+    **Status:** "processing" (use GET /bulk/jobs/{job_id} to poll progress)
     """
     try:
         if not files:
@@ -853,37 +880,58 @@ async def analyze_bulk_photos(
                 detail=f"Invalid formats: {', '.join(invalid_files[:5])}"
             )
         
-        # Save photos temporarily and create plan
-        plan_id = str(uuid.uuid4())[:8]
-        photo_paths = save_uploaded_photos(files, plan_id)
+        # Save photos temporarily and create job ID
+        job_id = str(uuid.uuid4())[:8]
+        photo_paths = save_uploaded_photos(files, job_id)
         
-        # Determine single-item mode:
-        # - If auto_grouping=False → Force single-item (all photos = 1 article)
-        # - If auto_grouping=True AND ≤80 photos → Single-item by default
-        # - If auto_grouping=True AND >80 photos → Multi-item (GPT-4 Vision analysis)
-        force_single_item = (
-            not auto_grouping or photo_count <= settings.SINGLE_ITEM_DEFAULT_MAX_PHOTOS
-        )
-        
-        # Smart estimation: ~5-6 photos per item on average (better UX for frontend)
-        # This is just an initial estimate - GPT-4 Vision will detect the real count
+        # Smart estimation: ~5-6 photos per item on average
         estimated_items = max(1, photo_count // 5)
         
-        # Save plan to PostgreSQL database for persistence
+        # Initialize job status in memory
+        bulk_jobs[job_id] = {
+            "job_id": job_id,
+            "status": "processing",
+            "total_photos": photo_count,
+            "processed_photos": 0,
+            "total_items": estimated_items,
+            "completed_items": 0,
+            "failed_items": 0,
+            "drafts": [],
+            "errors": [],
+            "started_at": datetime.utcnow(),
+            "completed_at": None,
+            "progress_percent": 0.0
+        }
+        
+        # Determine analysis mode
+        use_smart_grouping = auto_grouping and photo_count > settings.SINGLE_ITEM_DEFAULT_MAX_PHOTOS
+        
+        # Launch AI analysis in background
+        asyncio.create_task(
+            process_bulk_job(
+                job_id=job_id,
+                photo_paths=photo_paths,
+                photos_per_item=7,  # Default 7 photos per item
+                use_smart_grouping=use_smart_grouping,
+                style="classique"
+            )
+        )
+        
+        # Save initial plan to database for persistence
         save_photo_plan(
-            plan_id=plan_id,
+            plan_id=job_id,
             photo_paths=photo_paths,
             photo_count=photo_count,
             auto_grouping=auto_grouping,
             estimated_items=estimated_items
         )
         
-        print(f"📸 Analyzed {photo_count} photos → plan_id: {plan_id}, estimated: {estimated_items} items (saved to DB)")
+        print(f"📸 Launched AI analysis job {job_id}: {photo_count} photos, estimated {estimated_items} items")
         
         return {
-            "job_id": plan_id,
-            "plan_id": plan_id,
-            "status": "completed",
+            "job_id": job_id,
+            "plan_id": job_id,
+            "status": "processing",  # Changed from "completed" to "processing"
             "total_photos": photo_count,
             "estimated_items": estimated_items
         }
