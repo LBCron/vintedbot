@@ -81,25 +81,56 @@ def validate_image_file(file: UploadFile) -> bool:
 
 
 def save_uploaded_photos(files: List[UploadFile], job_id: str) -> List[str]:
-    """Save uploaded photos and return file paths"""
+    """Save uploaded photos and return file paths (converts HEIC to JPEG)"""
     temp_dir = Path("backend/data/temp_photos") / job_id
     temp_dir.mkdir(parents=True, exist_ok=True)
     
     saved_paths = []
     
     for i, file in enumerate(files):
-        # Generate unique filename
-        ext = Path(file.filename or "photo.jpg").suffix or ".jpg"
-        filename = f"photo_{i:03d}{ext}"
-        filepath = temp_dir / filename
-        
-        # Save file
+        # Read file content
         content = file.file.read()
-        with open(filepath, "wb") as f:
-            f.write(content)
+        
+        # Check if file is HEIC/HEIF
+        original_ext = Path(file.filename or "photo.jpg").suffix.lower()
+        is_heic = original_ext in ['.heic', '.heif']
+        
+        if is_heic:
+            # Convert HEIC to JPEG
+            try:
+                from PIL import Image
+                import io
+                
+                # Open HEIC image from bytes
+                img = Image.open(io.BytesIO(content))
+                
+                # Convert to RGB if needed
+                if img.mode != 'RGB':
+                    img = img.convert('RGB')
+                
+                # Save as JPEG
+                filename = f"photo_{i:03d}.jpg"
+                filepath = temp_dir / filename
+                img.save(filepath, 'JPEG', quality=90)
+                
+                print(f"✅ Converted HEIC → JPEG: {filename}")
+            except Exception as e:
+                print(f"❌ Failed to convert HEIC {file.filename}: {e}")
+                # Fallback: save as original
+                filename = f"photo_{i:03d}{original_ext}"
+                filepath = temp_dir / filename
+                with open(filepath, "wb") as f:
+                    f.write(content)
+        else:
+            # Save as-is (JPEG, PNG, etc.)
+            ext = original_ext or ".jpg"
+            filename = f"photo_{i:03d}{ext}"
+            filepath = temp_dir / filename
+            with open(filepath, "wb") as f:
+                f.write(content)
+            print(f"💾 Saved: {filename}")
         
         saved_paths.append(str(filepath))
-        print(f"💾 Saved: {filepath}")
     
     return saved_paths
 
