@@ -17,7 +17,7 @@ from backend.database import init_db
 from backend.jobs import start_scheduler, stop_scheduler
 from backend.utils.logger import logger, log_request
 from backend.routes import auth, messages, publish, listings, offers, orders, health, ws
-from backend.api.v1.routers import ingest, health as health_v1, vinted, bulk, ai
+from backend.api.v1.routers import ingest, health as health_v1, vinted, bulk, ai, auth as auth_v1
 from backend.settings import settings
 
 load_dotenv()
@@ -116,6 +116,7 @@ app.include_router(orders.router)
 app.include_router(ws.router)
 
 # Include API v1 routers
+app.include_router(auth_v1.router, tags=["auth"])  # Auth endpoints (/auth/register, /auth/login, /auth/me)
 app.include_router(ingest.router, prefix="/api/v1", tags=["api-v1"])
 app.include_router(health_v1.router, prefix="/api/v1", tags=["api-v1"])
 app.include_router(vinted.router, tags=["vinted"])

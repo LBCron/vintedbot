@@ -134,6 +134,59 @@ class SQLiteStore:
                 )
             """)
             
+            # 6. Users table (SaaS multi-user support)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    email TEXT UNIQUE NOT NULL,
+                    hashed_password TEXT NOT NULL,
+                    name TEXT,
+                    plan TEXT DEFAULT 'free' CHECK(plan IN ('free','starter','pro','scale')),
+                    status TEXT DEFAULT 'active' CHECK(status IN ('active','suspended','cancelled','trial')),
+                    trial_end_date TEXT,
+                    stripe_customer_id TEXT,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            
+            # 7. Subscriptions table (Stripe billing)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS subscriptions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    stripe_subscription_id TEXT UNIQUE,
+                    plan TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    current_period_start TEXT,
+                    current_period_end TEXT,
+                    cancel_at_period_end INTEGER DEFAULT 0,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                )
+            """)
+            
+            # 8. User quotas table (dynamic quota management)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_quotas (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER UNIQUE NOT NULL,
+                    drafts_created INTEGER DEFAULT 0,
+                    drafts_limit INTEGER DEFAULT 50,
+                    publications_month INTEGER DEFAULT 0,
+                    publications_limit INTEGER DEFAULT 10,
+                    ai_analyses_month INTEGER DEFAULT 0,
+                    ai_analyses_limit INTEGER DEFAULT 20,
+                    photos_storage_mb INTEGER DEFAULT 0,
+                    photos_storage_limit_mb INTEGER DEFAULT 500,
+                    reset_date TEXT,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                )
+            """)
+            
             # Create indexes for performance
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_drafts_user ON drafts(user_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_drafts_status ON drafts(status)")
@@ -141,6 +194,9 @@ class SQLiteStore:
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_publog_idem ON publish_log(idempotency_key)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_plans_plan_id ON photo_plans(plan_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_jobs_job_id ON bulk_jobs(job_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions(user_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_quotas_user ON user_quotas(user_id)")
             
             conn.commit()
     
@@ -464,6 +520,152 @@ class SQLiteStore:
                 "started_at": row["started_at"],
                 "completed_at": row["completed_at"]
             }
+    
+    # ==================== USERS & AUTH ====================
+    
+    def create_user(
+        self,
+        email: str,
+        hashed_password: str,
+        name: Optional[str] = None,
+        plan: str = "free"
+    ) -> Dict[str, Any]:
+        """Create a new user account"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO users (email, hashed_password, name, plan, status)
+                VALUES (?, ?, ?, ?, 'active')
+            """, (email, hashed_password, name, plan))
+            user_id = cursor.lastrowid
+            
+            # Create default quotas for new user
+            cursor.execute("""
+                INSERT INTO user_quotas (
+                    user_id, 
+                    drafts_limit, 
+                    publications_limit, 
+                    ai_analyses_limit,
+                    photos_storage_limit_mb,
+                    reset_date
+                )
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (
+                user_id,
+                50 if plan == "free" else (200 if plan == "starter" else (1000 if plan == "pro" else 999999)),
+                10 if plan == "free" else (50 if plan == "starter" else (200 if plan == "pro" else 999999)),
+                20 if plan == "free" else (100 if plan == "starter" else (500 if plan == "pro" else 999999)),
+                500 if plan == "free" else (2000 if plan == "starter" else (10000 if plan == "pro" else 99999)),
+                (datetime.utcnow() + timedelta(days=30)).isoformat()
+            ))
+            
+            conn.commit()
+            return self.get_user_by_id(user_id)
+    
+    def get_user_by_email(self, email: str) -> Optional[Dict[str, Any]]:
+        """Get user by email (for login)"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
+            row = cursor.fetchone()
+            if not row:
+                return None
+            
+            return {
+                "id": row["id"],
+                "email": row["email"],
+                "hashed_password": row["hashed_password"],
+                "name": row["name"],
+                "plan": row["plan"],
+                "status": row["status"],
+                "trial_end_date": row["trial_end_date"],
+                "stripe_customer_id": row["stripe_customer_id"],
+                "created_at": row["created_at"],
+                "updated_at": row["updated_at"]
+            }
+    
+    def get_user_by_id(self, user_id: int) -> Optional[Dict[str, Any]]:
+        """Get user by ID"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+            row = cursor.fetchone()
+            if not row:
+                return None
+            
+            return {
+                "id": row["id"],
+                "email": row["email"],
+                "hashed_password": row["hashed_password"],
+                "name": row["name"],
+                "plan": row["plan"],
+                "status": row["status"],
+                "trial_end_date": row["trial_end_date"],
+                "stripe_customer_id": row["stripe_customer_id"],
+                "created_at": row["created_at"],
+                "updated_at": row["updated_at"]
+            }
+    
+    def get_user_quotas(self, user_id: int) -> Optional[Dict[str, Any]]:
+        """Get user quotas and current usage"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM user_quotas WHERE user_id = ?", (user_id,))
+            row = cursor.fetchone()
+            if not row:
+                return None
+            
+            return {
+                "user_id": row["user_id"],
+                "drafts_created": row["drafts_created"],
+                "drafts_limit": row["drafts_limit"],
+                "publications_month": row["publications_month"],
+                "publications_limit": row["publications_limit"],
+                "ai_analyses_month": row["ai_analyses_month"],
+                "ai_analyses_limit": row["ai_analyses_limit"],
+                "photos_storage_mb": row["photos_storage_mb"],
+                "photos_storage_limit_mb": row["photos_storage_limit_mb"],
+                "reset_date": row["reset_date"]
+            }
+    
+    def increment_quota_usage(
+        self,
+        user_id: int,
+        quota_type: str,
+        amount: int = 1
+    ):
+        """Increment quota usage (drafts_created, publications_month, ai_analyses_month)"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            
+            valid_types = ["drafts_created", "publications_month", "ai_analyses_month", "photos_storage_mb"]
+            if quota_type not in valid_types:
+                raise ValueError(f"Invalid quota_type: {quota_type}")
+            
+            cursor.execute(f"""
+                UPDATE user_quotas 
+                SET {quota_type} = {quota_type} + ?
+                WHERE user_id = ?
+            """, (amount, user_id))
+            conn.commit()
+    
+    def check_quota_available(self, user_id: int, quota_type: str) -> bool:
+        """Check if user has quota available for action"""
+        quotas = self.get_user_quotas(user_id)
+        if not quotas:
+            return False
+        
+        quota_mappings = {
+            "drafts": ("drafts_created", "drafts_limit"),
+            "publications": ("publications_month", "publications_limit"),
+            "ai_analyses": ("ai_analyses_month", "ai_analyses_limit")
+        }
+        
+        if quota_type not in quota_mappings:
+            return True
+        
+        used_field, limit_field = quota_mappings[quota_type]
+        return quotas[used_field] < quotas[limit_field]
     
     # ==================== TTL & MAINTENANCE ====================
     
