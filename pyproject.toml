@@ -30,6 +30,7 @@ dependencies = [
     "scikit-learn",
     "psycopg2-binary>=2.9.11",
     "sqlalchemy>=2.0.44",
+    "prometheus-client>=0.23.1",
 ]
 
 [build-system]
