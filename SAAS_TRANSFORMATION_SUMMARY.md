@@ -104,11 +104,25 @@
   - **Fix:** Now validates `current_usage + amount <= limit` BEFORE consuming
   - **Impact:** All multi-unit consumption now properly blocked at limits
 
-- **✅ PROTECTED ENDPOINTS:**
-  - `/bulk/ingest` → AI quota (1 per analysis) + storage quota
-  - `/bulk/generate` → Drafts quota (based on estimated items, validated before creation)
-  - `/bulk/photos/analyze` → AI quota (1 per analysis) + storage quota
-  - `/vinted/listings/publish` → Publications quota (1 per publish, dry_run excluded)
+- **✅ PROTECTED ENDPOINTS (17 total):**
+  - **Bulk Operations:**
+    - `/bulk/ingest` → AI quota + storage quota
+    - `/bulk/upload` → AI quota + storage quota
+    - `/bulk/analyze` → AI quota + storage quota
+    - `/bulk/photos/analyze` → AI quota + storage quota
+    - `/bulk/plan` → Authentication required
+    - `/bulk/generate` → Drafts quota (multi-unit validated)
+    - `/bulk/drafts/{id}` (PATCH/DELETE) → User ownership validation
+  - **Vinted Automation:**
+    - `/vinted/photos/upload` → AI quota (if auto_analyze=true)
+    - `/vinted/listings/prepare` → User ownership validation
+    - `/vinted/listings/publish` → Publications quota
+  - **Ingest:**
+    - `/ingest/upload` → Drafts quota + storage quota
+  - **Authentication:**
+    - `/auth/register`, `/auth/login`, `/auth/me` → JWT authentication
+  - **Billing:**
+    - `/billing/checkout`, `/billing/portal` → User authentication
 
 - **✅ TESTING RESULTS:**
   - ✅ User creation → Quotas initialized (free: 50 drafts, 10 pubs, 20 AI, 500MB)

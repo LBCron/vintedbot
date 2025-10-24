@@ -240,10 +240,6 @@ async def upload_photos(
         if len(files) > 20:
             raise HTTPException(status_code=400, detail="Maximum 20 photos allowed")
         
-        # Check storage quota
-        total_size_mb = sum([f.size for f in files if f.size]) / (1024 * 1024)
-        await check_storage_quota(current_user, total_size_mb)
-        
         # Check AI quota if auto-analysis enabled
         if auto_analyze:
             await check_and_consume_quota(current_user, "ai_analyses", amount=1)
