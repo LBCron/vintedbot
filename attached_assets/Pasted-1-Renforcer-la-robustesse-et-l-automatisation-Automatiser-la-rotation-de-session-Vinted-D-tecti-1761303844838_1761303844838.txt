@@ -1,0 +1,40 @@
+1. Renforcer la robustesse et l’automatisation
+Automatiser la rotation de session Vinted
+→ Détection automatique d’expiration de session, renouvellement sans intervention manuelle (refresh token, notification utilisateur si blocage).
+Retry intelligent sur tous les points de friction
+→ Gestion centralisée des erreurs récurrentes : quotas, timeouts, erreurs Vinted, erreurs IA, etc.
+Dead-letter queue
+→ Stocker tous les jobs échoués pour analyse et relance manuelle ou automatique.
+2. Scalabilité et stockage cloud
+Migration du stockage temporaire des photos vers S3/Cloudflare R2
+→ Plus de limites locales, purge automatique, URLs stables.
+Passage SQLite → PostgreSQL
+→ Multi-utilisateurs performant, requêtes concurrentes, backups robustes, RLS (Row Level Security) possible.
+3. Expérience utilisateur et intégration front-end
+Webhooks de notification
+→ Notifier le front-end (ou Discord/TG) à chaque fin de publication, échec, ou action clé.
+Dashboard utilisateur
+→ Visualisation des jobs, brouillons, logs, quotas, stats temps réel.
+Onboarding simplifié
+→ Wizard de connexion, upload drag & drop, feedback en temps réel.
+4. Intelligence produit et optimisation IA
+Finetuning GPT-4 Vision sur dataset Vinted
+→ Descriptions encore plus adaptées au marché FR, détection automatique des marques/logos (OCR).
+Pricing dynamique basé sur scraping Vinted
+→ Ajustement automatique des prix selon la concurrence en temps réel.
+A/B testing des descriptions
+→ Mesure de l’impact sur le taux de vues/favoris/ventes, optimisation continue.
+5. Automatisation avancée et support pro
+Auto-relisting / baisse automatique du prix
+→ Si non vendu sous X jours, relist + baisse -5 % auto.
+Réponse automatique aux messages acheteurs
+→ FAQ IA, réponses rapides intégrées.
+Analytics avancé
+→ Suivi des ventes, suggestions d’optimisation, export CSV.
+6. Sécurité, conformité et fiabilité
+Rotation automatique des clés/chiffrement
+→ Sécurité renforcée, audit régulier.
+Tests de restauration (PITR, snapshots)
+→ Vérifier la capacité à restaurer chaque compte individuellement.
+Audit et alertes
+→ Monitoring temps réel, alertes sur anomalies, logs centralisés.
