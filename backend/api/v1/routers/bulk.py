@@ -10,7 +10,7 @@ import zipfile
 from datetime import datetime
 from typing import List, Dict, Optional
 from pathlib import Path
-from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Query, Form
+from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Query, Form, Depends
 from fastapi.responses import JSONResponse, StreamingResponse
 from PIL import Image
 import io
@@ -22,6 +22,8 @@ from backend.core.ai_analyzer import (
     smart_analyze_and_group_photos
 )
 from backend.core.storage import get_store
+from backend.core.auth import get_current_user, User
+from backend.middleware.quota_checker import check_and_consume_quota, check_storage_quota
 from backend.schemas.bulk import (
     BulkUploadResponse,
     BulkJobStatus,
@@ -510,7 +512,8 @@ async def process_single_item_job(job_id: str, photo_paths: List[str], style: st
 async def bulk_ingest_photos(
     files: List[UploadFile] = File(...),
     grouping_mode: str = Query(default="auto", description="Grouping mode: 'auto', 'single_item', or 'multi_item'"),
-    style: str = Query(default="classique", description="Description style: minimal, streetwear, or classique")
+    style: str = Query(default="classique", description="Description style: minimal, streetwear, or classique"),
+    current_user: User = Depends(get_current_user)
 ):
     """
     📦 SAFE BULK INGEST - Zero failed drafts
@@ -532,12 +535,21 @@ async def bulk_ingest_photos(
     3. If multi_item: Uses AI Vision to intelligently group photos
     
     **Returns:** job_id to track progress
+    
+    **Requires:** Authentication + AI analyses quota
     """
     try:
         if not files:
             raise HTTPException(status_code=400, detail="No files provided")
         
         photo_count = len(files)
+        
+        # Check AI quota (1 analysis for any number of photos)
+        await check_and_consume_quota(current_user, "ai_analyses", amount=1)
+        
+        # Check storage quota (estimate 2MB per photo)
+        total_size_mb = sum([f.size for f in files if f.size]) / (1024 * 1024)
+        await check_storage_quota(current_user, total_size_mb)
         
         # Determine if single_item mode
         force_single_item = (
@@ -882,13 +894,16 @@ async def publish_draft(draft_id: str):
 @router.post("/photos/analyze")
 async def analyze_bulk_photos(
     files: List[UploadFile] = File(...),
-    auto_grouping: bool = Form(default=True)
+    auto_grouping: bool = Form(default=True),
+    current_user: User = Depends(get_current_user)
 ):
     """
     📸 ANALYZE PHOTOS WITH REAL AI (Frontend-compatible endpoint)
     
     Uploads photos and launches REAL AI analysis in background.
     This endpoint is called by the Lovable frontend.
+    
+    **Requires:** Authentication + AI analyses quota
     
     **Returns:** {job_id, status, total_photos, estimated_items, plan_id}
     **Status:** "processing" (use GET /bulk/jobs/{job_id} to poll progress)
@@ -910,6 +925,13 @@ async def analyze_bulk_photos(
                 status_code=415,
                 detail=f"Invalid formats: {', '.join(invalid_files[:5])}"
             )
+        
+        # Check AI quota before processing
+        await check_and_consume_quota(current_user, "ai_analyses", amount=1)
+        
+        # Check storage quota
+        total_size_mb = sum([f.size for f in files if f.size]) / (1024 * 1024)
+        await check_storage_quota(current_user, total_size_mb)
         
         # Save photos temporarily and create job ID
         job_id = str(uuid.uuid4())[:8]
@@ -1102,7 +1124,10 @@ async def create_grouping_plan(
 
 
 @router.post("/generate", response_model=GenerateResponse)
-async def generate_drafts_from_plan(request: GenerateRequest):
+async def generate_drafts_from_plan(
+    request: GenerateRequest,
+    current_user: User = Depends(get_current_user)
+):
     """
     ✨ GENERATE DRAFTS WITH STRICT VALIDATION (Zero Failed Drafts)
     
@@ -1121,6 +1146,8 @@ async def generate_drafts_from_plan(request: GenerateRequest):
     **Usage:**
     - Option 1: Use plan_id from /bulk/plan
     - Option 2: Provide photo_paths directly
+    
+    **Requires:** Authentication + drafts quota
     """
     try:
         photo_paths = []
@@ -1157,6 +1184,10 @@ async def generate_drafts_from_plan(request: GenerateRequest):
             photo_paths,
             style
         )
+        
+        # Check drafts quota before creating (estimate based on grouped items)
+        estimated_drafts = len(grouped_items)
+        await check_and_consume_quota(current_user, "drafts", amount=estimated_drafts)
         
         # Process EACH detected item individually
         created_drafts = []

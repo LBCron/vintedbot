@@ -22,6 +22,8 @@ from backend.settings import settings
 from backend.core.session import SessionVault, VintedSession
 from backend.core.vinted_client import VintedClient, CaptchaDetected
 from backend.core.storage import get_store
+from backend.core.auth import get_current_user, User
+from backend.middleware.quota_checker import check_and_consume_quota
 from backend.schemas.vinted import (
     SessionRequest,
     SessionResponse,
@@ -501,7 +503,8 @@ async def prepare_listing(request: ListingPrepareRequest):
 @limiter.limit("5/minute")
 async def publish_listing(
     request: ListingPublishRequest,
-    idempotency_key: str = Header(..., alias="Idempotency-Key")
+    idempotency_key: str = Header(..., alias="Idempotency-Key"),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Publish a prepared listing (Phase B - Publish)
@@ -514,9 +517,15 @@ async def publish_listing(
     Default: dry_run=true (safe mode)
     Rate limited: 5/minute
     
+    **Requires:** Authentication + publications quota
+    
     **Required Header:** Idempotency-Key (prevents duplicate publications)
     """
     try:
+        # Check publications quota before publishing
+        if not request.dry_run:
+            await check_and_consume_quota(current_user, "publications", amount=1)
+        
         # 🛡️ Idempotency protection - ATOMIC reservation before publish
         # This MUST happen before the external Vinted API call to prevent race conditions
         if not request.dry_run:
