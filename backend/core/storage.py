@@ -671,6 +671,106 @@ class SQLiteStore:
         used_field, limit_field = quota_mappings[quota_type]
         return quotas[used_field] < quotas[limit_field]
     
+    # ==================== STRIPE INTEGRATION ====================
+    
+    def update_user_stripe_customer(self, user_id: int, customer_id: str):
+        """Update user's Stripe customer ID"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE users 
+                SET stripe_customer_id = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            """, (customer_id, user_id))
+            conn.commit()
+    
+    def update_user_subscription(
+        self,
+        user_id: int,
+        plan: str,
+        stripe_customer_id: Optional[str] = None,
+        stripe_subscription_id: Optional[str] = None
+    ):
+        """Update user's subscription plan and Stripe IDs"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            
+            # Update user plan
+            if stripe_customer_id:
+                cursor.execute("""
+                    UPDATE users 
+                    SET plan = ?, stripe_customer_id = ?, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                """, (plan, stripe_customer_id, user_id))
+            else:
+                cursor.execute("""
+                    UPDATE users 
+                    SET plan = ?, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                """, (plan, user_id))
+            
+            # Update or create subscription record
+            if stripe_subscription_id:
+                # Active subscription
+                cursor.execute("""
+                    INSERT OR REPLACE INTO subscriptions 
+                    (user_id, stripe_subscription_id, plan, status, updated_at)
+                    VALUES (?, ?, ?, 'active', CURRENT_TIMESTAMP)
+                """, (user_id, stripe_subscription_id, plan))
+            else:
+                # Cancellation - mark existing subscriptions as cancelled
+                cursor.execute("""
+                    UPDATE subscriptions 
+                    SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP
+                    WHERE user_id = ? AND status = 'active'
+                """, (user_id,))
+            
+            conn.commit()
+    
+    def get_user_by_stripe_customer(self, customer_id: str) -> Optional[Dict[str, Any]]:
+        """Get user by Stripe customer ID"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT * FROM users WHERE stripe_customer_id = ?
+            """, (customer_id,))
+            row = cursor.fetchone()
+            if not row:
+                return None
+            
+            return {
+                "id": row["id"],
+                "email": row["email"],
+                "name": row["name"],
+                "plan": row["plan"],
+                "status": row["status"],
+                "stripe_customer_id": row["stripe_customer_id"],
+                "created_at": row["created_at"],
+                "updated_at": row["updated_at"]
+            }
+    
+    def update_user_quotas(self, user_id: int, quotas: Dict[str, int]):
+        """Update user quota limits (when plan changes)"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE user_quotas 
+                SET 
+                    drafts_limit = ?,
+                    publications_limit = ?,
+                    ai_analyses_limit = ?,
+                    photos_storage_limit_mb = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE user_id = ?
+            """, (
+                quotas.get("drafts", 50),
+                quotas.get("publications_month", 10),
+                quotas.get("ai_analyses_month", 20),
+                quotas.get("photos_storage_mb", 500),
+                user_id
+            ))
+            conn.commit()
+    
     # ==================== TTL & MAINTENANCE ====================
     
     def vacuum_and_prune(self):
@@ -724,3 +824,6 @@ def get_store() -> SQLiteStore:
     if _store is None:
         _store = SQLiteStore()
     return _store
+
+# Alias for backward compatibility
+get_storage = get_store

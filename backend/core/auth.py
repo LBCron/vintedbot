@@ -10,6 +10,8 @@ from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from pydantic import BaseModel, EmailStr
 from dotenv import load_dotenv
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import os
 
 # Load environment variables FIRST
@@ -50,6 +52,14 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     user_id: Optional[int] = None
     email: Optional[str] = None
+
+class User(BaseModel):
+    """Current authenticated user (for Depends)"""
+    id: int
+    email: str
+    name: Optional[str] = None
+    plan: str = "free"
+    status: str = "active"
 
 class UserProfile(BaseModel):
     id: int
@@ -123,3 +133,49 @@ def decode_access_token(token: str) -> Optional[TokenData]:
     
     except JWTError:
         return None
+
+
+# ========== FastAPI Dependencies ==========
+
+security = HTTPBearer()
+
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+) -> User:
+    """
+    FastAPI dependency to get current authenticated user from JWT token
+    
+    Usage:
+        @router.get("/protected")
+        async def protected_route(current_user: User = Depends(get_current_user)):
+            return {"user_id": current_user.id}
+    """
+    token = credentials.credentials
+    token_data = decode_access_token(token)
+    
+    if not token_data or not token_data.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # Get user from database
+    from backend.core.storage import get_storage
+    storage = get_storage()
+    user_data = storage.get_user_by_id(token_data.user_id)
+    
+    if not user_data:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    return User(
+        id=user_data["id"],
+        email=user_data["email"],
+        name=user_data.get("name"),
+        plan=user_data.get("plan", "free"),
+        status=user_data.get("status", "active")
+    )
