@@ -63,24 +63,29 @@ async def check_and_consume_quota(
             detail="Your account has been cancelled. Please reactivate your subscription."
         )
     
-    # Check quota availability
-    if not storage.check_quota_available(user.id, quota_type):
-        quotas = storage.get_user_quotas(user.id)
-        if quotas:
-            quota_mappings = {
-                "drafts": ("drafts_created", "drafts_limit"),
-                "publications": ("publications_month", "publications_limit"),
-                "ai_analyses": ("ai_analyses_month", "ai_analyses_limit")
-            }
-            used_field, limit_field = quota_mappings[quota_type]
-            raise QuotaExceededError(quota_type, quotas[limit_field])
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to retrieve quota information"
-            )
+    # Get current quotas
+    quotas = storage.get_user_quotas(user.id)
+    if not quotas:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve quota information"
+        )
     
-    # Consume quota
+    # Check if user has enough quota for the requested amount
+    quota_mappings = {
+        "drafts": ("drafts_created", "drafts_limit"),
+        "publications": ("publications_month", "publications_limit"),
+        "ai_analyses": ("ai_analyses_month", "ai_analyses_limit")
+    }
+    used_field, limit_field = quota_mappings[quota_type]
+    current_usage = quotas[used_field]
+    limit = quotas[limit_field]
+    
+    # CRITICAL: Check that current_usage + amount <= limit
+    if current_usage + amount > limit:
+        raise QuotaExceededError(quota_type, limit)
+    
+    # Consume quota (only if check passed)
     quota_field_mapping = {
         "drafts": "drafts_created",
         "publications": "publications_month",
