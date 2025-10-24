@@ -84,11 +84,10 @@ active_users = Gauge(
     "Number of active users (sessions)"
 )
 
-publish_per_user_total = Counter(
-    "vintedbot_publish_per_user_total",
-    "Total publications per user",
-    ["user_id"]
-)
+# REMOVED: publish_per_user_total (cardinality explosion risk)
+# DO NOT use raw user_id in labels - creates one time-series per user
+# Alternative: Use histogram or aggregate by user tier/segment
+# Example: publish_per_tier_total = Counter(..., ["tier"])  # free, premium, enterprise
 
 # ========== Draft Quality Metrics ==========
 draft_created_total = Counter(

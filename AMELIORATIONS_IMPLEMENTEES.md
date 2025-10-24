@@ -29,7 +29,6 @@ Métriques disponibles :
 - `vintedbot_captcha_solved_total` - Captchas résolus
 - `vintedbot_captcha_failure_total{reason}` - Échecs captcha
 - `vintedbot_active_users` - Utilisateurs actifs
-- `vintedbot_publish_per_user_total{user_id}` - Publications par user
 - `vintedbot_draft_created_total{publish_ready}` - Brouillons créés
 - `vintedbot_draft_validation_failures{reason}` - Échecs validation
 - `vintedbot_app_info` - Info application
@@ -56,8 +55,10 @@ with publish_duration_seconds.time():
 - `VintedNetworkError` - Erreurs réseau
 - `VintedTimeoutError` - Timeouts
 - `VintedRateLimitError` - Rate limits
-- `CaptchaDetectedError` - Captchas (retryable si solver disponible)
+- `CaptchaDetectedError` - ✅ Captchas (RETRYABLE si solver disponible)
 - `AIAnalysisError` - Erreurs OpenAI temporaires
+
+**⚠️ Note**: `CaptchaDetectedError` est maintenant inclus dans `retry_publish_operation` pour permettre retries automatiques quand un solver 2Captcha est configuré.
 
 **Décorateurs disponibles :**
 
@@ -485,9 +486,27 @@ assert final == initial + 1
 ### DON'T ❌
 - Ne pas retry les erreurs 4xx (bad request)
 - Ne pas stocker de secrets dans les métriques
+- ⚠️ **JAMAIS utiliser user_id dans les labels Prometheus** (explosion de cardinalité)
 - Ne pas exposer /metrics publiquement (firewall)
 - Ne pas retry indéfiniment (max 3 attempts)
 - Ne pas oublier d'incrémenter status="fail"
+
+### ⚠️ Cardinality Explosion Warning
+Métriques avec labels dynamiques illimités (user IDs, item IDs, etc.) créent **une time-series Prometheus par valeur unique**. Avec 10,000 users, vous aurez 10,000 time-series, rendant Prometheus inutilisable.
+
+**Mauvais exemple:**
+```python
+# ❌ CARDINALITY EXPLOSION - Ne jamais faire ça
+publish_per_user = Counter("...", ["user_id"])
+publish_per_user.labels(user_id="user_12345").inc()  # 1 serie par user
+```
+
+**Bon exemple:**
+```python
+# ✅ SAFE - Nombre limité de labels
+publish_per_tier = Counter("...", ["tier"])
+publish_per_tier.labels(tier="premium").inc()  # 3-5 series max (free, premium, enterprise)
+```
 
 ---
 

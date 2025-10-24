@@ -72,6 +72,7 @@ def retry_publish_operation(
             VintedNetworkError,
             VintedTimeoutError,
             VintedRateLimitError,
+            CaptchaDetectedError,
             AIAnalysisError
         )),
         before_sleep=before_sleep_log(logger, logging.WARNING),
