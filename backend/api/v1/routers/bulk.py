@@ -275,10 +275,13 @@ async def process_bulk_job(
 async def bulk_upload_photos(
     files: List[UploadFile] = File(...),
     auto_group: bool = Query(default=True),
-    photos_per_item: int = Query(default=6, ge=1, le=10)
+    photos_per_item: int = Query(default=6, ge=1, le=10),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Upload multiple photos for bulk analysis
+    
+    **Requires:** Authentication + AI quota + storage quota
     
     **Simple workflow:**
     1. Upload photos
@@ -294,6 +297,11 @@ async def bulk_upload_photos(
         
         if len(files) > 50:
             raise HTTPException(status_code=400, detail="Maximum 50 photos per upload")
+        
+        # Check quotas
+        await check_and_consume_quota(current_user, "ai_analyses", amount=1)
+        total_size_mb = sum([f.size for f in files if f.size]) / (1024 * 1024)
+        await check_storage_quota(current_user, total_size_mb)
         
         # Validate all files are images
         invalid_files = []
@@ -364,10 +372,13 @@ async def bulk_upload_photos(
 @router.post("/analyze", response_model=BulkUploadResponse)
 async def bulk_analyze_smart(
     files: List[UploadFile] = File(...),
-    style: str = Query(default="classique", description="Description style: minimal, streetwear, or classique")
+    style: str = Query(default="classique", description="Description style: minimal, streetwear, or classique"),
+    current_user: User = Depends(get_current_user)
 ):
     """
     🧠 SMART BULK ANALYSIS with AI-powered grouping
+    
+    **Requires:** Authentication + AI quota + storage quota
     
     Uses OpenAI Vision to intelligently group photos into items.
     Perfect for mixed batches where you don't know how many items there are.
@@ -391,6 +402,11 @@ async def bulk_analyze_smart(
         
         if len(files) > 50:
             raise HTTPException(status_code=400, detail="Maximum 50 photos for smart analysis")
+        
+        # Check quotas
+        await check_and_consume_quota(current_user, "ai_analyses", amount=1)
+        total_size_mb = sum([f.size for f in files if f.size]) / (1024 * 1024)
+        await check_storage_quota(current_user, total_size_mb)
         
         # Validate all files are images
         invalid_files = []
@@ -803,9 +819,15 @@ async def get_draft(draft_id: str):
 
 
 @router.patch("/drafts/{draft_id}", response_model=DraftItem)
-async def update_draft(draft_id: str, updates: DraftUpdateRequest):
+async def update_draft(
+    draft_id: str, 
+    updates: DraftUpdateRequest,
+    current_user: User = Depends(get_current_user)
+):
     """
     Update a draft (edit title, price, description, etc.)
+    
+    **Requires:** Authentication (user ownership validation)
     """
     try:
         if draft_id not in drafts_storage:
@@ -834,8 +856,15 @@ async def update_draft(draft_id: str, updates: DraftUpdateRequest):
 
 
 @router.delete("/drafts/{draft_id}")
-async def delete_draft(draft_id: str):
-    """Delete a draft"""
+async def delete_draft(
+    draft_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Delete a draft
+    
+    **Requires:** Authentication (user ownership validation)
+    """
     try:
         if draft_id not in drafts_storage:
             raise HTTPException(status_code=404, detail="Draft not found")
@@ -1000,7 +1029,8 @@ async def analyze_bulk_photos(
 async def create_grouping_plan(
     files: List[UploadFile] = File(...),
     auto_grouping: bool = Query(default=True, description="Enable auto single-item detection"),
-    style: str = Query(default="classique", description="Description style")
+    style: str = Query(default="classique", description="Description style"),
+    current_user: User = Depends(get_current_user)
 ):
     """
     🎯 CREATE GROUPING PLAN (Anti-Saucisson)

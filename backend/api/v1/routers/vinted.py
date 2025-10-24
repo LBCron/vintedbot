@@ -216,10 +216,13 @@ async def check_auth():
 async def upload_photos(
     files: list[UploadFile] = File(...),
     auto_analyze: bool = True,
-    request: Optional[str] = None
+    request: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
 ):
     """
     Upload multiple photos for Vinted listing (mobile-friendly)
+    
+    **Requires:** Authentication + storage quota (+ AI quota if auto_analyze=true)
     
     Accepts: 1-20 images (JPG, PNG, WEBP, HEIC, HEIF)
     Max size: 15MB per photo
@@ -236,6 +239,14 @@ async def upload_photos(
     try:
         if len(files) > 20:
             raise HTTPException(status_code=400, detail="Maximum 20 photos allowed")
+        
+        # Check storage quota
+        total_size_mb = sum([f.size for f in files if f.size]) / (1024 * 1024)
+        await check_storage_quota(current_user, total_size_mb)
+        
+        # Check AI quota if auto-analysis enabled
+        if auto_analyze:
+            await check_and_consume_quota(current_user, "ai_analyses", amount=1)
         
         photos = []
         photo_paths = []
@@ -345,9 +356,14 @@ async def upload_photos(
 
 
 @router.post("/listings/prepare", response_model=ListingPrepareResponse)
-async def prepare_listing(request: ListingPrepareRequest):
+async def prepare_listing(
+    request: ListingPrepareRequest,
+    current_user: User = Depends(get_current_user)
+):
     """
     Prepare a Vinted listing (Phase A - Draft)
+    
+    **Requires:** Authentication (user ownership validation)
     
     - Opens /items/new
     - Uploads photos

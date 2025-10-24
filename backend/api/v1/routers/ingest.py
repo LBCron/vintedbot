@@ -1,9 +1,11 @@
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Request
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Request, Depends
 from typing import List, Optional
 from sqlmodel import select
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from backend.settings import settings
+from backend.core.auth import get_current_user, User
+from backend.middleware.quota_checker import check_and_consume_quota, check_storage_quota
 from backend.core.media import (
     sniff_mime,
     is_allowed_mime,
@@ -31,9 +33,12 @@ async def ingest_upload(
     request: Request,
     files: List[UploadFile] = File(..., description="Multiple image files (field name: 'files')"),
     title: str = Form("", description="Optional initial title for the draft"),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Upload multiple images and create a draft listing.
+    
+    **Requires:** Authentication + drafts quota + storage quota
     
     Features:
     - Accepts 1-20 image files
@@ -53,6 +58,17 @@ async def ingest_upload(
             413,
             f"Too many files ({len(files)} > {settings.MAX_UPLOADS_PER_REQUEST})"
         )
+    
+    # Check quotas before processing
+    await check_and_consume_quota(current_user, "drafts", amount=1)
+    
+    # Calculate total storage needed
+    total_size_mb = 0
+    for f in files:
+        content = await f.read()
+        total_size_mb += len(content) / (1024 * 1024)
+        await f.seek(0)
+    await check_storage_quota(current_user, total_size_mb)
 
     # Process each image
     processed = []
