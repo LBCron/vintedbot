@@ -6,17 +6,30 @@ Handles JWT tokens, password hashing, and user verification
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError
 from pydantic import BaseModel, EmailStr
+from dotenv import load_dotenv
 import os
 
+# Load environment variables FIRST
+load_dotenv()
+
 # JWT Configuration
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "CHANGEME_IN_PRODUCTION_USE_SECURE_RANDOM_KEY")
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+if not SECRET_KEY or SECRET_KEY == "CHANGEME_IN_PRODUCTION_USE_SECURE_RANDOM_KEY":
+    import sys
+    print("❌ FATAL: JWT_SECRET_KEY not set!")
+    print("⚠️  Generate a secure key:")
+    print("    python3 -c \"import secrets; print(f'JWT_SECRET_KEY={secrets.token_urlsafe(64)}')\"")
+    print("    Then add it to your .env file")
+    sys.exit(1)
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
 
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Password hashing (Argon2 - modern, secure, fast)
+pwd_hasher = PasswordHasher()
 
 
 # ========== Pydantic Models ==========
@@ -52,12 +65,15 @@ class UserProfile(BaseModel):
 # ========== Password Hashing ==========
 
 def hash_password(password: str) -> str:
-    """Hash a password using bcrypt"""
-    return pwd_context.hash(password)
+    """Hash a password using Argon2"""
+    return pwd_hasher.hash(password)
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against its hash"""
-    return pwd_context.verify(plain_password, hashed_password)
+    """Verify a password against its Argon2 hash"""
+    try:
+        return pwd_hasher.verify(hashed_password, plain_password)
+    except VerifyMismatchError:
+        return False
 
 
 # ========== JWT Token Management ==========
@@ -97,13 +113,13 @@ def decode_access_token(token: str) -> Optional[TokenData]:
     """
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: int = payload.get("user_id")
-        email: str = payload.get("email")
+        user_id = payload.get("user_id")
+        email = payload.get("email")
         
         if user_id is None:
             return None
             
-        return TokenData(user_id=user_id, email=email)
+        return TokenData(user_id=int(user_id), email=str(email) if email else None)
     
     except JWTError:
         return None

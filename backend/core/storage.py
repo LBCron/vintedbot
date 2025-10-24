@@ -233,7 +233,8 @@ class SQLiteStore:
                 status
             ))
             conn.commit()
-            return self.get_draft(draft_id)
+            draft = self.get_draft(draft_id)
+            return draft if draft else {}
     
     def update_draft_status(self, draft_id: str, status: str, listing_json: Optional[Dict] = None):
         """Update draft status (e.g., pending -> ready -> prepared -> published)"""
@@ -560,7 +561,10 @@ class SQLiteStore:
             ))
             
             conn.commit()
-            return self.get_user_by_id(user_id)
+            user = self.get_user_by_id(user_id)
+            if not user:
+                raise Exception("Failed to create user")
+            return user
     
     def get_user_by_email(self, email: str) -> Optional[Dict[str, Any]]:
         """Get user by email (for login)"""
