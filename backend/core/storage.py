@@ -572,7 +572,8 @@ class SQLiteStore:
             ))
             
             conn.commit()
-            user = self.get_user_by_id(user_id)
+            # user_id is guaranteed to be int after lastrowid
+            user = self.get_user_by_id(int(user_id))
             if not user:
                 raise Exception("Failed to create user")
             return user

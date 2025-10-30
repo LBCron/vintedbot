@@ -946,14 +946,15 @@ async def publish_draft(
         
         print(f"✅ [PUBLISH] User {current_user.id} publishing draft {draft_id}")
         
-        draft = drafts_storage.get(draft_id)  # Fallback to in-memory if needed
+        # Update draft status in SQLite
+        get_store().update_draft_status(draft_id, "published")
         
-        # TODO: Integrate with /vinted/listings/prepare and /vinted/listings/publish
-        # For now, just mark as published
-        
-        draft.status = "published"
-        draft.updated_at = datetime.utcnow()
-        drafts_storage[draft_id] = draft
+        # Also update in-memory if exists
+        if draft_id in drafts_storage:
+            draft = drafts_storage[draft_id]
+            draft.status = "published"
+            draft.updated_at = datetime.utcnow()
+            drafts_storage[draft_id] = draft
         
         print(f"✅ Draft published: {draft_id}")
         
