@@ -817,7 +817,7 @@ async def get_draft(
     """
     try:
         # Get draft from SQLite
-        draft_data = get_store().get_draft_by_id(draft_id)
+        draft_data = get_store().get_draft(draft_id)
         
         if not draft_data:
             raise HTTPException(status_code=404, detail="Draft not found")
@@ -920,7 +920,7 @@ async def publish_draft(
     """
     try:
         # Get draft from SQLite (with user ownership check)
-        draft_data = get_store().get_draft_by_id(draft_id)
+        draft_data = get_store().get_draft(draft_id)
         
         if not draft_data:
             print(f"⚠️  [PUBLISH] Draft {draft_id} not found in database")
