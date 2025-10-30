@@ -733,14 +733,17 @@ async def get_bulk_job_status(job_id: str):
 async def list_drafts(
     status: Optional[str] = Query(None),
     page: int = Query(1, ge=1),
-    page_size: int = Query(50, ge=1, le=100)
+    page_size: int = Query(50, ge=1, le=100),
+    current_user: User = Depends(get_current_user)
 ):
     """
     List all drafts with optional filtering (reads from SQLite + in-memory fallback)
+    
+    **Requires:** Authentication (returns only user's own drafts)
     """
     try:
-        # Get drafts from SQLite storage first
-        db_drafts_raw = get_store().get_drafts(status=status, limit=1000)
+        # Get drafts from SQLite storage first (FILTERED BY USER)
+        db_drafts_raw = get_store().get_drafts(status=status, limit=1000, user_id=str(current_user.id))
         
         # Convert SQLite rows to DraftItem objects
         db_drafts = []
@@ -803,13 +806,32 @@ async def list_drafts(
 
 
 @router.get("/drafts/{draft_id}", response_model=DraftItem)
-async def get_draft(draft_id: str):
-    """Get a specific draft by ID"""
+async def get_draft(
+    draft_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get a specific draft by ID
+    
+    **Requires:** Authentication (user ownership validation)
+    """
     try:
-        if draft_id not in drafts_storage:
+        # Get draft from SQLite
+        draft_data = get_store().get_draft_by_id(draft_id)
+        
+        if not draft_data:
             raise HTTPException(status_code=404, detail="Draft not found")
         
-        return drafts_storage[draft_id]
+        # Verify user ownership
+        if draft_data.get("user_id") and draft_data["user_id"] != str(current_user.id):
+            raise HTTPException(status_code=403, detail="Ce brouillon ne vous appartient pas")
+        
+        # Fallback to in-memory if SQLite data incomplete
+        if draft_id in drafts_storage:
+            return drafts_storage[draft_id]
+        
+        # Convert SQLite data to DraftItem (minimal version)
+        raise HTTPException(status_code=404, detail="Draft data incomplete")
         
     except HTTPException:
         raise
@@ -883,19 +905,48 @@ async def delete_draft(
 
 
 @router.post("/drafts/{draft_id}/publish")
-async def publish_draft(draft_id: str):
+async def publish_draft(
+    draft_id: str,
+    current_user: User = Depends(get_current_user)
+):
     """
     Publish a draft to Vinted
+    
+    **Requires:** Authentication (user ownership validation) + publications quota
     
     This creates a Vinted listing from the draft using the 2-phase workflow:
     1. Prepare listing (Phase A)
     2. Publish listing (Phase B)
     """
     try:
-        if draft_id not in drafts_storage:
-            raise HTTPException(status_code=404, detail="Draft not found")
+        # Get draft from SQLite (with user ownership check)
+        draft_data = get_store().get_draft_by_id(draft_id)
         
-        draft = drafts_storage[draft_id]
+        if not draft_data:
+            print(f"⚠️  [PUBLISH] Draft {draft_id} not found in database")
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "error": "draft_not_found",
+                    "message": "Ce brouillon n'existe plus. Il a peut-être été supprimé ou a expiré.",
+                    "draft_id": draft_id
+                }
+            )
+        
+        # CRITICAL: Verify user ownership
+        if draft_data.get("user_id") and draft_data["user_id"] != str(current_user.id):
+            print(f"⚠️  [PUBLISH] User {current_user.id} trying to publish draft owned by {draft_data['user_id']}")
+            raise HTTPException(
+                status_code=403,
+                detail="Ce brouillon ne vous appartient pas"
+            )
+        
+        # Check publications quota
+        await check_and_consume_quota(current_user, "publications", amount=1)
+        
+        print(f"✅ [PUBLISH] User {current_user.id} publishing draft {draft_id}")
+        
+        draft = drafts_storage.get(draft_id)  # Fallback to in-memory if needed
         
         # TODO: Integrate with /vinted/listings/prepare and /vinted/listings/publish
         # For now, just mark as published
