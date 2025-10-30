@@ -60,6 +60,7 @@ class User(BaseModel):
     name: Optional[str] = None
     plan: str = "free"
     status: str = "active"
+    is_admin: bool = False  # Admin users bypass ALL quotas
 
 class UserProfile(BaseModel):
     id: int
@@ -67,6 +68,7 @@ class UserProfile(BaseModel):
     name: Optional[str]
     plan: str
     status: str
+    is_admin: bool = False
     created_at: str
     quotas_used: dict = {}
     quotas_limit: dict = {}
@@ -177,5 +179,6 @@ async def get_current_user(
         email=user_data["email"],
         name=user_data.get("name"),
         plan=user_data.get("plan", "free"),
-        status=user_data.get("status", "active")
+        status=user_data.get("status", "active"),
+        is_admin=user_data.get("is_admin", False)
     )

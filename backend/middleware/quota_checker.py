@@ -41,6 +41,11 @@ async def check_and_consume_quota(
         QuotaExceededError: If user has exceeded their quota
         HTTPException(403): If user account is suspended
     """
+    # 🔓 ADMIN BYPASS: Admins have unlimited quotas
+    if user.is_admin:
+        print(f"🔓 Admin user {user.email} bypassing quota check for {quota_type}")
+        return
+    
     storage = get_storage()
     
     # Check user status
@@ -105,6 +110,11 @@ async def check_storage_quota(user: User, size_mb: float) -> None:
     Raises:
         QuotaExceededError: If user has exceeded their storage quota
     """
+    # 🔓 ADMIN BYPASS: Admins have unlimited storage
+    if user.is_admin:
+        print(f"🔓 Admin user {user.email} bypassing storage quota check ({size_mb:.2f} MB)")
+        return
+    
     storage = get_storage()
     quotas = storage.get_user_quotas(user.id)
     

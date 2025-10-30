@@ -144,11 +144,14 @@ async def ingest_upload(
                 session.flush()
             
             # Link to draft
-            draft_photo = DraftPhoto(
-                draft_id=draft.id,
-                media_id=media.id,
-                order_index=idx
-            )
+            if draft.id is not None and media.id is not None:
+                draft_photo = DraftPhoto(
+                    draft_id=draft.id,
+                    media_id=media.id,
+                    order_index=idx
+                )
+            else:
+                raise HTTPException(500, "Failed to create draft or media records")
             session.add(draft_photo)
             
             # Store media data for response (before session closes)
@@ -178,6 +181,9 @@ async def ingest_upload(
         )
         for m in media_records
     ]
+    
+    if draft.id is None:
+        raise HTTPException(500, "Draft ID is None after commit")
     
     return DraftOut(
         id=draft.id,

@@ -143,12 +143,19 @@ class SQLiteStore:
                     name TEXT,
                     plan TEXT DEFAULT 'free' CHECK(plan IN ('free','starter','pro','scale')),
                     status TEXT DEFAULT 'active' CHECK(status IN ('active','suspended','cancelled','trial')),
+                    is_admin INTEGER DEFAULT 0,
                     trial_end_date TEXT,
                     stripe_customer_id TEXT,
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+            
+            # Add is_admin column to existing tables (migration)
+            try:
+                cursor.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0")
+            except sqlite3.OperationalError:
+                pass  # Column already exists
             
             # 7. Subscriptions table (Stripe billing)
             cursor.execute("""
@@ -532,12 +539,16 @@ class SQLiteStore:
         plan: str = "free"
     ) -> Dict[str, Any]:
         """Create a new user account"""
+        # 🔓 Auto-mark admin emails (owner bypass quotas)
+        admin_emails = ["ronan.chenlopes@hotmail.com"]
+        is_admin = 1 if email.lower() in admin_emails else 0
+        
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                INSERT INTO users (email, hashed_password, name, plan, status)
-                VALUES (?, ?, ?, ?, 'active')
-            """, (email, hashed_password, name, plan))
+                INSERT INTO users (email, hashed_password, name, plan, status, is_admin)
+                VALUES (?, ?, ?, ?, 'active', ?)
+            """, (email, hashed_password, name, plan, is_admin))
             user_id = cursor.lastrowid
             
             # Create default quotas for new user
@@ -582,6 +593,7 @@ class SQLiteStore:
                 "name": row["name"],
                 "plan": row["plan"],
                 "status": row["status"],
+                "is_admin": bool(row["is_admin"]) if "is_admin" in row.keys() else False,
                 "trial_end_date": row["trial_end_date"],
                 "stripe_customer_id": row["stripe_customer_id"],
                 "created_at": row["created_at"],
@@ -604,6 +616,7 @@ class SQLiteStore:
                 "name": row["name"],
                 "plan": row["plan"],
                 "status": row["status"],
+                "is_admin": bool(row["is_admin"]) if "is_admin" in row.keys() else False,
                 "trial_end_date": row["trial_end_date"],
                 "stripe_customer_id": row["stripe_customer_id"],
                 "created_at": row["created_at"],
