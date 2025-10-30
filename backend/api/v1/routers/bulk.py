@@ -154,12 +154,18 @@ async def process_bulk_job(
         bulk_jobs[job_id]["status"] = "processing"
         bulk_jobs[job_id]["started_at"] = datetime.utcnow()
         
-        # Update database status to "processing"
-        if update_db:
-            if get_photo_plan(job_id):
-                get_store().update_photo_plan(job_id, status="processing", progress_percent=0.0)
+        # CHECKPOINT 0%: Job started
+        bulk_jobs[job_id]["progress_percent"] = 0.0
+        if update_db and get_photo_plan(job_id):
+            get_store().update_photo_plan(job_id, status="processing", progress_percent=0.0)
         
         analysis_results = []
+        
+        # CHECKPOINT 25%: Initial setup and grouping complete
+        print(f"📦 Step 1/4: Grouping photos...")
+        bulk_jobs[job_id]["progress_percent"] = 25.0
+        if update_db and get_photo_plan(job_id):
+            get_store().update_photo_plan(job_id, progress_percent=25.0)
         
         if use_smart_grouping:
             # INTELLIGENT GROUPING: Let AI analyze all photos and group them
@@ -175,9 +181,10 @@ async def process_bulk_job(
                 
                 bulk_jobs[job_id]["total_items"] = len(analysis_results)
                 bulk_jobs[job_id]["completed_items"] = len(analysis_results)
-                bulk_jobs[job_id]["progress_percent"] = 50.0  # 50% after analysis
                 
-                # Update DB progress
+                # CHECKPOINT 50%: AI analysis complete
+                print(f"✅ Step 2/4: AI analysis complete ({len(analysis_results)} items detected)")
+                bulk_jobs[job_id]["progress_percent"] = 50.0
                 if update_db and get_photo_plan(job_id):
                     get_store().update_photo_plan(job_id, progress_percent=50.0)
                 
@@ -203,21 +210,29 @@ async def process_bulk_job(
                     analysis_results.append(result)
                     
                     bulk_jobs[job_id]["completed_items"] += 1
-                    progress = (i + 1) / len(photo_groups) * 50  # 0-50% during analysis
+                    # Map analysis progress from 25% → 50%
+                    progress = 25.0 + ((i + 1) / len(photo_groups) * 25.0)
                     bulk_jobs[job_id]["progress_percent"] = progress
                     
-                    # Update DB progress every 10% or on last item
+                    # Update DB progress every ~5 items or on last item
                     if update_db and (i % max(1, len(photo_groups) // 5) == 0 or i == len(photo_groups) - 1):
                         if get_photo_plan(job_id):
                             get_store().update_photo_plan(job_id, progress_percent=progress)
+                            print(f"📊 Progress: {int(progress)}% ({i+1}/{len(photo_groups)} items analyzed)")
                     
                 except Exception as e:
                     print(f"❌ Analysis failed for item {i+1}: {e}")
                     bulk_jobs[job_id]["failed_items"] += 1
                     bulk_jobs[job_id]["errors"].append(f"Item {i+1}: {str(e)}")
         
+        # CHECKPOINT 50%: Analysis complete, starting draft creation
+        print(f"📝 Step 3/4: Creating drafts from {len(analysis_results)} analysis results...")
+        bulk_jobs[job_id]["progress_percent"] = 50.0
+        if update_db and get_photo_plan(job_id):
+            get_store().update_photo_plan(job_id, progress_percent=50.0)
+        
         # Create drafts from analysis results
-        for result in analysis_results:
+        for idx, result in enumerate(analysis_results):
             draft_id = str(uuid.uuid4())
             
             # Convert local paths to URLs
@@ -275,6 +290,16 @@ async def process_bulk_job(
                 print(f"✅ Created draft (SQLite + memory): {draft.title} ({draft.price}€)")
             except Exception as e:
                 print(f"⚠️ Failed to save draft to SQLite: {e} (continuing with in-memory only)")
+            
+            # Map draft creation progress from 50% → 100%
+            progress = 50.0 + ((idx + 1) / len(analysis_results) * 50.0)
+            bulk_jobs[job_id]["progress_percent"] = progress
+            
+            # Update DB progress every ~5 drafts or on last draft
+            if update_db and (idx % max(1, len(analysis_results) // 10) == 0 or idx == len(analysis_results) - 1):
+                if get_photo_plan(job_id):
+                    get_store().update_photo_plan(job_id, progress_percent=progress)
+                    print(f"📊 Progress: {int(progress)}% ({idx+1}/{len(analysis_results)} drafts created)")
         
         bulk_jobs[job_id]["status"] = "completed"
         bulk_jobs[job_id]["completed_at"] = datetime.utcnow()
@@ -297,6 +322,18 @@ async def process_bulk_job(
         print(f"❌ Bulk job {job_id} failed: {e}")
         bulk_jobs[job_id]["status"] = "failed"
         bulk_jobs[job_id]["errors"].append(str(e))
+        
+        # CRITICAL: Update DB status to "failed" so clients see the true outcome
+        if update_db and get_photo_plan(job_id):
+            try:
+                get_store().update_photo_plan(
+                    job_id,
+                    status="failed",
+                    progress_percent=bulk_jobs[job_id].get("progress_percent", 0.0)
+                )
+                print(f"✅ Updated DB status to 'failed' for job {job_id}")
+            except Exception as db_error:
+                print(f"⚠️  Failed to update DB status: {db_error}")
 
 
 @router.post("/upload", response_model=BulkUploadResponse)
@@ -352,7 +389,7 @@ async def bulk_upload_photos(
         # Calculate estimated items
         estimated_items = len(photo_paths) // photos_per_item if auto_group else len(photo_paths)
         
-        # Initialize job status
+        # Initialize job status (in-memory)
         bulk_jobs[job_id] = {
             "job_id": job_id,
             "status": "queued",
@@ -367,6 +404,15 @@ async def bulk_upload_photos(
             "completed_at": None,
             "progress_percent": 0.0
         }
+        
+        # CRITICAL: Save photo_plan to DB so progress tracking works
+        save_photo_plan(
+            plan_id=job_id,
+            photo_paths=photo_paths,
+            photo_count=len(photo_paths),
+            estimated_items=estimated_items,
+            user_id=str(current_user.id)
+        )
         
         # Start background processing
         asyncio.create_task(
@@ -454,7 +500,7 @@ async def bulk_analyze_smart(
         # Save photos
         photo_paths = save_uploaded_photos(files, job_id)
         
-        # Initialize job status
+        # Initialize job status (in-memory)
         bulk_jobs[job_id] = {
             "job_id": job_id,
             "status": "queued",
@@ -469,6 +515,15 @@ async def bulk_analyze_smart(
             "completed_at": None,
             "progress_percent": 0.0
         }
+        
+        # CRITICAL: Save photo_plan to DB so progress tracking works
+        save_photo_plan(
+            plan_id=job_id,
+            photo_paths=photo_paths,
+            photo_count=len(photo_paths),
+            estimated_items=0,  # Unknown until AI analyzes
+            user_id=str(current_user.id)
+        )
         
         # Start background processing with SMART GROUPING
         asyncio.create_task(
@@ -942,16 +997,22 @@ async def delete_draft(
 @router.post("/drafts/{draft_id}/publish")
 async def publish_draft(
     draft_id: str,
+    dry_run: bool = Query(default=False, description="If true, simulate without real publication"),
     current_user: User = Depends(get_current_user)
 ):
     """
-    Publish a draft to Vinted
+    🚀 REAL VINTED PUBLICATION (2-Phase Workflow)
     
     **Requires:** Authentication (user ownership validation) + publications quota
     
-    This creates a Vinted listing from the draft using the 2-phase workflow:
-    1. Prepare listing (Phase A)
-    2. Publish listing (Phase B)
+    **Workflow:**
+    1. Phase A: Prepare listing on Vinted (upload photos, fill form)
+    2. Phase B: Click "Publish" button and get listing URL
+    
+    **Returns:** {ok, draft_id, status, listing_url, vinted_id}
+    
+    **dry_run=true**: Simulate without real publication (for testing)
+    **dry_run=false**: REAL publication to Vinted (default)
     """
     try:
         # Get draft from SQLite (with user ownership check)
@@ -976,13 +1037,181 @@ async def publish_draft(
                 detail="Ce brouillon ne vous appartient pas"
             )
         
-        # Check publications quota
-        await check_and_consume_quota(current_user, "publications", amount=1)
+        # Check publications quota (only if not dry_run)
+        if not dry_run:
+            await check_and_consume_quota(current_user, "publications", amount=1)
         
-        print(f"✅ [PUBLISH] User {current_user.id} publishing draft {draft_id}")
+        print(f"{'🧪 [DRY-RUN]' if dry_run else '🚀'} [PUBLISH] User {current_user.id} publishing draft {draft_id}")
+        
+        # Extract draft fields
+        item_json = draft_data.get("item_json", {})
+        photos = item_json.get("photos", [])
+        
+        # Parse price_suggestion from analysis_result
+        analysis_result = item_json.get("analysis_result", {})
+        price_min = analysis_result.get("price_min", draft_data["price"] * 0.8)
+        price_max = analysis_result.get("price_max", draft_data["price"] * 1.2)
+        
+        from backend.schemas.vinted import PriceSuggestion, PublishFlags
+        price_suggestion = PriceSuggestion(
+            min=int(price_min),
+            target=draft_data["price"],
+            max=int(price_max)
+        )
+        
+        # Extract hashtags from description (last line if starts with #)
+        description = draft_data["description"]
+        hashtags = []
+        if description:
+            lines = description.strip().split('\n')
+            last_line = lines[-1].strip()
+            if last_line.startswith('#'):
+                hashtags = [tag.strip() for tag in last_line.split() if tag.startswith('#')]
+                # Remove hashtag line from description
+                description = '\n'.join(lines[:-1]).strip()
+        
+        # Build publish readiness flags
+        flags = PublishFlags(
+            publish_ready=True,
+            has_all_photos=len(photos) > 0,
+            has_measurements=True,  # Assume true
+            no_marketing_phrases=True,
+            hashtags_valid=3 <= len(hashtags) <= 5
+        )
+        
+        # PHASE A: Prepare listing on Vinted
+        print(f"📸 Phase A: Preparing listing '{draft_data['title'][:50]}...'")
+        
+        # Build prepare request payload
+        prepare_payload = {
+            "title": draft_data["title"],
+            "price": draft_data["price"],
+            "description": description,
+            "brand": draft_data.get("brand"),
+            "size": draft_data.get("size"),
+            "condition": item_json.get("condition", "Bon état"),
+            "color": draft_data.get("color"),
+            "category_hint": draft_data.get("category"),
+            "photos": photos,
+            "hashtags": hashtags,
+            "price_suggestion": {
+                "min": price_suggestion.min,
+                "target": price_suggestion.target,
+                "max": price_suggestion.max
+            },
+            "flags": {
+                "publish_ready": flags.publish_ready,
+                "has_all_photos": flags.has_all_photos,
+                "has_measurements": flags.has_measurements,
+                "no_marketing_phrases": flags.no_marketing_phrases,
+                "hashtags_valid": flags.hashtags_valid
+            },
+            "dry_run": dry_run
+        }
+        
+        # Call prepare endpoint via internal HTTP request
+        import httpx
+        async with httpx.AsyncClient() as client:
+            # Get auth token from current_user (simulate JWT)
+            from backend.core.auth import create_access_token
+            access_token = create_access_token({"sub": str(current_user.id)})
+            
+            prepare_response_raw = await client.post(
+                "http://localhost:5000/api/v1/vinted/listings/prepare",
+                json=prepare_payload,
+                headers={"Authorization": f"Bearer {access_token}"}
+            )
+            
+            if prepare_response_raw.status_code != 200:
+                error_detail = prepare_response_raw.json().get("detail", "Unknown error")
+                print(f"❌ Phase A failed: {error_detail}")
+                return {
+                    "ok": False,
+                    "draft_id": draft_id,
+                    "status": "prepare_failed",
+                    "reason": error_detail,
+                    "dry_run": dry_run
+                }
+            
+            prepare_response = prepare_response_raw.json()
+        
+        if not prepare_response.get("ok"):
+            reason = prepare_response.get("reason", "Unknown error")
+            print(f"❌ Phase A failed: {reason}")
+            return {
+                "ok": False,
+                "draft_id": draft_id,
+                "status": "prepare_failed",
+                "reason": reason,
+                "dry_run": dry_run
+            }
+        
+        confirm_token = prepare_response.get("confirm_token")
+        print(f"✅ Phase A complete: confirm_token={confirm_token[:20] if confirm_token else 'N/A'}...")
+        
+        # PHASE B: Publish listing
+        print(f"📢 Phase B: Publishing to Vinted...")
+        
+        # Generate idempotency key
+        import hashlib
+        idempotency_key = hashlib.sha256(f"{draft_id}:{confirm_token}".encode()).hexdigest()
+        
+        # Build publish request payload
+        publish_payload = {
+            "confirm_token": confirm_token,
+            "dry_run": dry_run
+        }
+        
+        # Call publish endpoint via internal HTTP request
+        async with httpx.AsyncClient() as client:
+            publish_response_raw = await client.post(
+                "http://localhost:5000/api/v1/vinted/listings/publish",
+                json=publish_payload,
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Idempotency-Key": idempotency_key
+                }
+            )
+            
+            if publish_response_raw.status_code == 409:
+                print(f"⚠️  Duplicate publish attempt blocked (idempotency key already used)")
+                raise HTTPException(
+                    status_code=409,
+                    detail="Cette annonce a déjà été publiée (clé d'idempotence utilisée)"
+                )
+            
+            if publish_response_raw.status_code != 200:
+                error_detail = publish_response_raw.json().get("detail", "Unknown error")
+                print(f"❌ Phase B failed: {error_detail}")
+                return {
+                    "ok": False,
+                    "draft_id": draft_id,
+                    "status": "publish_failed",
+                    "reason": error_detail,
+                    "dry_run": dry_run
+                }
+            
+            publish_response = publish_response_raw.json()
+        
+        if not publish_response.get("ok"):
+            reason = publish_response.get("reason", "Unknown error")
+            print(f"❌ Phase B failed: {reason}")
+            return {
+                "ok": False,
+                "draft_id": draft_id,
+                "status": "publish_failed",
+                "reason": reason,
+                "dry_run": dry_run
+            }
+        
+        listing_url = publish_response.get("listing_url")
+        vinted_id = publish_response.get("listing_id")
+        print(f"✅ Phase B complete: {listing_url}")
         
         # Update draft status in SQLite
-        get_store().update_draft_status(draft_id, "published")
+        if not dry_run:
+            get_store().update_draft_status(draft_id, "published")
+            # TODO: Save vinted_id and listing_url to database
         
         # Also update in-memory if exists
         if draft_id in drafts_storage:
@@ -991,19 +1220,24 @@ async def publish_draft(
             draft.updated_at = datetime.utcnow()
             drafts_storage[draft_id] = draft
         
-        print(f"✅ Draft published: {draft_id}")
+        print(f"✅ {'[DRY-RUN]' if dry_run else ''} Draft published: {draft_id} → {listing_url}")
         
         return {
             "ok": True,
             "draft_id": draft_id,
             "status": "published",
-            "message": "Draft marked as published (Vinted integration pending)"
+            "listing_url": listing_url,
+            "vinted_id": vinted_id,
+            "dry_run": dry_run,
+            "message": "Annonce publiée sur Vinted avec succès !" if not dry_run else "Simulation réussie (dry_run=true)"
         }
         
     except HTTPException:
         raise
     except Exception as e:
         print(f"❌ Publish draft error: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to publish draft: {str(e)}")
 
 
