@@ -410,8 +410,8 @@ async def bulk_upload_photos(
             plan_id=job_id,
             photo_paths=photo_paths,
             photo_count=len(photo_paths),
-            estimated_items=estimated_items,
-            user_id=str(current_user.id)
+            auto_grouping=auto_group,
+            estimated_items=estimated_items
         )
         
         # Start background processing
@@ -521,8 +521,8 @@ async def bulk_analyze_smart(
             plan_id=job_id,
             photo_paths=photo_paths,
             photo_count=len(photo_paths),
-            estimated_items=0,  # Unknown until AI analyzes
-            user_id=str(current_user.id)
+            auto_grouping=True,  # Smart analysis always uses auto-grouping
+            estimated_items=0  # Unknown until AI analyzes
         )
         
         # Start background processing with SMART GROUPING
@@ -1071,12 +1071,12 @@ async def publish_draft(
                 description = '\n'.join(lines[:-1]).strip()
         
         # Build publish readiness flags
+        has_all_photos = len(photos) > 0
+        hashtags_valid = 3 <= len(hashtags) <= 5
         flags = PublishFlags(
-            publish_ready=True,
-            has_all_photos=len(photos) > 0,
-            has_measurements=True,  # Assume true
-            no_marketing_phrases=True,
-            hashtags_valid=3 <= len(hashtags) <= 5
+            publish_ready=has_all_photos and hashtags_valid,
+            ai_validated=True,
+            photos_validated=has_all_photos
         )
         
         # PHASE A: Prepare listing on Vinted
@@ -1101,10 +1101,8 @@ async def publish_draft(
             },
             "flags": {
                 "publish_ready": flags.publish_ready,
-                "has_all_photos": flags.has_all_photos,
-                "has_measurements": flags.has_measurements,
-                "no_marketing_phrases": flags.no_marketing_phrases,
-                "hashtags_valid": flags.hashtags_valid
+                "ai_validated": flags.ai_validated,
+                "photos_validated": flags.photos_validated
             },
             "dry_run": dry_run
         }

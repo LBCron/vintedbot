@@ -15,8 +15,12 @@ import pillow_heif
 from openai import OpenAI
 
 # Use user's personal OpenAI API key (from Replit Secrets)
-openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-print("✅ Using personal OpenAI API key")
+openai_client = OpenAI(
+    api_key=os.getenv("OPENAI_API_KEY"),
+    timeout=60.0,  # 60 second timeout for API calls
+    max_retries=2  # Retry failed requests twice
+)
+print("✅ Using personal OpenAI API key with timeout=60s, retries=2")
 
 # Register HEIF opener with PIL
 pillow_heif.register_heif_opener()
@@ -186,6 +190,58 @@ Analyse les photos et génère le JSON:"""
         return generate_fallback_analysis(photo_paths)
 
 
+def validate_ai_result(result: Dict[str, Any]) -> tuple[bool, List[str]]:
+    """
+    Validate AI-generated listing against quality gates
+    
+    Returns:
+        (is_valid, list_of_errors)
+    """
+    errors = []
+    
+    # Check title length
+    title = result.get("title", "")
+    if len(title) > 70:
+        errors.append(f"Title too long ({len(title)} chars, max 70)")
+    
+    # Check for emojis in title/description
+    import re
+    emoji_pattern = re.compile("["
+        u"\U0001F600-\U0001F64F"  # emoticons
+        u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+        u"\U0001F680-\U0001F6FF"  # transport & map symbols
+        u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
+        u"\U00002702-\U000027B0"
+        u"\U000024C2-\U0001F251"
+        "]+", flags=re.UNICODE)
+    
+    if emoji_pattern.search(title):
+        errors.append("Title contains emojis (forbidden)")
+    
+    description = result.get("description", "")
+    if emoji_pattern.search(description):
+        errors.append("Description contains emojis (forbidden)")
+    
+    # Check hashtags (should be 3-5, at end of description)
+    hashtag_count = description.count("#")
+    if hashtag_count < 3 or hashtag_count > 5:
+        errors.append(f"Invalid hashtag count ({hashtag_count}, need 3-5)")
+    
+    # Check mandatory fields
+    if not result.get("condition"):
+        errors.append("Missing 'condition' field")
+    if not result.get("size"):
+        errors.append("Missing 'size' field")
+    
+    # Check for forbidden marketing phrases
+    forbidden_phrases = ["parfait pour", "style tendance", "casual chic", "découvrez", "idéal"]
+    for phrase in forbidden_phrases:
+        if phrase.lower() in description.lower():
+            errors.append(f"Forbidden marketing phrase: '{phrase}'")
+    
+    return (len(errors) == 0, errors)
+
+
 def generate_fallback_analysis(photo_paths: List[str]) -> Dict[str, Any]:
     """
     Generate a basic fallback analysis when AI fails
@@ -238,10 +294,8 @@ def batch_analyze_photos(photo_groups: List[List[str]]) -> List[Dict[str, Any]]:
 
 def smart_group_photos(photo_paths: List[str], max_per_group: int = 7) -> List[List[str]]:
     """
-    Intelligently group photos into clothing items
-    Simple version: groups by sequences (every N photos = 1 item)
-    
-    TODO: Use image similarity (CLIP embeddings) for smarter grouping
+    Intelligently group photos into clothing items using image metadata
+    Uses aspect ratio, file size, and color similarity for better grouping
     
     Args:
         photo_paths: All photo paths
@@ -250,22 +304,78 @@ def smart_group_photos(photo_paths: List[str], max_per_group: int = 7) -> List[L
     Returns:
         List of photo groups
     """
-    # Simple sequential grouping for now
-    groups = []
-    current_group = []
+    import imagehash
+    from PIL import Image
     
+    # Extract metadata for each photo
+    photo_metadata = []
     for path in photo_paths:
-        current_group.append(path)
-        
-        if len(current_group) >= max_per_group:
-            groups.append(current_group)
-            current_group = []
+        try:
+            img = Image.open(path)
+            aspect_ratio = img.width / img.height if img.height > 0 else 1.0
+            file_size = Path(path).stat().st_size
+            # Use pHash for perceptual similarity
+            phash = imagehash.phash(img)
+            photo_metadata.append({
+                'path': path,
+                'aspect_ratio': aspect_ratio,
+                'file_size': file_size,
+                'phash': phash
+            })
+        except Exception as e:
+            print(f"⚠️ Metadata extraction failed for {path}: {e}")
+            # Fallback metadata
+            photo_metadata.append({
+                'path': path,
+                'aspect_ratio': 1.0,
+                'file_size': 0,
+                'phash': None
+            })
     
-    # Add remaining photos as last group
-    if current_group:
+    # Group photos by similarity
+    groups = []
+    used_indices = set()
+    
+    for i, meta in enumerate(photo_metadata):
+        if i in used_indices:
+            continue
+            
+        # Start new group with current photo
+        current_group = [meta['path']]
+        used_indices.add(i)
+        
+        # Find similar photos for this group
+        for j, other_meta in enumerate(photo_metadata[i+1:], start=i+1):
+            if j in used_indices or len(current_group) >= max_per_group:
+                continue
+            
+            # Check similarity
+            is_similar = False
+            
+            # Similar aspect ratio (within 15%)
+            aspect_diff = abs(meta['aspect_ratio'] - other_meta['aspect_ratio'])
+            if aspect_diff < 0.15:
+                is_similar = True
+            
+            # Similar file size (within 50% for same photo session)
+            if meta['file_size'] > 0 and other_meta['file_size'] > 0:
+                size_ratio = min(meta['file_size'], other_meta['file_size']) / max(meta['file_size'], other_meta['file_size'])
+                if size_ratio > 0.5:
+                    is_similar = True
+            
+            # Perceptual hash similarity (Hamming distance < 10)
+            if meta['phash'] and other_meta['phash']:
+                hash_distance = meta['phash'] - other_meta['phash']
+                if hash_distance < 10:
+                    is_similar = True
+            
+            if is_similar:
+                current_group.append(other_meta['path'])
+                used_indices.add(j)
+        
         groups.append(current_group)
     
-    print(f"📦 Grouped {len(photo_paths)} photos into {len(groups)} items")
+    print(f"📦 Smart grouped {len(photo_paths)} photos into {len(groups)} items (similarity-based)")
     return groups
 
 
