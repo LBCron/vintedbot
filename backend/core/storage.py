@@ -113,6 +113,10 @@ class SQLiteStore:
                     estimated_items INTEGER NOT NULL,
                     detected_items INTEGER,
                     draft_ids TEXT DEFAULT '[]',  -- JSON array
+                    status TEXT DEFAULT 'processing',  -- processing, completed, failed
+                    progress_percent REAL DEFAULT 0.0,
+                    started_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    completed_at TEXT,
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP
                 )
             """)
@@ -424,9 +428,11 @@ class SQLiteStore:
         self,
         plan_id: str,
         detected_items: Optional[int] = None,
-        draft_ids: Optional[List[str]] = None
+        draft_ids: Optional[List[str]] = None,
+        status: Optional[str] = None,
+        progress_percent: Optional[float] = None
     ):
-        """Update plan with real detection results and draft IDs"""
+        """Update plan with real detection results, draft IDs, and progress"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             updates = []
@@ -438,6 +444,14 @@ class SQLiteStore:
             if draft_ids is not None:
                 updates.append("draft_ids = ?")
                 params.append(json.dumps(draft_ids))
+            if status is not None:
+                updates.append("status = ?")
+                params.append(status)
+                if status == "completed":
+                    updates.append("completed_at = CURRENT_TIMESTAMP")
+            if progress_percent is not None:
+                updates.append("progress_percent = ?")
+                params.append(progress_percent)
             
             if updates:
                 query = f"UPDATE photo_plans SET {', '.join(updates)} WHERE plan_id = ?"
@@ -462,6 +476,10 @@ class SQLiteStore:
                 "estimated_items": row["estimated_items"],
                 "detected_items": row["detected_items"],
                 "draft_ids": json.loads(row["draft_ids"]) if row["draft_ids"] else [],
+                "status": row.get("status", "processing"),
+                "progress_percent": row.get("progress_percent", 0.0),
+                "started_at": row.get("started_at"),
+                "completed_at": row.get("completed_at"),
                 "created_at": row["created_at"]
             }
     

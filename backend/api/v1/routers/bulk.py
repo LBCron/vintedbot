@@ -39,6 +39,7 @@ from backend.schemas.bulk import (
 from backend.schemas.vinted import PublishFlags
 from backend.settings import settings
 from backend.database import save_photo_plan, get_photo_plan, delete_photo_plan, update_photo_plan_results
+from backend.core.storage import get_store
 
 router = APIRouter(prefix="/bulk", tags=["bulk"])
 
@@ -142,7 +143,8 @@ async def process_bulk_job(
     photo_paths: List[str], 
     photos_per_item: int,
     use_smart_grouping: bool = False,
-    style: str = "classique"
+    style: str = "classique",
+    update_db: bool = True  # Update photo_plans in DB for real-time progress
 ):
     """
     Background task: Process bulk photos and create drafts
@@ -151,6 +153,11 @@ async def process_bulk_job(
         print(f"\n🚀 Starting bulk job {job_id} (smart_grouping={use_smart_grouping}, style={style})")
         bulk_jobs[job_id]["status"] = "processing"
         bulk_jobs[job_id]["started_at"] = datetime.utcnow()
+        
+        # Update database status to "processing"
+        if update_db:
+            if get_photo_plan(job_id):
+                get_store().update_photo_plan(job_id, status="processing", progress_percent=0.0)
         
         analysis_results = []
         
@@ -168,7 +175,11 @@ async def process_bulk_job(
                 
                 bulk_jobs[job_id]["total_items"] = len(analysis_results)
                 bulk_jobs[job_id]["completed_items"] = len(analysis_results)
-                bulk_jobs[job_id]["progress_percent"] = 100.0
+                bulk_jobs[job_id]["progress_percent"] = 50.0  # 50% after analysis
+                
+                # Update DB progress
+                if update_db and get_photo_plan(job_id):
+                    get_store().update_photo_plan(job_id, progress_percent=50.0)
                 
             except Exception as e:
                 print(f"❌ Smart grouping failed: {e}, falling back to simple grouping")
@@ -192,7 +203,13 @@ async def process_bulk_job(
                     analysis_results.append(result)
                     
                     bulk_jobs[job_id]["completed_items"] += 1
-                    bulk_jobs[job_id]["progress_percent"] = (i + 1) / len(photo_groups) * 100
+                    progress = (i + 1) / len(photo_groups) * 50  # 0-50% during analysis
+                    bulk_jobs[job_id]["progress_percent"] = progress
+                    
+                    # Update DB progress every 10% or on last item
+                    if update_db and (i % max(1, len(photo_groups) // 5) == 0 or i == len(photo_groups) - 1):
+                        if get_photo_plan(job_id):
+                            get_store().update_photo_plan(job_id, progress_percent=progress)
                     
                 except Exception as e:
                     print(f"❌ Analysis failed for item {i+1}: {e}")
@@ -262,6 +279,17 @@ async def process_bulk_job(
         bulk_jobs[job_id]["status"] = "completed"
         bulk_jobs[job_id]["completed_at"] = datetime.utcnow()
         bulk_jobs[job_id]["progress_percent"] = 100.0
+        
+        # Update DB status to "completed"
+        if update_db and get_photo_plan(job_id):
+            draft_ids = bulk_jobs[job_id].get("drafts", [])
+            get_store().update_photo_plan(
+                job_id, 
+                detected_items=len(analysis_results),
+                draft_ids=draft_ids,
+                status="completed",
+                progress_percent=100.0
+            )
         
         print(f"\n✅ Bulk job {job_id} completed: {len(analysis_results)} drafts created")
         
@@ -668,7 +696,7 @@ async def get_bulk_job_status(job_id: str):
     **Note:** Also checks photo_analysis_cache for jobs created by /bulk/photos/analyze
     """
     try:
-        # First check PostgreSQL database (for /bulk/photos/analyze jobs)
+        # First check database for photo_plans (for /bulk/photos/analyze jobs)
         photo_plan = get_photo_plan(job_id)
         if photo_plan:
             # Use REAL detected count if available, otherwise fallback to estimation
@@ -681,20 +709,27 @@ async def get_bulk_job_status(job_id: str):
                 if did in drafts_storage:
                     draft_objects.append(drafts_storage[did])
             
-            # Photo analysis is complete, drafts may or may not be generated yet
+            # Return REAL status from database (processing, completed, failed)
+            status = photo_plan.get("status", "processing")
+            progress = photo_plan.get("progress_percent", 0.0)
+            
+            # Calculate processed photos based on progress
+            total_photos = photo_plan["photo_count"]
+            processed_photos = int(total_photos * (progress / 100.0)) if status == "processing" else total_photos
+            
             return BulkJobStatus(
                 job_id=job_id,
-                status="completed",
-                total_photos=photo_plan["photo_count"],
-                processed_photos=photo_plan["photo_count"],
-                total_items=detected_items,  # Use REAL count, not estimation!
-                completed_items=detected_items,
+                status=status,  # REAL status from DB
+                total_photos=total_photos,
+                processed_photos=processed_photos,
+                total_items=detected_items,
+                completed_items=detected_items if status == "completed" else 0,
                 failed_items=0,
                 drafts=draft_objects,
                 errors=[],
-                started_at=photo_plan["created_at"],
-                completed_at=photo_plan["created_at"],
-                progress_percent=100.0
+                started_at=photo_plan.get("started_at", photo_plan["created_at"]),
+                completed_at=photo_plan.get("completed_at"),
+                progress_percent=progress  # REAL progress from DB
             )
         
         # Then check bulk_jobs (for /bulk/ingest jobs)
