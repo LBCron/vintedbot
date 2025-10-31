@@ -468,19 +468,22 @@ class SQLiteStore:
             if not row:
                 return None
             
+            # ✅ FIXED: Convert sqlite3.Row to dict to use .get()
+            row_dict = dict(row)
+            
             return {
-                "plan_id": row["plan_id"],
-                "photo_paths": json.loads(row["photo_paths"]),
-                "photo_count": row["photo_count"],
-                "auto_grouping": bool(row["auto_grouping"]),
-                "estimated_items": row["estimated_items"],
-                "detected_items": row["detected_items"],
-                "draft_ids": json.loads(row["draft_ids"]) if row["draft_ids"] else [],
-                "status": row.get("status", "processing"),
-                "progress_percent": row.get("progress_percent", 0.0),
-                "started_at": row.get("started_at"),
-                "completed_at": row.get("completed_at"),
-                "created_at": row["created_at"]
+                "plan_id": row_dict["plan_id"],
+                "photo_paths": json.loads(row_dict["photo_paths"]),
+                "photo_count": row_dict["photo_count"],
+                "auto_grouping": bool(row_dict["auto_grouping"]),
+                "estimated_items": row_dict["estimated_items"],
+                "detected_items": row_dict["detected_items"],
+                "draft_ids": json.loads(row_dict["draft_ids"]) if row_dict["draft_ids"] else [],
+                "status": row_dict.get("status", "processing"),
+                "progress_percent": row_dict.get("progress_percent", 0.0),
+                "started_at": row_dict.get("started_at"),
+                "completed_at": row_dict.get("completed_at"),
+                "created_at": row_dict["created_at"]
             }
     
     # ==================== BULK JOBS ====================
