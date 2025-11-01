@@ -433,6 +433,102 @@ def smart_analyze_and_group_photos(
     return all_items
 
 
+def _adjust_price_if_needed(item: Dict[str, Any]) -> float:
+    """
+    Ajuster le prix selon les règles réalistes Vinted 2025
+    Si l'AI a mal calculé, on corrige automatiquement
+    
+    Args:
+        item: Dict avec brand, category, condition, price
+        
+    Returns:
+        Prix ajusté en euros
+    """
+    category = (item.get("category") or "").lower()
+    brand = (item.get("brand") or "").lower()
+    condition = (item.get("condition") or "Bon état").lower()
+    
+    # BASES CATÉGORIES (prix de départ réalistes)
+    base_prices = {
+        "t-shirt": 18, "polo": 18, "top": 18,
+        "chemise": 20, "blouse": 20,
+        "pull": 25, "sweat": 25, "cardigan": 25,
+        "hoodie": 38, "sweatshirt": 38,
+        "pantalon": 32, "jean": 32, "jeans": 32,
+        "short": 25, "bermuda": 25,
+        "jogging": 28, "survêtement": 28,
+        "veste": 55, "blouson": 55,
+        "manteau": 60, "coat": 60,
+        "doudoune": 70, "parka": 70
+    }
+    
+    # Trouver la catégorie
+    base_price = 20  # Default
+    for cat_key, price in base_prices.items():
+        if cat_key in category:
+            base_price = price
+            break
+    
+    # MULTIPLICATEURS MARQUE
+    brand_multiplier = 1.0
+    
+    # Luxe (×3.0 à ×5.0)
+    luxury_brands = ["burberry", "dior", "gucci", "louis vuitton", "lv", "prada", "chanel", "hermès", "hermes", "yves saint laurent", "ysl"]
+    if any(b in brand for b in luxury_brands):
+        brand_multiplier = 3.5
+    
+    # Premium (×2.0 à ×2.5) - FIX CRITIQUE : Karl Lagerfeld, Ralph Lauren, etc.
+    elif any(b in brand for b in ["ralph lauren", "polo", "karl lagerfeld", "diesel", "tommy hilfiger", "lacoste", "hugo boss", "calvin klein"]):
+        brand_multiplier = 2.2
+    
+    # Streetwear (×2.5 à ×3.5)
+    elif any(b in brand for b in ["fear of god", "essentials", "supreme", "off-white", "bape", "a bathing ape"]):
+        brand_multiplier = 2.8
+    
+    # Sportswear premium (×2.0 à ×2.8)
+    elif any(b in brand for b in ["yeezy", "jordan", "off white"]):
+        brand_multiplier = 2.5
+    
+    # Standard (×1.0) - Zara, H&M, Uniqlo
+    elif any(b in brand for b in ["zara", "h&m", "uniqlo", "mango", "asos"]):
+        brand_multiplier = 1.0
+    
+    # Entrée de gamme (×0.8)
+    elif "non spécifié" in brand or not brand:
+        brand_multiplier = 0.8
+    
+    # MULTIPLICATEURS CONDITION
+    condition_multiplier = 0.70  # "Bon état" par défaut
+    if "neuf avec" in condition:
+        condition_multiplier = 1.00
+    elif "neuf" in condition:
+        condition_multiplier = 0.95
+    elif "très bon" in condition:
+        condition_multiplier = 0.85
+    elif "bon" in condition:
+        condition_multiplier = 0.70
+    elif "satisfaisant" in condition:
+        condition_multiplier = 0.55
+    
+    # CALCUL
+    calculated_price = base_price * brand_multiplier * condition_multiplier
+    
+    # ARRONDIS PSYCHOLOGIQUES
+    if calculated_price < 40:
+        # Arrondir à 9, 19, 29, 39
+        adjusted = round(calculated_price / 10) * 10 - 1
+        if adjusted < 9:
+            adjusted = 9
+    elif calculated_price < 100:
+        # Arrondir à 49, 59, 69, 79, 89, 99
+        adjusted = round(calculated_price / 10) * 10 - 1
+    else:
+        # Arrondir à 99, 119, 129, 149, 199
+        adjusted = round(calculated_price / 10) * 10 - 1
+    
+    return int(adjusted)
+
+
 def _analyze_single_batch(
     photo_paths: List[str],
     style: str = "classique",
@@ -692,11 +788,29 @@ Analyse les photos et génère le JSON:"""
                     print(f"   • {error}")
                 continue  # Skip this article
             
+            # 6. Ajuster le prix si l'AI s'est trompée (pricing intelligent)
+            original_price = group.get("price", 20)
+            adjusted_price = _adjust_price_if_needed(group)
+            if adjusted_price != original_price:
+                print(f"💰 Prix ajusté : {original_price}€ → {adjusted_price}€ ({group.get('brand', 'N/A')})")
+                group["price"] = adjusted_price
+            
             validated_groups.append(group)
         
-        print(f"✅ {len(validated_groups)}/{len(groups)} articles validés")
+        print(f"\n{'='*80}")
+        print(f"✅ VALIDATION FINALE : {len(validated_groups)}/{len(groups)} articles validés")
+        print(f"{'='*80}")
         for i, group in enumerate(validated_groups, 1):
-            print(f"   • {group.get('title')} ({len(group.get('photos', []))} photos, {group.get('condition')})")
+            title = group.get('title', 'N/A')
+            photo_count = len(group.get('photos', []))
+            condition = group.get('condition', 'N/A')
+            price = group.get('price', 0)
+            brand = group.get('brand', 'N/A')
+            size = group.get('size', 'N/A')
+            
+            print(f"[{i}] {title}")
+            print(f"    📸 Photos: {photo_count} | 💰 Prix: {price}€ | 🏷️  Marque: {brand}")
+            print(f"    ✨ État: {condition} | 📏 Taille: {size}")
         
         return validated_groups
         
