@@ -460,11 +460,41 @@ async def prepare_listing(
             
             # Upload photos
             if request.photos:
-                for photo_ref in request.photos:
-                    # Resolve photo path (could be temp_id or path)
-                    photo_path = f"backend/data/temp_photos/{photo_ref}"
+                from pathlib import Path
+                import os
+                
+                for idx, photo_ref in enumerate(request.photos):
+                    # ✅ SMART PATH RESOLUTION - handles all formats
+                    # Case 1: Absolute path (starts with /)
+                    if photo_ref.startswith('/'):
+                        photo_path = f"backend/data{photo_ref}"
+                    # Case 2: Already has backend/data prefix
+                    elif photo_ref.startswith('backend/data/'):
+                        photo_path = photo_ref
+                    # Case 3: Relative path with temp_photos
+                    elif photo_ref.startswith('temp_photos/'):
+                        photo_path = f"backend/data/{photo_ref}"
+                    # Case 4: Just filename (legacy)
+                    else:
+                        photo_path = f"backend/data/temp_photos/{photo_ref}"
+                    
+                    # Verify file exists before upload
+                    if not os.path.exists(photo_path):
+                        print(f"❌ Photo [{idx}] NOT FOUND: {photo_ref}")
+                        print(f"   Resolved path: {photo_path}")
+                        print(f"   File exists: {os.path.exists(photo_path)}")
+                        raise HTTPException(
+                            status_code=404,
+                            detail=f"Photo not found: {photo_ref} (resolved to {photo_path})"
+                        )
+                    
+                    print(f"📸 Uploading photo [{idx+1}/{len(request.photos)}]: {os.path.basename(photo_path)}")
                     if not await client.upload_photo(page, photo_path):
                         print(f"⚠️ Photo upload failed: {photo_ref}")
+                        raise HTTPException(
+                            status_code=500,
+                            detail=f"Failed to upload photo: {photo_ref}"
+                        )
             
             # Fill form
             fill_result = await client.fill_listing_form(
