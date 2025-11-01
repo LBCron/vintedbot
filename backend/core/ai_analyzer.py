@@ -475,16 +475,31 @@ def _analyze_single_batch(
         # Create intelligent grouping prompt with REINFORCED quality rules (condition & size MANDATORY)
         prompt = f"""Tu es l'assistant "Photo → Listing" de VintedBot Studio. Tu reçois {len(image_contents)} photos et tu dois les GROUPER intelligemment par pièce/vêtement, puis générer un listing pour chaque groupe.
 
-RÈGLES DE GROUPEMENT CRITIQUES (anti-saucisson):
+RÈGLES DE GROUPEMENT CRITIQUES (anti-saucisson ET anti-mélange):
 1. **UNE PIÈCE = UN ARTICLE** : Regrouper TOUTES les photos d'une même pièce/vêtement dans un seul article pour maximiser la visualisation acheteur.
-2. **PLUSIEURS PIÈCES = PLUSIEURS GROUPES** : Si tu détectes plusieurs pièces distinctes (marques différentes, couleurs/coupes/logos différents, tailles adultes différentes) → créer OBLIGATOIREMENT plusieurs groupes séparés, un par pièce.
+
+2. **PLUSIEURS PIÈCES = PLUSIEURS GROUPES SÉPARÉS** (RÈGLE ABSOLUE):
+   Tu DOIS créer des groupes séparés si tu détectes :
+   • Marques DIFFÉRENTES (ex: Burberry ≠ Ralph Lauren → 2 groupes)
+   • Couleurs DIFFÉRENTES (ex: t-shirt noir ≠ t-shirt blanc → 2 groupes)  
+   • Coupes/styles DIFFÉRENTS (ex: hoodie ≠ t-shirt → 2 groupes)
+   • Logos/motifs DIFFÉRENTS (ex: logo Lacoste ≠ logo Polo → 2 groupes)
+   • Tailles adultes DIFFÉRENTES (ex: XS ≠ M → 2 groupes)
+   
+   🔴 INTERDIT ABSOLU : Mélanger des vêtements différents dans le même groupe (ex: t-shirt noir + t-shirt blanc = ERREUR GRAVE)
+
 3. **JAMAIS de listing multi-pièces** : Interdiction absolue de créer "lot de 2 t-shirts" ou combiner plusieurs vêtements dans un article.
+
 4. **Détecter les détails** : Les photos de détails/étiquettes/macros (≤2 photos isolées) doivent être fusionnées avec le groupe principal du même vêtement.
+
 5. Les étiquettes (care labels, brand tags, size labels) DOIVENT être rattachées au vêtement principal correspondant - JAMAIS créer d'article "étiquette seule".
+
+6. **MINIMUM 3 PHOTOS PAR ARTICLE** : Si un groupe a moins de 3 photos, essaie de trouver d'autres photos du même vêtement. Si impossible, ne crée PAS ce groupe (il sera rejeté).
 
 CHAMPS OBLIGATOIRES (NE JAMAIS LAISSER VIDE):
 
-**condition** (OBLIGATOIRE - TOUJOURS REMPLIR):
+**condition** (OBLIGATOIRE - JAMAIS NULL/VIDE):
+  ⚠️ CE CHAMP NE DOIT JAMAIS ÊTRE null, undefined, ou vide ⚠️
   Déterminer l'état selon les photos. TOUJOURS remplir ce champ.
   Valeurs autorisées UNIQUEMENT:
   • "Neuf avec étiquette" : étiquette visible sur la photo
@@ -492,12 +507,17 @@ CHAMPS OBLIGATOIRES (NE JAMAIS LAISSER VIDE):
   • "Très bon état" : légères traces d'usage, propre
   • "Bon état" : usure visible mais bon état général
   • "Satisfaisant" : défauts visibles (tâches, trous, décoloration)
-  **SI IMPOSSIBLE À DÉTERMINER** : utiliser "Bon état" par défaut (JAMAIS null/undefined/vide)
+  
+  🔴 RÈGLE ABSOLUE : Si tu ne vois pas assez de détails pour déterminer l'état précis, tu DOIS choisir "Bon état" par défaut.
+  🔴 INTERDIT ABSOLU : Retourner null, undefined, "", ou omettre ce champ. Le JSON sera REJETÉ.
 
-**size** (OBLIGATOIRE - TOUJOURS REMPLIR):
+**size** (OBLIGATOIRE - JAMAIS NULL/VIDE):
+  ⚠️ CE CHAMP NE DOIT JAMAIS ÊTRE null, undefined, ou vide ⚠️
   TOUJOURS remplir ce champ en cherchant l'étiquette de taille sur les photos.
   Examiner attentivement TOUTES les photos pour trouver la taille (étiquette cousue, tag papier, inscription visible).
-  **Si impossible à lire** : "Taille non visible" (JAMAIS null/undefined/vide)
+  
+  🔴 RÈGLE ABSOLUE : Si aucune taille n'est visible sur les photos, tu DOIS écrire "Taille non visible" (texte exact).
+  🔴 INTERDIT ABSOLU : Retourner null, undefined, "", ou omettre ce champ. Le JSON sera REJETÉ.
 
 TAILLES (normalisation tops/vêtements):
 - Conserver original_size (ex. 16Y / 165 cm)
@@ -628,15 +648,57 @@ Analyse les photos et génère le JSON:"""
         
         # Map photo indices to actual paths (adjust for batch offset)
         groups = result.get("groups", [])
+        validated_groups = []
+        
         for group in groups:
             indices = group.pop("photo_indices", [])
             group["photos"] = [valid_paths[i] for i in indices if i < len(valid_paths)]
+            
+            # ✅ VALIDATION STRICTE POST-AI (Quality Gate Enforcement)
+            validation_errors = []
+            
+            # 1. Vérifier nombre minimum de photos (≥3 photos obligatoire)
+            photo_count = len(group.get("photos", []))
+            if photo_count < 3:
+                validation_errors.append(f"Trop peu de photos ({photo_count}, minimum 3)")
+            
+            # 2. GARANTIR que condition est rempli (JAMAIS null/vide)
+            condition = group.get("condition")
+            if not condition or condition.strip() == "":
+                print(f"⚠️  AI a oublié 'condition', correction automatique → 'Bon état'")
+                group["condition"] = "Bon état"  # Fallback automatique
+            
+            # 3. GARANTIR que size est rempli (JAMAIS null/vide)
+            size = group.get("size")
+            if not size or size.strip() == "":
+                print(f"⚠️  AI a oublié 'size', correction automatique → 'Taille non visible'")
+                group["size"] = "Taille non visible"  # Fallback automatique
+            
+            # 4. Vérifier title ≤70 chars
+            title = group.get("title", "")
+            if len(title) > 70:
+                validation_errors.append(f"Titre trop long ({len(title)} chars, max 70)")
+            
+            # 5. Vérifier hashtags 3-5
+            description = group.get("description", "")
+            hashtag_count = description.count("#")
+            if hashtag_count < 3 or hashtag_count > 5:
+                validation_errors.append(f"Hashtags invalides ({hashtag_count}, besoin 3-5)")
+            
+            # Si validation échoue, REJETER l'article
+            if validation_errors:
+                print(f"❌ Article REJETÉ : {title[:50]}")
+                for error in validation_errors:
+                    print(f"   • {error}")
+                continue  # Skip this article
+            
+            validated_groups.append(group)
         
-        print(f"✅ Detected {len(groups)} items in this batch")
-        for i, group in enumerate(groups, 1):
-            print(f"   • {group.get('title')} ({len(group.get('photos', []))} photos)")
+        print(f"✅ {len(validated_groups)}/{len(groups)} articles validés")
+        for i, group in enumerate(validated_groups, 1):
+            print(f"   • {group.get('title')} ({len(group.get('photos', []))} photos, {group.get('condition')})")
         
-        return groups
+        return validated_groups
         
     except Exception as e:
         print(f"❌ Batch analysis error: {e}")
