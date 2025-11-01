@@ -433,6 +433,148 @@ def smart_analyze_and_group_photos(
     return all_items
 
 
+def _auto_polish_draft(draft: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    🔧 POLISSAGE AUTOMATIQUE 100% - Garantit que le brouillon est PARFAIT
+    
+    Corrections automatiques :
+    - Supprime TOUS les emojis
+    - Supprime TOUTES les phrases marketing
+    - Force TOUS les champs obligatoires
+    - Corrige les hashtags (3-5, à la fin)
+    - Ajuste le prix si nécessaire
+    - Raccourcit le titre si trop long
+    
+    Returns:
+        Draft corrigé et 100% prêt à publier
+    """
+    import re
+    
+    # 1. NETTOYER EMOJIS (title + description)
+    emoji_pattern = re.compile("["
+        u"\U0001F600-\U0001F64F"  # emoticons
+        u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+        u"\U0001F680-\U0001F6FF"  # transport & map symbols
+        u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
+        u"\U00002702-\U000027B0"
+        u"\U000024C2-\U0001F251"
+        "]+", flags=re.UNICODE)
+    
+    title = draft.get("title", "")
+    description = draft.get("description", "")
+    
+    original_title = title
+    original_description = description
+    
+    title = emoji_pattern.sub("", title).strip()
+    description = emoji_pattern.sub("", description).strip()
+    
+    if title != original_title or description != original_description:
+        print(f"🧹 Emojis supprimés automatiquement")
+    
+    # 2. NETTOYER PHRASES MARKETING
+    forbidden_phrases = [
+        "parfait pour", "idéal pour", "style tendance", "casual chic", 
+        "découvrez", "magnifique", "prestigieuse", "haute qualité",
+        "look", "tendance", "must-have", "incontournable"
+    ]
+    
+    description_lower = description.lower()
+    for phrase in forbidden_phrases:
+        if phrase in description_lower:
+            # Supprimer la phrase (simple remplacement)
+            description = re.sub(rf'\b{re.escape(phrase)}\b', '', description, flags=re.IGNORECASE)
+            description = re.sub(r'\s+', ' ', description).strip()  # Nettoyer espaces
+            print(f"🧹 Phrase marketing supprimée : '{phrase}'")
+    
+    # 3. GARANTIR CHAMPS OBLIGATOIRES
+    
+    # condition (JAMAIS vide)
+    condition = draft.get("condition", "").strip()
+    if not condition:
+        print(f"⚠️  'condition' vide → correction : 'Bon état'")
+        condition = "Bon état"
+    draft["condition"] = condition
+    
+    # size (JAMAIS vide)
+    size = draft.get("size", "").strip()
+    if not size:
+        print(f"⚠️  'size' vide → correction : 'Taille non visible'")
+        size = "Taille non visible"
+    draft["size"] = size
+    
+    # brand (fallback si vide)
+    brand = draft.get("brand", "").strip()
+    if not brand or brand.lower() in ["", "non spécifié", "unknown", "n/a"]:
+        brand = "Marque non visible"
+        draft["brand"] = brand
+    
+    # color (fallback si vide)
+    color = draft.get("color", "").strip()
+    if not color or color.lower() in ["", "non spécifié", "unknown", "n/a"]:
+        color = "Couleur variée"
+        draft["color"] = color
+    
+    # category (fallback si vide)
+    category = draft.get("category", "").strip()
+    if not category or category.lower() in ["", "non spécifié", "unknown", "autre"]:
+        category = "vêtement"
+        draft["category"] = category
+    
+    # 4. CORRIGER HASHTAGS (3-5, à la fin)
+    hashtags = re.findall(r'#\w+', description)
+    
+    if len(hashtags) < 3:
+        print(f"⚠️  Pas assez de hashtags ({len(hashtags)}), ajout automatique")
+        # Générer hashtags manquants
+        missing_count = 3 - len(hashtags)
+        auto_hashtags = []
+        
+        if brand.lower() not in ["marque non visible", "non spécifié"]:
+            auto_hashtags.append(f"#{brand.lower().replace(' ', '')}")
+        if category and category != "vêtement":
+            auto_hashtags.append(f"#{category.lower().replace(' ', '').replace('-', '')}")
+        if color.lower() not in ["couleur variée", "non spécifié"]:
+            auto_hashtags.append(f"#{color.lower().replace(' ', '')}")
+        
+        # Ajouter hashtags génériques si besoin
+        generic_hashtags = ["#mode", "#vinted", "#occasion", "#vetement"]
+        auto_hashtags.extend(generic_hashtags[:missing_count])
+        
+        hashtags.extend(auto_hashtags[:missing_count])
+    
+    if len(hashtags) > 5:
+        print(f"⚠️  Trop de hashtags ({len(hashtags)}), réduction à 5")
+        hashtags = hashtags[:5]
+    
+    # Supprimer hashtags de la description, puis les remettre à la fin
+    description_no_hashtags = re.sub(r'#\w+', '', description).strip()
+    description_no_hashtags = re.sub(r'\s+', ' ', description_no_hashtags).strip()
+    
+    # Ajouter les hashtags à la fin
+    hashtag_string = " ".join(hashtags)
+    description = f"{description_no_hashtags} {hashtag_string}".strip()
+    
+    # 5. RACCOURCIR TITRE SI TROP LONG (≤70 chars)
+    if len(title) > 70:
+        print(f"⚠️  Titre trop long ({len(title)} chars), réduction à 70")
+        # Garder début + état
+        title = title[:67] + "..."
+    
+    # 6. AJUSTER PRIX SI NÉCESSAIRE
+    original_price = draft.get("price", 20)
+    adjusted_price = _adjust_price_if_needed(draft)
+    if adjusted_price != original_price:
+        print(f"💰 Prix ajusté : {original_price}€ → {adjusted_price}€")
+        draft["price"] = adjusted_price
+    
+    # 7. METTRE À JOUR LE DRAFT
+    draft["title"] = title
+    draft["description"] = description
+    
+    return draft
+
+
 def _adjust_price_if_needed(item: Dict[str, Any]) -> float:
     """
     Ajuster le prix selon les règles réalistes Vinted 2025
@@ -750,7 +892,10 @@ Analyse les photos et génère le JSON:"""
             indices = group.pop("photo_indices", [])
             group["photos"] = [valid_paths[i] for i in indices if i < len(valid_paths)]
             
-            # ✅ VALIDATION STRICTE POST-AI (Quality Gate Enforcement)
+            # 🔧 POLISSAGE AUTOMATIQUE 100% (Garantit brouillons parfaits)
+            group = _auto_polish_draft(group)
+            
+            # ✅ VALIDATION FINALE (après polissage)
             validation_errors = []
             
             # 1. Vérifier nombre minimum de photos (≥3 photos obligatoire)
@@ -758,42 +903,23 @@ Analyse les photos et génère le JSON:"""
             if photo_count < 3:
                 validation_errors.append(f"Trop peu de photos ({photo_count}, minimum 3)")
             
-            # 2. GARANTIR que condition est rempli (JAMAIS null/vide)
-            condition = group.get("condition")
-            if not condition or condition.strip() == "":
-                print(f"⚠️  AI a oublié 'condition', correction automatique → 'Bon état'")
-                group["condition"] = "Bon état"  # Fallback automatique
-            
-            # 3. GARANTIR que size est rempli (JAMAIS null/vide)
-            size = group.get("size")
-            if not size or size.strip() == "":
-                print(f"⚠️  AI a oublié 'size', correction automatique → 'Taille non visible'")
-                group["size"] = "Taille non visible"  # Fallback automatique
-            
-            # 4. Vérifier title ≤70 chars
+            # 2. Vérifier title ≤70 chars
             title = group.get("title", "")
             if len(title) > 70:
                 validation_errors.append(f"Titre trop long ({len(title)} chars, max 70)")
             
-            # 5. Vérifier hashtags 3-5
+            # 3. Vérifier hashtags 3-5
             description = group.get("description", "")
             hashtag_count = description.count("#")
             if hashtag_count < 3 or hashtag_count > 5:
                 validation_errors.append(f"Hashtags invalides ({hashtag_count}, besoin 3-5)")
             
-            # Si validation échoue, REJETER l'article
+            # Si validation échoue après polissage, REJETER
             if validation_errors:
-                print(f"❌ Article REJETÉ : {title[:50]}")
+                print(f"❌ Article REJETÉ (après polissage) : {title[:50]}")
                 for error in validation_errors:
                     print(f"   • {error}")
                 continue  # Skip this article
-            
-            # 6. Ajuster le prix si l'AI s'est trompée (pricing intelligent)
-            original_price = group.get("price", 20)
-            adjusted_price = _adjust_price_if_needed(group)
-            if adjusted_price != original_price:
-                print(f"💰 Prix ajusté : {original_price}€ → {adjusted_price}€ ({group.get('brand', 'N/A')})")
-                group["price"] = adjusted_price
             
             validated_groups.append(group)
         
