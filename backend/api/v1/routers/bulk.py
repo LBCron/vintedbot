@@ -1189,16 +1189,30 @@ async def publish_draft(
             max=int(price_max)
         )
         
-        # Extract hashtags from description (last line if starts with #)
+        # Extract hashtags from description (anywhere in last line)
         description = draft_data["description"]
         hashtags = []
         if description:
             lines = description.strip().split('\n')
             last_line = lines[-1].strip()
-            if last_line.startswith('#'):
-                hashtags = [tag.strip() for tag in last_line.split() if tag.startswith('#')]
-                # Remove hashtag line from description
-                description = '\n'.join(lines[:-1]).strip()
+            
+            # Extract all words starting with # from last line
+            hashtags = [tag.strip() for tag in last_line.split() if tag.startswith('#')]
+            
+            # If hashtags found, remove them from description
+            if hashtags:
+                # Remove hashtags from last line
+                words = last_line.split()
+                cleaned_words = [w for w in words if not w.startswith('#')]
+                cleaned_last_line = ' '.join(cleaned_words).strip()
+                
+                # Rebuild description without hashtags
+                if cleaned_last_line:
+                    lines[-1] = cleaned_last_line
+                    description = '\n'.join(lines).strip()
+                else:
+                    # Last line was only hashtags, remove it completely
+                    description = '\n'.join(lines[:-1]).strip()
         
         # Build publish readiness flags
         has_all_photos = len(photos) > 0
