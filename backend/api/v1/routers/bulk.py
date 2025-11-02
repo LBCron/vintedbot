@@ -1019,17 +1019,29 @@ async def delete_draft(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Delete a draft
+    Delete a draft (from BOTH SQLite and memory)
     
     **Requires:** Authentication (user ownership validation)
     """
     try:
-        if draft_id not in drafts_storage:
+        # Get draft from SQLite for ownership check
+        draft_data = get_store().get_draft(draft_id)
+        
+        if not draft_data:
             raise HTTPException(status_code=404, detail="Draft not found")
         
-        del drafts_storage[draft_id]
+        # CRITICAL: Verify user ownership
+        if draft_data.get("user_id") and draft_data["user_id"] != str(current_user.id):
+            raise HTTPException(status_code=403, detail="Ce brouillon ne vous appartient pas")
         
-        print(f"✅ Draft deleted: {draft_id}")
+        # Delete from SQLite (permanent deletion!)
+        get_store().delete_draft(draft_id)
+        
+        # Also delete from memory if present
+        if draft_id in drafts_storage:
+            del drafts_storage[draft_id]
+        
+        print(f"✅ Draft deleted (SQLite + memory): {draft_id}")
         
         return {"ok": True, "message": "Draft deleted"}
         

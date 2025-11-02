@@ -983,6 +983,22 @@ class SQLiteStore:
             ))
             conn.commit()
     
+    def delete_draft(self, draft_id: str) -> bool:
+        """
+        Delete a draft from SQLite database
+        
+        Returns:
+            True if deleted, False if not found
+        """
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM drafts WHERE id = ?", (draft_id,))
+            conn.commit()
+            deleted = cursor.rowcount > 0
+            if deleted:
+                print(f"🗑️ Draft {draft_id[:8]}... deleted from SQLite")
+            return deleted
+    
     # ==================== TTL & MAINTENANCE ====================
     
     def vacuum_and_prune(self):
