@@ -1270,7 +1270,7 @@ async def publish_draft(
         
         # Call prepare endpoint via internal HTTP request
         import httpx
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=60.0) as client:  # 60s timeout for Playwright
             # Get auth token from current_user (simulate JWT)
             from backend.core.auth import create_access_token
             access_token = create_access_token({
@@ -1325,7 +1325,7 @@ async def publish_draft(
         }
         
         # Call publish endpoint via internal HTTP request
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=60.0) as client:  # 60s timeout for Playwright
             publish_response_raw = await client.post(
                 "http://localhost:5000/vinted/listings/publish",
                 json=publish_payload,

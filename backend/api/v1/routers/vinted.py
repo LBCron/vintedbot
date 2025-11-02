@@ -381,14 +381,19 @@ async def prepare_listing(
         print(f"✨ Condition: {request.condition}")
         print(f"🎨 Brand: {request.brand}")
         
-        # Check authentication
-        session = vault.load_session()
-        if not session:
-            print(f"❌ ERREUR: Aucune session Vinted trouvée")
-            print(f"   → Va dans Settings pour coller ton cookie Vinted")
-            raise HTTPException(status_code=401, detail="Not authenticated. Call /auth/session first.")
-        
-        print(f"✅ Session Vinted active: user={session.username or 'unknown'}")
+        # In dry_run mode, skip session check (simulation only)
+        if not request.dry_run and not settings.MOCK_MODE:
+            # Check authentication (ONLY for real execution)
+            session = vault.load_session()
+            if not session:
+                print(f"❌ ERREUR: Aucune session Vinted trouvée")
+                print(f"   → Va dans Settings pour coller ton cookie Vinted")
+                raise HTTPException(status_code=401, detail="Not authenticated. Call /auth/session first.")
+            
+            print(f"✅ Session Vinted active: user={session.username or 'unknown'}")
+        else:
+            print(f"🧪 [DRY-RUN MODE] Skipping Vinted session check")
+            session = None  # Not needed for dry-run
         
         # 🛡️ PUBLICATION SAFEGUARDS - Validate AI payload
         print(f"\n🔍 VALIDATION DES CHAMPS:")
@@ -475,6 +480,10 @@ async def prepare_listing(
         
         # Real execution
         print(f"🚀 [REAL] Preparing listing: {request.title}")
+        
+        # session is guaranteed to exist here (checked above)
+        if not session:
+            raise HTTPException(status_code=500, detail="Internal error: session not found")
         
         async with VintedClient(headless=settings.PLAYWRIGHT_HEADLESS) as client:
             # Create context with session
