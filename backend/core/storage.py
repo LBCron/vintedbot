@@ -332,10 +332,17 @@ class SQLiteStore:
                 print(f"🔄 Duplicate draft detected: {title}")
                 print(f"   Existing ID: {existing['id'][:8]}...")
                 
-                # Extract photos from both drafts
-                existing_item = existing.get("item", {})
-                existing_photos = existing_item.get("photos", [])
-                new_photos = item_json.get("photos", []) if item_json else []
+                # Extract existing JSON data (fallback to empty dicts) - CORRECT KEYS!
+                existing_item = existing.get("item_json") or {}
+                existing_listing = existing.get("listing_json") or {}
+                existing_photos = existing_item.get("photos", []) if isinstance(existing_item, dict) else []
+                
+                # If new item_json is None, use existing data (CRITICAL: don't erase!)
+                merged_item_json = item_json if item_json is not None else (existing_item.copy() if existing_item else {})
+                merged_listing_json = listing_json if listing_json is not None else (existing_listing.copy() if existing_listing else {})
+                
+                # Extract new photos
+                new_photos = merged_item_json.get("photos", [])
                 
                 # Combine and deduplicate photos
                 all_photos = existing_photos + new_photos
@@ -343,20 +350,24 @@ class SQLiteStore:
                 
                 print(f"   Photos: {len(existing_photos)} existing + {len(new_photos)} new = {len(unique_photos)} unique")
                 
-                # Update existing draft with merged photos
-                if item_json:
-                    item_json["photos"] = unique_photos
+                # Update BOTH item_json AND listing_json with merged photos
+                merged_item_json["photos"] = unique_photos
+                merged_listing_json["photos"] = unique_photos
                 
                 with self.get_connection() as conn:
                     cursor = conn.cursor()
                     cursor.execute("""
                         UPDATE drafts 
-                        SET item_json = ?, updated_at = CURRENT_TIMESTAMP
+                        SET item_json = ?, listing_json = ?, updated_at = CURRENT_TIMESTAMP
                         WHERE id = ?
-                    """, (json.dumps(item_json) if item_json else None, existing["id"]))
+                    """, (
+                        json.dumps(merged_item_json),
+                        json.dumps(merged_listing_json),
+                        existing["id"]
+                    ))
                     conn.commit()
                 
-                print(f"✅ Draft merged successfully!")
+                print(f"✅ Draft merged successfully (item_json + listing_json synced)!")
                 return self.get_draft(existing["id"]) or existing
         
         # No duplicate → create new draft
