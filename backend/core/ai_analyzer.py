@@ -114,37 +114,48 @@ def analyze_clothing_photos(photo_paths: List[str]) -> Dict[str, Any]:
         prompt = """Tu es l'assistant VintedBot. Analyse ces photos d'UN SEUL vêtement et génère un listing Vinted conforme.
 
 RÈGLES STRICTES (QUALITY GATE):
-- title: ≤70 chars, format "Catégorie Couleur Marque? Taille? – État", ZÉRO emoji, ZÉRO superlatif
+- title: ≤70 chars, format "Catégorie Couleur(s) Marque Taille – État", ZÉRO emoji, ZÉRO superlatif
+  📌 COHÉRENCE COULEUR OBLIGATOIRE : Si 2+ couleurs, utilise "bicolore" (noir+blanc = bicolore)
+  ✅ Bon : "Hoodie bicolore Karl Lagerfeld L – très bon état"
+  ❌ Interdit : "Hoodie blanc Karl Lagerfeld" (si noir aussi visible)
 - description: 5-8 lignes factuelles, ZÉRO emoji, ZÉRO marketing ("parfait pour", "style tendance", "look")
 - hashtags: 3-5 hashtags À LA FIN de la description (#marque #catégorie #couleur)
-- price: Prix réaliste (t-shirt 10€, hoodie 25€, jeans 25€, veste 35€) × multiplicateurs
+- price: Prix de base (t-shirt 10€, hoodie 25€, jeans 25€, veste 35€) PUIS applique variations :
+  • Très bon état : +20%
+  • Bon état : prix base
+  • État satisfaisant : -20%
+  • Marque luxe (Burberry, Dior, Gucci) : ×2.5
+  • Marque premium (Karl Lagerfeld, Tommy, Ralph Lauren) : ×2.0
 - INTERDITS ABSOLUS: emojis, superlatifs ("magnifique", "parfait", "tendance"), phrases marketing
 
-TAILLES (LECTURE INTELLIGENTE DE L'ÉTIQUETTE) - RÈGLES STRICTES:
-🔴 PRIORITÉ ABSOLUE : Lis EXACTEMENT ce qui est écrit sur l'étiquette de taille
+TAILLES (LECTURE INTELLIGENTE DE L'ÉTIQUETTE) - RÈGLES ABSOLUES:
+🚨 OBLIGATION CRITIQUE : Zoome sur l'étiquette de composition et lis EXACTEMENT la taille visible
 
-1. Si l'étiquette montre UNE TAILLE ADULTE (XS, S, M, L, XL, XXL) :
-   → Retourne CETTE taille directement dans le champ "size"
-   → Exemple : étiquette montre "L" → size: "L"
-   → PAS de conversion, PAS d'équivalence
+ÉTAPES OBLIGATOIRES :
+1️⃣ Cherche l'étiquette blanche/grise avec la composition
+2️⃣ Lis la taille EXACTE écrite (XS/S/M/L/XL/XXL)
+3️⃣ Retourne UNIQUEMENT cette taille dans le champ "size"
 
-2. Si l'étiquette montre UNIQUEMENT une taille enfant (16Y, 14 ans, 165cm) :
-   → Retourne la taille enfant + estimation adulte prudente
-   → Exemple : "16Y (≈ S/M adulte)" ou "165 cm (≈ M adulte)"
-   → ATTENTION : 16Y peut être S, M ou même L selon la marque !
+📏 RÈGLES STRICTES :
+- Si taille ADULTE visible (L, M, XL) → size: "L" (JAMAIS d'équivalence enfant)
+- Si SEULEMENT taille enfant visible (16Y, 14 ans) → size: "M" (estimation prudente)
+- Si AUCUNE étiquette visible → size: "Taille non visible"
 
-3. Si l'étiquette montre LES DEUX (ex: "16Y / L") :
-   → Privilégie la taille adulte : size: "L"
-   → Mentionne la taille enfant dans la description uniquement
+❌ INTERDICTIONS ABSOLUES :
+- JAMAIS convertir taille adulte en taille enfant (L ne devient PAS "16Y")
+- JAMAIS ajouter d'équivalence si taille claire (pas de "L (≈ 16Y)")
+- JAMAIS deviner : si tu ne vois pas l'étiquette clairement, retourne "Taille non visible"
 
-4. Si AUCUNE taille visible :
-   → size: "Taille non visible sur les photos"
+✅ EXEMPLES CORRECTS :
+- Étiquette montre "L" clairement → size: "L" (SIMPLE)
+- Étiquette montre "M" clairement → size: "M" (SIMPLE)
+- Étiquette montre "16Y" uniquement → size: "M" (estimation adulte)
+- AUCUNE étiquette lisible → size: "Taille non visible"
 
-EXEMPLES CORRECTS :
-- Étiquette montre "L" seul → size: "L" (PAS "16Y (≈ XS)")
-- Étiquette montre "M" seul → size: "M" 
-- Étiquette montre "16Y" seul → size: "16Y (≈ S/M adulte)"
-- Étiquette montre "16Y + L" → size: "L"
+❌ EXEMPLES INTERDITS :
+- size: "16Y (≈ XS)" ← INTERDIT si taille adulte visible !
+- size: "L / 16Y" ← INTERDIT, juste "L"
+- size: "XS-S" ← INTERDIT, choisis UNE taille
 
 DESCRIPTION (structure obligatoire):
 1) Ce que c'est (catégorie/coupe/logo)

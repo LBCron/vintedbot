@@ -213,6 +213,43 @@ class SQLiteStore:
     
     # ==================== DRAFTS ====================
     
+    def find_duplicate_draft(
+        self,
+        title: str,
+        brand: Optional[str] = None,
+        size: Optional[str] = None,
+        category: Optional[str] = None,
+        user_id: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Find potential duplicate draft based on title, brand, size, category
+        Returns existing draft if found, None otherwise
+        """
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            
+            # Check for exact match on key fields
+            query = """
+                SELECT * FROM drafts 
+                WHERE title = ? 
+                AND brand = ? 
+                AND size = ? 
+                AND category = ?
+                AND status IN ('pending', 'ready')
+            """
+            params = [title, brand, size, category]
+            
+            # Add user filter if provided
+            if user_id:
+                query += " AND user_id = ?"
+                params.append(user_id)
+            
+            query += " LIMIT 1"
+            
+            cursor.execute(query, params)
+            row = cursor.fetchone()
+            return self._row_to_draft(row) if row else None
+    
     def save_draft(
         self,
         draft_id: str,
@@ -227,9 +264,25 @@ class SQLiteStore:
         listing_json: Optional[Dict] = None,
         flags_json: Optional[Dict] = None,
         status: str = "pending",
-        user_id: Optional[str] = None
+        user_id: Optional[str] = None,
+        skip_duplicate_check: bool = False
     ) -> Dict[str, Any]:
-        """Save a new draft after quality gate validation"""
+        """
+        Save a new draft after quality gate validation
+        
+        Args:
+            skip_duplicate_check: If True, skip duplicate detection (default: False)
+        
+        Returns:
+            Saved draft dict or existing duplicate
+        """
+        # Check for duplicates (unless explicitly skipped)
+        if not skip_duplicate_check:
+            existing = self.find_duplicate_draft(title, brand, size, category, user_id)
+            if existing:
+                print(f"⚠️  Duplicate draft found: {title} (ID: {existing['id'][:8]}...) - Skipping creation")
+                return existing
+        
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
