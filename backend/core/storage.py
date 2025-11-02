@@ -269,33 +269,46 @@ class SQLiteStore:
         user_id: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
         """
-        Find potential duplicate draft based on title, brand, size, category
+        Find potential duplicate draft using FLEXIBLE matching (not exact)
+        Uses rapidfuzz for title similarity (>85% = duplicate)
         Returns existing draft if found, None otherwise
         """
+        from rapidfuzz import fuzz
+        
         with self.get_connection() as conn:
             cursor = conn.cursor()
             
-            # Check for exact match on key fields
+            # First pass: get all drafts with same brand + category + user
+            # (don't require exact title match)
             query = """
                 SELECT * FROM drafts 
-                WHERE title = ? 
-                AND brand = ? 
-                AND size = ? 
+                WHERE brand = ? 
                 AND category = ?
                 AND status IN ('pending', 'ready')
             """
-            params = [title, brand, size, category]
+            params = [brand, category]
             
             # Add user filter if provided
             if user_id:
                 query += " AND user_id = ?"
                 params.append(user_id)
             
-            query += " LIMIT 1"
-            
             cursor.execute(query, params)
-            row = cursor.fetchone()
-            return self._row_to_draft(row) if row else None
+            rows = cursor.fetchall()
+            
+            # Second pass: check title similarity with rapidfuzz
+            for row in rows:
+                existing_title = row["title"]
+                similarity = fuzz.ratio(title.lower(), existing_title.lower())
+                
+                # If titles are >85% similar, consider it a duplicate
+                if similarity >= 85:
+                    print(f"🔍 Duplicate found via similarity: {similarity}% match")
+                    print(f"   New: '{title}'")
+                    print(f"   Existing: '{existing_title}'")
+                    return self._row_to_draft(row)
+            
+            return None
     
     def save_draft(
         self,

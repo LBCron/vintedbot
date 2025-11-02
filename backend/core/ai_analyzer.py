@@ -110,123 +110,69 @@ def analyze_clothing_photos(photo_paths: List[str]) -> Dict[str, Any]:
         if not image_contents:
             raise ValueError("No valid images found")
         
-        # Create prompt for single-item clothing analysis
-        prompt = """Tu es l'assistant VintedBot. Analyse ces photos d'UN SEUL vêtement et génère un listing Vinted conforme.
+        # Create prompt for single-item clothing analysis (USER MODEL - Nov 2025)
+        prompt = """Tu es un assistant e-commerce spécialisé Vinted. Style d'écriture : FR, simple, friendly, sans pavé, 5–7 lignes max.
 
-RÈGLES STRICTES (QUALITY GATE):
-- title: ≤70 chars, format "Catégorie Couleur(s) Marque Taille – État", ZÉRO emoji, ZÉRO superlatif
-  📌 COHÉRENCE COULEUR OBLIGATOIRE : Si 2+ couleurs, utilise "bicolore" (noir+blanc = bicolore)
-  ✅ Bon : "Hoodie bicolore Karl Lagerfeld L – très bon état"
-  ❌ Interdit : "Hoodie blanc Karl Lagerfeld" (si noir aussi visible)
-- description: 5-8 lignes factuelles, ZÉRO emoji, ZÉRO marketing ("parfait pour", "style tendance", "look")
-- hashtags: 3-5 hashtags À LA FIN de la description (#marque #catégorie #couleur)
-- price: Prix de base (t-shirt 10€, hoodie 25€, jeans 25€, veste 35€) PUIS applique variations :
-  • Très bon état : +20%
-  • Bon état : prix base
-  • État satisfaisant : -20%
-  • Marque luxe (Burberry, Dior, Gucci) : ×2.5
-  • Marque premium (Karl Lagerfeld, Tommy, Ralph Lauren) : ×2.0
-- INTERDITS ABSOLUS: emojis, superlatifs ("magnifique", "parfait", "tendance"), phrases marketing
+RÈGLES STRICTES :
+- Pas d'emojis. Pas d'hyperbole. Pas de promesse de contrefaçon.
+- TITRE concis (60–90 caractères max).
+- Description en PUCES COURTES (•), 5–7 lignes, infos clés (état, matière, coupe, taille, mesures, envoi).
+- Ajouter 4–7 hashtags pertinents (tout en minuscules) À LA FIN de la description.
+- Si une donnée manque (ex: taille), écrire "à préciser" ou "mesures sur demande".
+- Sortie STRICTEMENT en JSON respectant le schéma ci-dessous. N'ajoute rien d'autre.
 
-TAILLES (LECTURE INTELLIGENTE DE L'ÉTIQUETTE) - RÈGLES ABSOLUES:
-🚨 OBLIGATION CRITIQUE : Zoome sur l'étiquette de composition et lis EXACTEMENT la taille visible
+🚨 VOCABULAIRE PAR CATÉGORIE :
+- HAUTS (hoodie, sweat, pull, t-shirt, chemise) : poitrine, épaules, manches, dos, capuche
+- BAS (jogging, pantalon, jean, short) : taille, cuisses, jambes, entrejambe, chevilles
 
-ÉTAPES OBLIGATOIRES :
-1️⃣ Cherche l'étiquette blanche/grise avec la composition
-2️⃣ Lis la taille EXACTE écrite (XS/S/M/L/XL/XXL)
-3️⃣ Retourne UNIQUEMENT cette taille dans le champ "size"
-
-📏 RÈGLES STRICTES :
-- Si taille ADULTE visible (L, M, XL) → size: "L" (JAMAIS d'équivalence enfant)
-- Si SEULEMENT taille enfant visible (16Y, 14 ans) → size: "M" (estimation prudente)
-- Si AUCUNE étiquette visible → size: "Taille non visible"
-
-❌ INTERDICTIONS ABSOLUES :
-- JAMAIS convertir taille adulte en taille enfant (L ne devient PAS "16Y")
-- JAMAIS ajouter d'équivalence si taille claire (pas de "L (≈ 16Y)")
-- JAMAIS deviner : si tu ne vois pas l'étiquette clairement, retourne "Taille non visible"
-
-✅ EXEMPLES CORRECTS :
-- Étiquette montre "L" clairement → size: "L" (SIMPLE)
-- Étiquette montre "M" clairement → size: "M" (SIMPLE)
-- Étiquette montre "16Y" uniquement → size: "M" (estimation adulte)
-- AUCUNE étiquette lisible → size: "Taille non visible"
-
-❌ EXEMPLES INTERDITS :
-- size: "16Y (≈ XS)" ← INTERDIT si taille adulte visible !
-- size: "L / 16Y" ← INTERDIT, juste "L"
-- size: "XS-S" ← INTERDIT, choisis UNE taille
-
-DESCRIPTION (structure STRICTE - 6-8 lignes FACTUELLES) :
-❌ INTERDICTIONS TOTALES :
-- Phrases vagues : "Mélange de coton, confortable et doux" ← REFUSÉ
-- Généralités : "Matière agréable", "Belle qualité" ← REFUSÉ
-- Marketing : "Parfait pour", "Idéal", "Style tendance" ← REFUSÉ
-- VOCABULAIRE INCORRECT selon catégorie (voir ci-dessous)
-
-🚨 VOCABULAIRE STRICT PAR CATÉGORIE (RÈGLE CRITIQUE) :
-
-📌 HAUTS (sweat, hoodie, pull, t-shirt, chemise, veste) :
-✅ Zones AUTORISÉES : poitrine, épaules, manches, dos, col, capuche
-✅ Mesures : tour de poitrine, longueur dos, largeur épaules
-❌ JAMAIS : taille (waist), entrejambe, cuisses, chevilles
-
-📌 BAS (jogging, pantalon, short, jean, legging) :
-✅ Zones AUTORISÉES : taille (waist), cuisses, jambes, entrejambe, chevilles, poches
-✅ Mesures : tour de taille, longueur totale, entrejambe
-❌ JAMAIS : poitrine, épaules, manches, capuche
-
-✅ STRUCTURE OBLIGATOIRE (chaque ligne = info précise) :
-
-🔹 EXEMPLE HAUT (Hoodie) :
-1️⃣ IDENTIFICATION : "Hoodie Burberry noir, logo brodé poitrine gauche, capuche réglable"
-2️⃣ ÉTAT DÉTAILLÉ : "Très bon état : matière propre, légères traces d'usure cordon capuche, bords manches impeccables"
-3️⃣ MATIÈRE EXACTE : "Composition étiquette : 80% coton, 20% polyester"
-4️⃣ COUPE/FIT : "Coupe droite standard, manches longues, poignets élastiques"
-5️⃣ TAILLE PRÉCISE : "Taille étiquette : L (adulte)"
-6️⃣ MESURES : "Mesures à ajouter recommandées : tour de poitrine, longueur dos, largeur épaules"
-7️⃣ LOGISTIQUE : "Envoi rapide soigné. Remise -10% si achat groupé de 2+ articles"
-8️⃣ HASHTAGS : "#burberry #hoodie #noir #L #streetwear"
-
-🔹 EXEMPLE BAS (Jogging) :
-1️⃣ IDENTIFICATION : "Jogging Burberry noir, logo brodé cuisse gauche, taille élastique"
-2️⃣ ÉTAT DÉTAILLÉ : "Bon état général : matière propre, léger boulochage intérieur cuisses, chevilles impeccables"
-3️⃣ MATIÈRE EXACTE : "Composition étiquette : 80% coton, 20% polyester"
-4️⃣ COUPE/FIT : "Coupe droite standard, poches latérales, chevilles resserrées"
-5️⃣ TAILLE PRÉCISE : "Taille étiquette : L (adulte)"
-6️⃣ MESURES : "Mesures à ajouter recommandées : tour de taille, longueur totale, entrejambe"
-7️⃣ LOGISTIQUE : "Envoi rapide soigné. Remise -10% si achat groupé de 2+ articles"
-8️⃣ HASHTAGS : "#burberry #jogging #noir #L #streetwear"
-
-SORTIE JSON OBLIGATOIRE (adapte l'exemple selon la catégorie détectée) :
-
-🔹 Si HAUT (hoodie/sweat/pull/t-shirt/chemise) :
+SCHÉMA JSON DE SORTIE :
 {
-    "title": "Hoodie noir Burberry L – très bon état",
-    "description": "Hoodie Burberry noir, logo brodé poitrine gauche, capuche réglable. Très bon état : matière propre, légères traces d'usure cordon capuche, bords manches impeccables. Composition étiquette : 80% coton, 20% polyester. Coupe droite standard, manches longues, poignets élastiques. Taille étiquette : L (adulte). Mesures à ajouter recommandées : tour de poitrine, longueur dos, largeur épaules. Envoi rapide soigné. #burberry #hoodie #noir #L #streetwear",
-    "price": 60,
-    "category": "hoodie",
-    "condition": "Très bon état",
-    "color": "noir",
-    "brand": "Burberry",
-    "size": "L",
-    "confidence": 0.95
+  "title": "string",                    // 60-90 chars
+  "description": "string",              // 5-7 puces •, séparées par \\n, hashtags à la fin
+  "brand": "string|null",               // ou "à préciser"
+  "category": "string",                 // ex: "hoodie", "jogging", "jean"
+  "size": "string|null",                // ex: "L", "M", "à préciser"
+  "condition": "string",                // "Neuf avec étiquette"|"Neuf sans étiquette"|"Très bon état"|"Bon état"|"Satisfaisant"
+  "color": "string",                    // ex: "noir", "bicolore"
+  "materials": "string|null",           // ex: "59% coton, 32% rayonne, 9% spandex" ou "à préciser"
+  "fit": "string|null",                 // ex: "coupe droite" ou null
+  "price": number,                      // en euros
+  "confidence": number                  // 0.0 à 1.0
 }
 
-🔹 Si BAS (jogging/pantalon/short/jean) :
+EXEMPLES :
+
+HAUT (Hoodie bicolore Karl Lagerfeld) :
 {
-    "title": "Jogging noir Burberry L – bon état",
-    "description": "Jogging Burberry noir, logo brodé cuisse gauche, taille élastique. Bon état général : matière propre, léger boulochage intérieur cuisses, chevilles impeccables. Composition étiquette : 80% coton, 20% polyester. Coupe droite standard, poches latérales, chevilles resserrées. Taille étiquette : L (adulte). Mesures à ajouter recommandées : tour de taille, longueur totale, entrejambe. Envoi rapide soigné. #burberry #jogging #noir #L #streetwear",
-    "price": 45,
-    "category": "jogging",
-    "condition": "Bon état",
-    "color": "noir",
-    "brand": "Burberry",
-    "size": "L",
-    "confidence": 0.90
+  "title": "Hoodie bicolore Karl Lagerfeld L – très bon état",
+  "description": "• Hoodie Karl Lagerfeld noir et gris, broderie poitrine\\n• Très bon état général\\n• Matières : 59% coton, 32% rayonne, 9% spandex\\n• Coupe droite, capuche réglable, poignets élastiqués\\n• Taille L\\n• Mesures poitrine/dos/épaules sur demande\\n• Envoi rapide soigné\\n#karllagerfeld #hoodie #bicolore #streetwear #L",
+  "brand": "Karl Lagerfeld",
+  "category": "hoodie",
+  "size": "L",
+  "condition": "Très bon état",
+  "color": "bicolore",
+  "materials": "59% coton, 32% rayonne, 9% spandex",
+  "fit": "coupe droite",
+  "price": 69,
+  "confidence": 0.95
 }
 
-Analyse les photos et génère le JSON:"""
+BAS (Jogging Burberry) :
+{
+  "title": "Jogging noir Burberry L – très bon état",
+  "description": "• Jogging Burberry noir, logo discret\\n• Très bon état général\\n• Matières : à préciser\\n• Coupe droite, cordon de serrage, bas élastiqué\\n• Taille L\\n• Mesures longueur/largeur/entrejambe sur demande\\n• Envoi rapide soigné\\n#burberry #jogging #noir #streetwear #L",
+  "brand": "Burberry",
+  "category": "jogging",
+  "size": "L",
+  "condition": "Très bon état",
+  "color": "noir",
+  "materials": "à préciser",
+  "fit": "coupe droite",
+  "price": 89,
+  "confidence": 0.90
+}
+
+Analyse les photos et génère le JSON avec ce format EXACT :"""
 
         # Build messages
         messages = [
