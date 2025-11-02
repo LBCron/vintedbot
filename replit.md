@@ -40,17 +40,30 @@ Zero failed drafts requirement - all drafts must pass strict validation before c
   - Fallback mode: 7 photos minimum per article for complete visualization
 - **Multi-Item Detection via GPT-4 Vision**: `smart_analyze_and_group_photos()` analyzes ALL photos intelligently to detect multiple distinct items (e.g., 5 items detected from 38 photos)
 - **Smart AI Grouping**: Analyzes and groups multiple photos by visual similarity to create single listings, identifying unique characteristics and providing confidence scores.
-- **Strict AI Prompt System (October 2025)**:
+- **Strict AI Prompt System (November 2025)**:
   - **ZERO emojis, ZERO marketing phrases** ("parfait pour", "style tendance", "casual chic", "look", "découvrez", "idéal")
   - **ZERO superlatifs** ("magnifique", "prestigieuse", "haute qualité", "parfait", "tendance")
   - **Hashtag Rules**: EXACTLY 3-5 hashtags, ALWAYS at end of description
-  - **Title Format**: ≤70 chars, format "Catégorie Couleur Marque? Taille? – État"
-  - **Description Structure**: 5-8 factual lines (what it is, condition, material, size+equivalence, measurements needed, shipping)
-  - **Size Normalization**: Child/teen sizes (16Y, 165cm) auto-converted to adult equivalents (≈ XS) with confidence notes
-  - **MANDATORY Fields (October 2025)**: 
-    - **condition**: ALWAYS filled (default "Bon état" if impossible to determine)
-    - **size**: ALWAYS filled (default "Taille non visible" if impossible to read)
+  - **Title Format SIMPLIFIÉ**: ≤70 chars, format "Catégorie Couleur Marque Taille – État" (NO parentheses, NO measurements)
+    - Example: "Jogging noir Burberry XS – bon état" (NOT "Jogging Burberry 16Y / 165 cm (≈ XS)")
+  - **Description Structure**: 5-8 factual lines (what it is, condition, material, size info, measurements needed, shipping)
+  - **Size Normalization (SIMPLIFIÉ - Nov 2025)**: 
+    - AI returns ONLY adult size in 'size' field (XS/S/M/L/XL)
+    - Child/teen sizes (16Y, 165cm) automatically converted to adult equivalent WITHOUT details
+    - Backend post-processing: `_normalize_size_field()` extracts final size from complex formats
+    - Example AI output: `"size": "XS"` (NOT "16Y / 165 cm (≈ XS)")
+  - **MANDATORY Fields (November 2025)**: 
+    - **condition**: ALWAYS filled, auto-normalized to French via `_normalize_condition_field()`
+    - **size**: ALWAYS filled, auto-simplified to adult size via `_normalize_size_field()`
     - AI is instructed to NEVER leave these fields null/empty/undefined
+  - **Auto-Polish Function (Nov 2025)**: `_auto_polish_draft()` guarantees 100% publish-ready drafts
+    - Strips ALL emojis from title + description
+    - Removes ALL marketing phrases ("parfait pour", "idéal", "magnifique", etc.)
+    - Normalizes condition to French standard values
+    - Simplifies size to adult equivalent only (XS not "16Y/165cm (≈XS)")
+    - Adjusts hashtags to 3-5 (adds missing or removes extras)
+    - Truncates title to ≤70 chars if needed
+    - Auto-adjusts prices with brand multipliers
 - **Hashtag Generation**: GPT-4 Vision automatically generates 3-5 relevant hashtags at END of description for better visibility
 - **Robust Fallback**: If GPT-4 fails (JSON error, API timeout), `batch_analyze_photos()` ensures photos are preserved in fallback results
 - **Image hash-based duplicate detection** (pHash) and **text similarity matching** (rapidfuzz) are used to prevent redundant listings.
@@ -92,6 +105,8 @@ Zero failed drafts requirement - all drafts must pass strict validation before c
         - `/bulk/generate`: Generate validated drafts from plan (strict validation: title≤70, hashtags 3-5)
             - GPT-4 automatically generates 3-5 hashtags in description
         - `/bulk/ingest`: Smart single/multi-item detection and processing
+        - `/bulk/drafts/{draft_id}/photos` (NEW Nov 2025): Upload additional photos to existing draft
+        - `/bulk/drafts/{draft_id}/publish` (FIXED Nov 2025): Robust photo path resolution prevents "Not Found" errors
     - `/vinted`: Vinted-specific automation (session management, photo upload, listing prepare/publish).
 
 ### UI/UX and Design
