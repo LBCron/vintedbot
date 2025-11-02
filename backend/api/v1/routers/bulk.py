@@ -1456,8 +1456,9 @@ async def analyze_bulk_photos(
             "progress_percent": 0.0
         }
         
-        # Determine analysis mode
-        use_smart_grouping = auto_grouping and photo_count > settings.SINGLE_ITEM_DEFAULT_MAX_PHOTOS
+        # ALWAYS use GPT-4 Vision for grouping (never trust aspect ratio)
+        # Previous logic grouped by aspect ratio which mixed jogging/hoodie photos
+        use_smart_grouping = True  # Force AI Vision grouping regardless of photo count
         
         # Launch AI analysis in background
         asyncio.create_task(
