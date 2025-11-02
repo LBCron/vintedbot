@@ -1,0 +1,94 @@
+Request URL
+https://www.vinted.com/
+Request Method
+GET
+Status Code
+200 OK
+Remote Address
+104.16.207.80:443
+Referrer Policy
+strict-origin-when-cross-origin
+accept
+image/webp
+cache-control
+private, no-cache, no-store, max-age=0, must-revalidate
+cf-cache-status
+DYNAMIC
+cf-ray
+9986a3c15b9ae1d1-MRS
+content-encoding
+gzip
+content-type
+text/html; charset=utf-8
+date
+Sun, 02 Nov 2025 21:14:07 GMT
+link
+<https://marketplace-web-assets.vinted.com/_next/static/media/82416101390aeef4-s.p.woff2>; rel=preload; as="font"; crossorigin=""; type="font/woff2", <https://marketplace-web-assets.vinted.com/_next/static/media/ab46fb435d755552-s.p.woff2>; rel=preload; as="font"; crossorigin=""; type="font/woff2", <https://marketplace-web-assets.vinted.com/_next/static/media/dee3372210e08a8f-s.p.woff2>; rel=preload; as="font"; crossorigin=""; type="font/woff2", <https://marketplace-web-assets.vinted.com/_next/static/media/facebook.6a37ec1f.svg>; rel=preload; as="image", <https://marketplace-web-assets.vinted.com/_next/static/media/linkedin.504098f6.svg>; rel=preload; as="image", <https://marketplace-web-assets.vinted.com/_next/static/media/instagram.e8b976f1.svg>; rel=preload; as="image", <https://marketplace-web-assets.vinted.com/_next/static/css/2288a45a1a6fa1ab.css>; rel=preload; as="style", <https://marketplace-web-assets.vinted.com/_next/static/css/d6ca8f701d9c7a32.css>; rel=preload; as="style", <https://marketplace-web-assets.vinted.com/_next/static/css/650a51030a638f12.css>; rel=preload; as="style"
+server
+cloudflare
+set-cookie
+anon_id=573edfb3-9027-4295-8d3d-fd1b9e2a5098; Path=/; Expires=Thu, 02 Nov 2045 21:14:07 GMT; Max-Age=631152000; SameSite=lax
+set-cookie
+homepage_session_id=7bd1e77e-ba64-49ca-aca7-f4ce4755a159; Path=/; Expires=Sun, 09 Nov 2025 21:14:07 GMT; Max-Age=604800
+set-cookie
+anon_id=573edfb3-9027-4295-8d3d-fd1b9e2a5098; Domain=.www.vinted.com; Path=/; Expires=Sun, 09 Nov 2025 21:14:07 GMT; HttpOnly; Secure; SameSite=Lax
+set-cookie
+datadome=; Max-Age=-1; Domain=.www.vinted.com; Path=/
+vary
+RSC, Next-Router-State-Tree, Next-Router-Prefetch, Next-Router-Segment-Prefetch, Accept-Encoding
+x-anon-id
+573edfb3-9027-4295-8d3d-fd1b9e2a5098
+x-envoy-upstream-service-time
+607
+x-middleware-rewrite
+/fr:en-fr:1:0:0/home-page-new
+x-next-app
+marketplace-web
+x-page-id
+root
+x-powered-by
+Next.js
+x-screen
+news_feed
+x-user-locale
+en-fr
+x-v-udt
+clNHV3U5RVpKbFRWTVRwQWRwNGlXc2txU1FXci0tU25KNGtrMkJwNXlZYnR3cS0tSVRUOEQwZVdwVjQvUjBiVG5RV2RHQT09
+:authority
+www.vinted.com
+:method
+GET
+:path
+/
+:scheme
+https
+accept
+text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+accept-encoding
+gzip, deflate, br, zstd
+accept-language
+fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7
+cache-control
+max-age=0
+cookie
+v_udt=clNHV3U5RVpKbFRWTVRwQWRwNGlXc2txU1FXci0tU25KNGtrMkJwNXlZYnR3cS0tSVRUOEQwZVdwVjQvUjBiVG5RV2RHQT09; anonymous-locale=en-us-fr; is_shipping_fees_applied_info_banner_dismissed=false; domain_selected=true; OptanonAlertBoxClosed=2025-10-13T22:50:46.584Z; eupubconsent-v2=CQZOXDAQZOXDAAcABBENCAFsAP_gAEPgAAwILNtR_G__bWlr-Tb3afpkeYxP99hr7sQxBgbJk24FzLvW_JwSx2E5NAzatqIKmRIAu3TBIQNlHJDURVCgKIgVryDMaEyUoTNKJ6BkiBMRI2JYCFxvm4pjWQCY5vr99lc1mB-N7dr82dzyy4hHn3a5_2S1WJCdIYetDfn8ZBKT-9IEd_x8v4v4_F7pE2-eS1n_pGvp6j9-YlM_dBmx9_bSffzPn_frk_e7X_vf_n37v843H77v_4LMgAmGhUQRlkQABAoGAECABQVhABQIAgAASBogIATBgU5AwAXWEyAEAKAAYIAQAAgwABAAAJAAhEAFABAIAAIBAoAAwAIAgIAGBgADABYiAQAAgOgYpgQQCBYAJGZVBpgSgAJBAS2VCCQBAgrhCEWeAQQIiYKAAAEAAoCAAB4LAQkkBKxIIAuIJoAACAAAKIECBFIWYAgoDNFoLwZPoyNMAwfMEySnQZAEwRkZJsQm_CYeKQogAAAA.f_wACHwAAAAA; OTAdditionalConsentString=1~43.46.55.61.70.83.89.93.108.117.122.124.135.143.144.147.149.159.192.196.211.228.230.239.259.266.286.291.311.320.322.323.327.367.371.385.394.407.415.424.430.436.445.486.491.494.495.522.523.540.550.560.568.574.576.584.587.591.737.802.803.820.839.864.899.904.922.931.938.959.979.981.985.1003.1027.1031.1040.1046.1051.1053.1067.1092.1095.1097.1099.1107.1109.1135.1143.1149.1152.1162.1166.1186.1188.1205.1215.1226.1227.1230.1252.1268.1270.1276.1284.1290.1301.1307.1312.1329.1345.1356.1375.1403.1415.1416.1421.1423.1440.1449.1455.1495.1512.1516.1525.1540.1548.1555.1558.1570.1577.1579.1583.1584.1603.1616.1638.1651.1653.1659.1667.1677.1678.1682.1697.1699.1703.1712.1716.1721.1725.1732.1745.1750.1765.1782.1786.1800.1810.1825.1827.1832.1838.1840.1842.1843.1845.1859.1866.1870.1878.1880.1889.1917.1929.1942.1944.1962.1963.1964.1967.1968.1969.1978.1985.1987.2003.2008.2027.2035.2039.2047.2052.2056.2064.2068.2072.2074.2088.2090.2103.2107.2109.2115.2124.2130.2133.2135.2137.2140.2147.2156.2166.2177.2186.2205.2213.2216.2219.2220.2222.2225.2234.2253.2275.2279.2282.2309.2312.2316.2322.2325.2328.2331.2335.2336.2343.2354.2358.2359.2370.2376.2377.2387.2400.2403.2405.2407.2411.2414.2416.2418.2425.2440.2447.2461.2465.2468.2472.2477.2484.2486.2488.2493.2498.2501.2510.2517.2526.2527.2532.2535.2542.2552.2563.2564.2567.2568.2569.2571.2572.2575.2577.2583.2584.2596.2604.2605.2608.2609.2610.2612.2614.2621.2627.2628.2629.2633.2636.2642.2643.2645.2646.2650.2651.2652.2656.2657.2658.2660.2661.2669.2670.2677.2681.2684.2687.2690.2695.2698.2713.2714.2729.2739.2767.2768.2770.2772.2784.2787.2791.2792.2798.2801.2805.2812.2813.2816.2817.2821.2822.2827.2830.2831.2833.2834.2838.2839.2844.2846.2849.2850.2852.2854.2860.2862.2863.2865.2867.2869.2873.2874.2875.2876.2878.2880.2881.2882.2883.2884.2886.2887.2888.2889.2891.2893.2894.2895.2897.2898.2900.2901.2908.2909.2916.2917.2918.2920.2922.2923.2927.2929.2930.2931.2940.2941.2947.2949.2950.2956.2958.2961.2963.2964.2965.2966.2968.2973.2975.2979.2980.2981.2983.2985.2986.2987.2994.2995.2997.2999.3000.3002.3003.3005.3008.3009.3010.3012.3016.3017.3018.3019.3028.3034.3038.3043.3052.3053.3055.3058.3059.3063.3066.3068.3070.3073.3074.3075.3076.3077.3089.3090.3093.3094.3095.3097.3099.3100.3106.3109.3112.3117.3119.3126.3127.3128.3130.3135.3136.3145.3150.3151.3154.3155.3163.3167.3172.3173.3182.3183.3184.3185.3187.3188.3189.3190.3194.3196.3209.3210.3211.3214.3215.3217.3222.3223.3225.3226.3227.3228.3230.3231.3234.3235.3236.3237.3238.3240.3244.3245.3250.3251.3253.3257.3260.3270.3272.3281.3288.3290.3292.3293.3296.3299.3300.3306.3307.3309.3314.3315.3316.3318.3324.3328.3330.3331.3531.3731.3831.4131.4531.4631.4731.4831.5231.6931.7235.7831.7931.8931.9731.10231.10631.10831.11031.11531.13632.13731.14034.14133.14237.14332.15731.16831.16931.21233.23031.25131.25931.26031.26631.26831.27731.27831.28031.28731.28831.29631.32531.33931.34231.34631.36831.39131.39531.40632.41131.41531.43631.43731.43831.45931.47232.47531.48131.49231; _gcl_au=1.1.1182324288.1760395847; _ga=GA1.1.1563436594.1760395847; __ps_r=_; __ps_lu=https://www.vinted.com/; __ps_did=pscrb_d7e69543-b656-4aef-d99d-f05a2571c50a; __ps_fva=1760395847111; _fbp=fb.1.1760395847215.965165007579778665; _lm_id=JN9H2PHP9B287PG1; _cc_id=58a3ec45b5a39a450a2b13fff02f5bf0; RoktRecogniser=becab710-3d46-4208-9563-64454a0bd41f; __gpi=UID=00001298ef3901bb:T=1760395863:RT=1760395863:S=ALNI_MYfGsGDvgLW4L6vQrzR3QmODosDwg; last_user_id=1; anon_id=573edfb3-9027-4295-8d3d-fd1b9e2a5098; v_uid=201849610; v_sid=da4f381f-1760442619; anon_id=573edfb3-9027-4295-8d3d-fd1b9e2a5098; panoramaId_expiry=1762446545083; panoramaId=9336aa4a29195a4c724faa88e455c8bd038aab35f4835120a9058bd52d85d68a; panoramaIdType=panoIndiv; __gads=ID=c191fdd389918d69:T=1760395863:RT=1761846498:S=ALNI_Ma_YtARO1ydt262xFc5AhAAYiGVkw; __eoi=ID=dd07159f79f8b0ee:T=1760395863:RT=1761846498:S=AA-AfjblumuECEM52-DmoEzfnxHU; cto_bundle=mOJKdV8yVW1kNHZYdU5YJTJGTHhuU1QwVHBjMmdBdE9oVFZpUUZYemxWNVhuMjFlckpJZVZYJTJCRWtHeWZ4ZGh1eVg1aG5Yck4zd0QyWE01UjAlMkZVeWRWek51Q3N4WThPWmN2UHpZTDgyaiUyQnhGTCUyRlhWY1NSbjUlMkZFN3J3WkJuV2I1eHFSVTZFZldhU25zY0xjN0R3bjBXSjZ2R1pEcXclM0QlM0Q; access_token_web=eyJraWQiOiJFNTdZZHJ1SHBsQWp1MmNObzFEb3JIM2oyN0J1NS1zX09QNVB3UGlobjVNIiwiYWxnIjoiUFMyNTYifQ.eyJhY2NvdW50X2lkIjoxNDM4OTI4MjgsImFwcF9pZCI6NCwiYXVkIjoiZnIuY29yZS5hcGkiLCJjbGllbnRfaWQiOiJ3ZWIiLCJleHAiOjE3NjIxMTkyNzUsImlhdCI6MTc2MjExMjA3NSwiaXNzIjoidmludGVkLWlhbS1zZXJ2aWNlIiwicHVycG9zZSI6ImFjY2VzcyIsInNjb3BlIjoidXNlciIsInNpZCI6ImRhNGYzODFmLTE3NjA0NDI2MTkiLCJzdWIiOiIyMDE4NDk2MTAiLCJjYyI6IkZSIiwiYW5pZCI6IjU3M2VkZmIzLTkwMjctNDI5NS04ZDNkLWZkMWI5ZTJhNTA5OCIsImFjdCI6eyJzdWIiOiIyMDE4NDk2MTAifX0.OHb-a9m-vyLj9J-6w-V_zy56qvethIyb-cL4HII0CjU4UzVl8Ya3kIRjfWqm4aqqxZVcBujy7P2zgVm7Wadp4PYlZ-S5hwqm42BBt1EO1Nwqf2VCC-sDlw4Ngvvd9sBvzdw3gYg-gQ1rBmeb1xuAJ0hCnlIemx9kh_-frrBlAVoASSMkYCr_P2Y_V2RpymdoxOOFPGTOAiRfsrPWi7GE4mMJ7luviv19lSeWF5_J0ZGJC9dRitVbn7fv2fVMzS4WdPNz04i6KC9Z_sG9_lY4cuYhhPUJxT5xVKUxqrUbQzJczWJvHe_WFYSHxjBDCXO1AHn_CMQmT3uwV87tjIzt1Q; refresh_token_web=eyJraWQiOiJFNTdZZHJ1SHBsQWp1MmNObzFEb3JIM2oyN0J1NS1zX09QNVB3UGlobjVNIiwiYWxnIjoiUFMyNTYifQ.eyJhY2NvdW50X2lkIjoxNDM4OTI4MjgsImFwcF9pZCI6NCwiYXVkIjoiZnIuY29yZS5hcGkiLCJjbGllbnRfaWQiOiJ3ZWIiLCJleHAiOjE3NjI3MTY4NzUsImlhdCI6MTc2MjExMjA3NSwiaXNzIjoidmludGVkLWlhbS1zZXJ2aWNlIiwicHVycG9zZSI6InJlZnJlc2giLCJzY29wZSI6InVzZXIiLCJzaWQiOiJkYTRmMzgxZi0xNzYwNDQyNjE5Iiwic3ViIjoiMjAxODQ5NjEwIiwiY2MiOiJGUiIsImFuaWQiOiI1NzNlZGZiMy05MDI3LTQyOTUtOGQzZC1mZDFiOWUyYTUwOTgiLCJhY3QiOnsic3ViIjoiMjAxODQ5NjEwIn19.Wq--t8rt_B9S8Ykdj_a7YiUpmIDP0Y8R2k6PTSZos6K1im5Qgv1RWeodRXzaXkhyOcEP4fbY9t2P0OK-9UM9gf7av-CzypRf2Ee-p8gUyiq9MQYvkF9uDU8Yv3UVwp0rBz2Erz8PURlgzhBjgkkboJbBSCjlOtVTPA_G2AMWwHQGLXlZxI8HdavHSEj1qs9qI_zryO-iUXNeWsJDUDkGnrIQffank-yx_icwabn_CvznmQJKm340-4Yp5TkhY5AGYVVDxRG7uO3F1DLo_jYJKgJxgAYFr00Rw0CoERPaaLGWKg0RYiNW0toyj7NI7xMK6CUlnYEKBsWCUCPnX6zzug; homepage_session_id=904160aa-82b9-4088-b290-4d4659ce7c46; __cf_bm=0MVK6lSEYvJNYCIPwAwW33PdEr8uEhC88EaLBFO8fPk-1762118034-1.0.1.1-oaOgLcwz.jeB_5UwmC2PjJhG45ybv92RTdO2eB6eKvLpQaQCNvsscbPjgUsBzN_BG.zOifGs80IqpRrOCkpgvQ5aw0Z62uEB5KG7r_xDBt3UxmkEy6f20ofNcASJwBiv; __ps_sr=_; __ps_slu=https://www.vinted.com/; _vinted_fr_session=dVg2ZXpvc1VqSFNLWGFnT1ZMSjc4Nnl2ZDBpVGJ2RW9Uc3VZbVVSNEdtcmZyeVRDY0RWQWhFMkdSNlF3c2F5aEJTcGVGcDBlUVlOYXovVjI3cU1wT2tvaFFBUnRnYjZ1RVZpNkVSOHVOVHdmWGJ0c2ZWSERtdU83QUVRMWJVTDNic0lzTUV1R2pZaUxaR092ci9wRlVscUVYdEpFY2FQVEZHMFNyRHlCandadUhva2YzRlNuT2dHZzB2V1RWTVR4dTRmRDN5OGkrcXV5bDFpYmNjU2ZjcDZaUndPRnFYdHJTUnloUjhyeDB4Qk1BckNvRnFWTmNhT1I5WFhHaGludy0tK2UzdlpCL1BtTmcvWlJqa0ZONkhzZz09--b1beba916e2038513f55213cfebb705737bebf9a; banners_ui_state=SUCCESS; _ga_ZJHK1N3D75=GS2.1.s1762118035$o10$g0$t1762118036$j59$l0$h0; cf_clearance=9t9.xMHq6mKWMadGfg7Gl.ZxKX_wEoyVGjE9nEuNrZw-1762118037-1.2.1.1-tk.Nt.zSeYHxbFtlB4q9X3LPmZV9SDrmUnbkW2H4xZEfaiK78cFCThDlBMZxWH257tiq7BYk0PJxEROWmPaTWl38DwZ6oOmyxTB9sNWJqK.FqyGOaQGkSs_sbttzbVCs1jME7fy_rz9EPmODsrQnAULtPRaC8wwK3SH7GD6jsdmFN61ABiKKn587JSeX3NhTJWWqnvcX8pMDyHKvHb_yIlaFvFqWYF23P9T5MLMRAWI; _ga_4XRP98X6MW=GS2.1.s1762118036$o10$g0$t1762118036$j60$l0$h0; datadome=jbdzkDHSQGpGrHsrg1bCFefIlXnGQYC8_1B_kxRIjTP7VTQSKojtyrrUlLv61godyPa4C~X9m3rc89rYpZ0ui9~a8bJsxITdgMz~Z_wB2cg2QkS8AcpvY0yt~mjVoWe0; OptanonConsent=isGpcEnabled=0&datestamp=Sun+Nov+02+2025+22%3A13%3A57+GMT%2B0100+(heure+normale+d%E2%80%99Europe+centrale)&version=202508.2.0&browserGpcFlag=0&isIABGlobal=false&consentId=201849610&identifierType=Cookie+Unique+Id&isAnonUser=1&hosts=&interactionCount=2&landingPath=NotLandingPage&groups=C0001%3A1%2CC0002%3A1%2CC0003%3A1%2CC0004%3A1%2CC0005%3A1%2CV2STACK42%3A1%2CC0015%3A1%2CC0035%3A1%2CC0038%3A1&genVendors=V1%3A1%2C&intType=1&geolocation=FR%3BARA&AwaitingReconsent=false; viewport_size=555
+priority
+u=0, i
+sec-ch-ua
+"Google Chrome";v="141", "Not?A_Brand";v="8", "Chromium";v="141"
+sec-ch-ua-mobile
+?0
+sec-ch-ua-platform
+"Windows"
+sec-fetch-dest
+document
+sec-fetch-mode
+navigate
+sec-fetch-site
+same-origin
+sec-fetch-user
+?1
+upgrade-insecure-requests
+1
+user-agent
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36
