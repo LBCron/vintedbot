@@ -1245,7 +1245,7 @@ async def publish_draft(
             access_token = create_access_token({"sub": str(current_user.id)})
             
             prepare_response_raw = await client.post(
-                "http://localhost:5000/api/v1/vinted/listings/prepare",
+                "http://localhost:5000/vinted/listings/prepare",
                 json=prepare_payload,
                 headers={"Authorization": f"Bearer {access_token}"}
             )
@@ -1293,7 +1293,7 @@ async def publish_draft(
         # Call publish endpoint via internal HTTP request
         async with httpx.AsyncClient() as client:
             publish_response_raw = await client.post(
-                "http://localhost:5000/api/v1/vinted/listings/publish",
+                "http://localhost:5000/vinted/listings/publish",
                 json=publish_payload,
                 headers={
                     "Authorization": f"Bearer {access_token}",
