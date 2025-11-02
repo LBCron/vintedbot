@@ -10,7 +10,7 @@ import zipfile
 from datetime import datetime
 from typing import List, Dict, Optional
 from pathlib import Path
-from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Query, Form, Depends
+from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Query, Form, Depends, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from PIL import Image
 import io
@@ -1452,8 +1452,7 @@ async def publish_draft(
 
 @router.post("/photos/analyze")
 async def analyze_bulk_photos(
-    files: List[UploadFile] = File(...),
-    auto_grouping: bool = Form(default=True),
+    request: Request,
     current_user: User = Depends(get_current_user)
 ):
     """
@@ -1468,7 +1467,20 @@ async def analyze_bulk_photos(
     **Status:** "processing" (use GET /bulk/jobs/{job_id} to poll progress)
     """
     try:
-        print(f"📥 Received analyze request: files={len(files) if files else 0}, auto_grouping={auto_grouping}, user={current_user.id}")
+        # Parse multipart form data manually to handle any field names
+        form = await request.form()
+        
+        # Extract files (could be "files", "file", "photos", or any other field name)
+        files = []
+        auto_grouping = True  # default
+        
+        for field_name, field_value in form.items():
+            if hasattr(field_value, 'file'):  # It's an uploaded file
+                files.append(field_value)
+            elif field_name == "auto_grouping":
+                auto_grouping = str(field_value).lower() == "true"
+        
+        print(f"📥 Received analyze request: files={len(files)}, auto_grouping={auto_grouping}, user={current_user.id}")
         
         if not files:
             raise HTTPException(status_code=400, detail="No files provided")
