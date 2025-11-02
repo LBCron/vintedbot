@@ -164,8 +164,18 @@ class VintedClient:
             True if uploaded successfully
         """
         try:
-            # Wait for file input
-            file_input = await page.wait_for_selector(upload_selector, timeout=5000)
+            # Wait for page to be fully loaded
+            await page.wait_for_load_state('networkidle', timeout=10000)
+            
+            # Check if redirected to login/session page
+            current_url = page.url
+            if 'session' in current_url or 'login' in current_url or 'member/login' in current_url:
+                print(f"⚠️ Redirected to session/login page: {current_url}")
+                print("   Session Vinted probablement expirée - veuillez actualiser votre cookie")
+                return False
+            
+            # Wait for file input with longer timeout (15s)
+            file_input = await page.wait_for_selector(upload_selector, timeout=15000)
             
             # Upload file
             await file_input.set_input_files(photo_path)
@@ -176,6 +186,7 @@ class VintedClient:
             return True
         except Exception as e:
             print(f"❌ Upload failed: {e}")
+            print(f"   Current URL: {page.url}")
             return False
     
     async def fill_listing_form(
