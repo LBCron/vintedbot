@@ -89,6 +89,13 @@ async def request_logging_middleware(request: Request, call_next):
     request_id = str(uuid.uuid4())[:8]
     request.state.request_id = request_id
     
+    # 🔍 DEBUG: Log multipart upload details for /bulk/photos/analyze
+    if request.url.path == "/bulk/photos/analyze" and request.method == "POST":
+        logger.info(f"🔍 [DEBUG] Multipart upload detected:")
+        logger.info(f"   Content-Type: {request.headers.get('content-type', 'MISSING')}")
+        logger.info(f"   Content-Length: {request.headers.get('content-length', 'MISSING')}")
+        logger.info(f"   Headers: {dict(request.headers)}")
+    
     start_time = time.time()
     response = await call_next(request)
     duration_ms = (time.time() - start_time) * 1000
