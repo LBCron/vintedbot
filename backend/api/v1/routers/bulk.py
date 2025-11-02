@@ -85,7 +85,7 @@ def validate_image_file(file: UploadFile) -> bool:
 
 def resolve_photo_path(photo_path: str) -> str:
     """
-    🔧 RÉSOLUTION ROBUSTE DES CHEMINS PHOTOS
+    🔧 RÉSOLUTION ROBUSTE DES CHEMINS PHOTOS (pour backend filesystem access)
     
     Gère tous les formats possibles :
     - "/temp_photos/xxx/photo_000.jpg" → "backend/data/temp_photos/xxx/photo_000.jpg"
@@ -122,6 +122,51 @@ def resolve_photo_path(photo_path: str) -> str:
     
     # 4. Retourner le chemin original (même s'il n'existe pas)
     return photo_path
+
+
+def normalize_photo_url_for_frontend(photo_path: str) -> str:
+    """
+    Normalize photo path to frontend-compatible URL (API response layer only)
+    
+    Converts filesystem paths to HTTP URLs:
+    - "backend/data/temp_photos/xxx/photo_000.jpg" → "/temp_photos/xxx/photo_000.jpg"
+    - "temp_photos/xxx/photo_000.jpg" → "/temp_photos/xxx/photo_000.jpg"
+    - "/temp_photos/xxx/photo_000.jpg" → "/temp_photos/xxx/photo_000.jpg" (unchanged)
+    """
+    if not photo_path:
+        return photo_path
+    
+    # Remove "backend/data/" prefix if present
+    if photo_path.startswith("backend/data/temp_photos/"):
+        photo_path = photo_path.replace("backend/data/temp_photos/", "temp_photos/", 1)
+    
+    # Ensure leading slash for HTTP URLs
+    if photo_path.startswith("temp_photos/") and not photo_path.startswith("/"):
+        photo_path = "/" + photo_path
+    
+    return photo_path
+
+
+def normalize_draft_for_frontend(draft: Dict) -> Dict:
+    """
+    Normalize all photo URLs in a draft dict for frontend consumption
+    Keeps internal data intact, only normalizes for API response
+    """
+    draft = draft.copy()  # Don't mutate original
+    
+    # Normalize photos in item_json
+    if draft.get("item_json") and "photos" in draft["item_json"]:
+        item_json = draft["item_json"].copy()
+        item_json["photos"] = [normalize_photo_url_for_frontend(p) for p in item_json.get("photos", [])]
+        draft["item_json"] = item_json
+    
+    # Normalize photos in listing_json
+    if draft.get("listing_json") and "photos" in draft["listing_json"]:
+        listing_json = draft["listing_json"].copy()
+        listing_json["photos"] = [normalize_photo_url_for_frontend(p) for p in listing_json.get("photos", [])]
+        draft["listing_json"] = listing_json
+    
+    return draft
 
 
 def save_uploaded_photos(files: List[UploadFile], job_id: str) -> List[str]:
@@ -886,6 +931,8 @@ async def list_drafts(
         for row in db_drafts_raw:
             if row["item_json"]:
                 item_data = row["item_json"]
+                # Normalize photo URLs for frontend
+                normalized_photos = [normalize_photo_url_for_frontend(p) for p in item_data.get("photos", [])]
                 draft = DraftItem(
                     id=row["id"],
                     title=row["title"],
@@ -895,7 +942,7 @@ async def list_drafts(
                     size=row["size"],
                     color=row["color"],
                     category=row["category"],
-                    photos=item_data.get("photos", []),
+                    photos=normalized_photos,
                     status=row["status"],
                     created_at=datetime.fromisoformat(row["created_at"]),
                     updated_at=datetime.fromisoformat(row["updated_at"]),

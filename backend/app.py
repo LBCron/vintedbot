@@ -133,13 +133,10 @@ try:
 except:
     pass
 
-# Mount temp photos for Vinted uploads (deux chemins pour compatibilité)
+# Mount temp photos for Vinted uploads
 try:
     os.makedirs("backend/data/temp_photos", exist_ok=True)
-    # Mount principal (nouveau frontend)
     app.mount("/temp_photos", StaticFiles(directory="backend/data/temp_photos"), name="temp_photos")
-    # Mount alternatif pour legacy frontend qui demande /backend/data/temp_photos
-    app.mount("/backend/data/temp_photos", StaticFiles(directory="backend/data/temp_photos"), name="temp_photos_legacy")
 except Exception as e:
     logger.warning(f"Could not mount temp_photos directory: {e}")
 
