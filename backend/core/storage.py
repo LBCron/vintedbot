@@ -9,6 +9,8 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Any
 from pathlib import Path
 from contextlib import contextmanager
+import imagehash
+from PIL import Image
 
 
 # Environment configuration
@@ -213,6 +215,51 @@ class SQLiteStore:
     
     # ==================== DRAFTS ====================
     
+    def deduplicate_photos(self, photos: List[str]) -> List[str]:
+        """
+        Remove duplicate photos using perceptual hashing (imagehash)
+        
+        Args:
+            photos: List of photo paths
+            
+        Returns:
+            List of unique photo paths (duplicates removed)
+        """
+        if not photos:
+            return []
+        
+        unique_photos = []
+        seen_hashes = set()
+        
+        for photo_path in photos:
+            try:
+                # Skip if photo doesn't exist
+                if not Path(photo_path).exists():
+                    print(f"⚠️ Photo not found: {photo_path}")
+                    continue
+                
+                # Compute perceptual hash
+                img = Image.open(photo_path)
+                img_hash = str(imagehash.phash(img))
+                
+                # Check if hash already seen
+                if img_hash not in seen_hashes:
+                    seen_hashes.add(img_hash)
+                    unique_photos.append(photo_path)
+                else:
+                    print(f"🗑️ Duplicate photo detected: {Path(photo_path).name}")
+            
+            except Exception as e:
+                print(f"⚠️ Error processing photo {photo_path}: {e}")
+                # Keep photo anyway (conservative approach)
+                unique_photos.append(photo_path)
+        
+        removed_count = len(photos) - len(unique_photos)
+        if removed_count > 0:
+            print(f"✅ Removed {removed_count} duplicate photo(s)")
+        
+        return unique_photos
+    
     def find_duplicate_draft(
         self,
         title: str,
@@ -270,19 +317,49 @@ class SQLiteStore:
         """
         Save a new draft after quality gate validation
         
+        If duplicate detected → MERGE photos (deduplicated) instead of rejecting
+        
         Args:
             skip_duplicate_check: If True, skip duplicate detection (default: False)
         
         Returns:
-            Saved draft dict or existing duplicate
+            Saved draft dict (new or merged)
         """
         # Check for duplicates (unless explicitly skipped)
         if not skip_duplicate_check:
             existing = self.find_duplicate_draft(title, brand, size, category, user_id)
             if existing:
-                print(f"⚠️  Duplicate draft found: {title} (ID: {existing['id'][:8]}...) - Skipping creation")
-                return existing
+                print(f"🔄 Duplicate draft detected: {title}")
+                print(f"   Existing ID: {existing['id'][:8]}...")
+                
+                # Extract photos from both drafts
+                existing_item = existing.get("item", {})
+                existing_photos = existing_item.get("photos", [])
+                new_photos = item_json.get("photos", []) if item_json else []
+                
+                # Combine and deduplicate photos
+                all_photos = existing_photos + new_photos
+                unique_photos = self.deduplicate_photos(all_photos)
+                
+                print(f"   Photos: {len(existing_photos)} existing + {len(new_photos)} new = {len(unique_photos)} unique")
+                
+                # Update existing draft with merged photos
+                if item_json:
+                    item_json["photos"] = unique_photos
+                
+                with self.get_connection() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("""
+                        UPDATE drafts 
+                        SET item_json = ?, updated_at = CURRENT_TIMESTAMP
+                        WHERE id = ?
+                    """, (json.dumps(item_json) if item_json else None, existing["id"]))
+                    conn.commit()
+                
+                print(f"✅ Draft merged successfully!")
+                return self.get_draft(existing["id"]) or existing
         
+        # No duplicate → create new draft
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
