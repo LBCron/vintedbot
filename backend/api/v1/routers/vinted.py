@@ -370,46 +370,79 @@ async def prepare_listing(
     Default: dry_run=true (simulation only)
     """
     try:
+        print(f"\n{'='*60}")
+        print(f"🚀 DÉBUT PUBLICATION - PHASE A (PREPARE)")
+        print(f"{'='*60}")
+        print(f"📋 Title: {request.title[:50]}...")
+        print(f"💰 Price: {request.price}€")
+        print(f"📸 Photos: {len(request.photos)} fichiers")
+        print(f"🏷️  Category: {request.category_hint}")
+        print(f"👕 Size: {request.size}")
+        print(f"✨ Condition: {request.condition}")
+        print(f"🎨 Brand: {request.brand}")
+        
         # Check authentication
         session = vault.load_session()
         if not session:
+            print(f"❌ ERREUR: Aucune session Vinted trouvée")
+            print(f"   → Va dans Settings pour coller ton cookie Vinted")
             raise HTTPException(status_code=401, detail="Not authenticated. Call /auth/session first.")
         
+        print(f"✅ Session Vinted active: user={session.username or 'unknown'}")
+        
         # 🛡️ PUBLICATION SAFEGUARDS - Validate AI payload
+        print(f"\n🔍 VALIDATION DES CHAMPS:")
         if settings.SAFE_DEFAULTS:
             validation_errors = []
             
             # 1. Title length check (≤70 chars for optimal visibility)
             if len(request.title) > 70:
                 validation_errors.append(f"Title too long ({len(request.title)} chars, max 70)")
+                print(f"   ❌ Titre trop long: {len(request.title)} chars (max 70)")
+            else:
+                print(f"   ✅ Titre: {len(request.title)} chars")
             
             # 2. Hashtags validation (3-5 required)
             if not request.hashtags or len(request.hashtags) < 3 or len(request.hashtags) > 5:
                 hashtag_count = len(request.hashtags) if request.hashtags else 0
                 validation_errors.append(f"Invalid hashtags count ({hashtag_count}, need 3-5)")
+                print(f"   ❌ Hashtags invalides: {hashtag_count} (besoin 3-5)")
+            else:
+                print(f"   ✅ Hashtags: {len(request.hashtags)} tags")
             
             # 3. Price suggestion validation (min/target/max required)
             if not request.price_suggestion:
                 validation_errors.append("Missing price_suggestion (min/target/max)")
+                print(f"   ❌ Prix suggestion manquant")
             elif not all([
                 hasattr(request.price_suggestion, 'min'),
                 hasattr(request.price_suggestion, 'target'),
                 hasattr(request.price_suggestion, 'max')
             ]):
                 validation_errors.append("Incomplete price_suggestion (need min/target/max)")
+                print(f"   ❌ Prix suggestion incomplet")
+            else:
+                print(f"   ✅ Prix: {request.price_suggestion.min}€ - {request.price_suggestion.target}€ - {request.price_suggestion.max}€")
             
             # 4. Publish readiness flag
             if not request.flags or not request.flags.publish_ready:
                 validation_errors.append("Not ready for publication (flags.publish_ready != true)")
+                print(f"   ❌ Pas prêt pour publication (publish_ready=false)")
+            else:
+                print(f"   ✅ Prêt pour publication")
             
             # If any validation fails, return NOT_READY
             if validation_errors:
-                print(f"🚫 Publication blocked: {', '.join(validation_errors)}")
+                print(f"\n🚫 PUBLICATION BLOQUÉE:")
+                for error in validation_errors:
+                    print(f"   - {error}")
                 return ListingPrepareResponse(
                     ok=False,
                     dry_run=True,
                     reason=f"NOT_READY: {'; '.join(validation_errors)}"
                 )
+        
+        print(f"\n✅ TOUTES LES VALIDATIONS PASSÉES")
         
         # Dry run simulation
         if request.dry_run or settings.MOCK_MODE:
