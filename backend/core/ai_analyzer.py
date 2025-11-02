@@ -433,6 +433,79 @@ def smart_analyze_and_group_photos(
     return all_items
 
 
+def _normalize_size_field(size: str) -> str:
+    """
+    🔧 NORMALISATION TAILLE - Extrait UNIQUEMENT la taille adulte finale
+    
+    Exemples:
+    - "16Y / 165 cm (≈ XS)" → "XS"
+    - "XS (≈ 16Y)" → "XS"  
+    - "12 ans (≈ S)" → "S"
+    - "M" → "M"
+    
+    Returns:
+        Taille adulte simple (XS/S/M/L/XL/XXL) ou fallback
+    """
+    import re
+    
+    if not size or size.strip() == "":
+        return "M"  # Fallback par défaut
+    
+    # Si déjà une taille simple adulte, retourner directement
+    size_upper = size.strip().upper()
+    simple_sizes = ["XXS", "XS", "S", "M", "L", "XL", "XXL", "XXXL"]
+    if size_upper in simple_sizes:
+        return size_upper
+    
+    # Extraire la taille adulte de formats complexes (ex: "16Y / 165 cm (≈ XS)")
+    # Chercher pattern: (≈ TAILLE) ou / TAILLE) ou juste TAILLE
+    match = re.search(r'[≈\(]\s*([X]{0,3}[SMLX]{1,3})\s*[\)]', size.upper())
+    if match:
+        extracted = match.group(1)
+        if extracted in simple_sizes:
+            return extracted
+    
+    # Chercher directement une taille dans la chaîne
+    for sz in simple_sizes:
+        if re.search(rf'\b{sz}\b', size.upper()):
+            return sz
+    
+    # Si "Taille non visible" ou équivalent
+    if "non visible" in size.lower() or "non spécifié" in size.lower():
+        return "Taille non visible"
+    
+    # Fallback
+    return "M"
+
+
+def _normalize_condition_field(condition: str) -> str:
+    """
+    🔧 NORMALISATION CONDITION - Convertit en français standardisé
+    
+    Returns:
+        Condition en français (Vinted-compatible)
+    """
+    if not condition:
+        return "Bon état"
+    
+    condition_lower = condition.lower().strip()
+    
+    # Mapping anglais → français
+    if condition_lower in ["new with tags", "neuf avec étiquette", "neuf avec étiquettes"]:
+        return "Neuf avec étiquette"
+    elif condition_lower in ["new", "neuf", "neuf sans étiquette"]:
+        return "Neuf sans étiquette"
+    elif condition_lower in ["very good", "très bon état", "très bon"]:
+        return "Très bon état"
+    elif condition_lower in ["good", "bon état", "bon"]:
+        return "Bon état"
+    elif condition_lower in ["satisfactory", "satisfaisant", "état satisfaisant"]:
+        return "Satisfaisant"
+    
+    # Fallback
+    return "Bon état"
+
+
 def _auto_polish_draft(draft: Dict[str, Any]) -> Dict[str, Any]:
     """
     🔧 POLISSAGE AUTOMATIQUE 100% - Garantit que le brouillon est PARFAIT
@@ -444,6 +517,8 @@ def _auto_polish_draft(draft: Dict[str, Any]) -> Dict[str, Any]:
     - Corrige les hashtags (3-5, à la fin)
     - Ajuste le prix si nécessaire
     - Raccourcit le titre si trop long
+    - NORMALISE la taille (XS au lieu de "16Y / 165 cm (≈ XS)")
+    - NORMALISE la condition en français
     
     Returns:
         Draft corrigé et 100% prêt à publier
@@ -487,20 +562,20 @@ def _auto_polish_draft(draft: Dict[str, Any]) -> Dict[str, Any]:
             description = re.sub(r'\s+', ' ', description).strip()  # Nettoyer espaces
             print(f"🧹 Phrase marketing supprimée : '{phrase}'")
     
-    # 3. GARANTIR CHAMPS OBLIGATOIRES
+    # 3. NORMALISER ET GARANTIR CHAMPS OBLIGATOIRES
     
-    # condition (JAMAIS vide)
-    condition = draft.get("condition", "").strip()
-    if not condition:
-        print(f"⚠️  'condition' vide → correction : 'Bon état'")
-        condition = "Bon état"
+    # condition (JAMAIS vide + normalisation française)
+    original_condition = draft.get("condition", "").strip()
+    condition = _normalize_condition_field(original_condition)
+    if condition != original_condition:
+        print(f"🔧 Condition normalisée : '{original_condition}' → '{condition}'")
     draft["condition"] = condition
     
-    # size (JAMAIS vide)
-    size = draft.get("size", "").strip()
-    if not size:
-        print(f"⚠️  'size' vide → correction : 'Taille non visible'")
-        size = "Taille non visible"
+    # size (JAMAIS vide + extraction taille adulte simple)
+    original_size = draft.get("size", "").strip()
+    size = _normalize_size_field(original_size)
+    if size != original_size:
+        print(f"🔧 Taille simplifiée : '{original_size}' → '{size}'")
     draft["size"] = size
     
     # brand (fallback si vide)
@@ -751,25 +826,49 @@ CHAMPS OBLIGATOIRES (NE JAMAIS LAISSER VIDE):
 
 **size** (OBLIGATOIRE - JAMAIS NULL/VIDE):
   ⚠️ CE CHAMP NE DOIT JAMAIS ÊTRE null, undefined, ou vide ⚠️
-  TOUJOURS remplir ce champ en cherchant l'étiquette de taille sur les photos.
-  Examiner attentivement TOUTES les photos pour trouver la taille (étiquette cousue, tag papier, inscription visible).
+  ⚠️ RETOURNER UNIQUEMENT LA TAILLE ADULTE NORMALISÉE (XS/S/M/L/XL/XXL) ⚠️
   
-  🔴 RÈGLE ABSOLUE : Si aucune taille n'est visible sur les photos, tu DOIS écrire "Taille non visible" (texte exact).
+  RÈGLES CRITIQUES POUR LE CHAMP 'size':
+  • Examiner TOUTES les photos pour trouver l'étiquette de taille (cousue, tag papier, inscription)
+  • Si taille adulte visible (XS/S/M/L/XL) → retourner directement (ex: "M")
+  • Si taille enfant/ado (16Y, 165cm, 12 ans) → CONVERTIR en taille adulte équivalente (ex: "XS")
+  
+  CONVERSIONS TAILLES ENFANT → ADULTE:
+  • 16Y / 165cm → "XS"
+  • 14Y / 152-158cm → "XXS"
+  • 18Y / 170-176cm → "S"
+  • Si doute → "M" (taille moyenne par défaut)
+  
+  FORMAT À RESPECTER ABSOLUMENT:
+  ✅ BON : "XS" (taille finale simple)
+  ✅ BON : "M" (taille finale simple)
+  ❌ MAUVAIS : "16Y / 165 cm (≈ XS)" (NE JAMAIS inclure taille d'origine)
+  ❌ MAUVAIS : "XS (≈ 16Y)" (PAS de parenthèses ni équivalences)
+  
+  📝 NOTE : Mettre les détails de conversion dans le champ 'size_details' séparé (backend gérera):
+  {{
+    "size": "XS",
+    "size_details": "Taille d'origine 16Y / 165 cm, équivaut à XS adulte"
+  }}
+  
+  🔴 RÈGLE ABSOLUE : Si aucune taille n'est visible → retourner "Taille non visible" (texte exact)
   🔴 INTERDIT ABSOLU : Retourner null, undefined, "", ou omettre ce champ. Le JSON sera REJETÉ.
-
-TAILLES (normalisation tops/vêtements):
-- Conserver original_size (ex. 16Y / 165 cm)
-- Si taille enfant/ado (\\d+Y, ans) ou hauteur (cm), calculer normalized_size adulte XS/S/M/L… avec confidence et range_cm approximatif
-- Règles génériques unisex (tops) : 152–158 cm → XXS (0.7) ; 160–166 cm → XS (0.8) ; 167–172 cm → S (0.7)
-- Ajuster d'une demi-taille si brand_tier=premium ou fit "oversize/fit slim", et baisser confidence de 0.1
-- Ajouter size_notes (ex. « ≈ XS adulte, équiv. 16Y/165 cm ; vérifier mesures »)
-- Quality gate taille : si seule la taille enfant est connue mais normalized_size.confidence ≥ 0.6, publish_ready peut rester true ; sinon false et ajouter dans missing_fields: mesures poitrine/longueur
 
 LISTING POUR CHAQUE GROUPE:
 
-title (≤70 chars, format « {{Catégorie}} {{Couleur}} {{Marque?}} {{Taille?}} – {{État}} » ; si taille normalisée disponible, l'inclure : « XS (≈ 16Y/165 cm) »)
-  Exemple: "T-shirt noir Burberry XS (≈ 16Y/165 cm) – très bon état"
-  INTERDITS: emojis, superlatifs ("magnifique", "parfait"), marketing ("découvrez", "idéal pour")
+title (≤70 chars, format SIMPLE « {{Catégorie}} {{Couleur}} {{Marque?}} {{Taille}} – {{État}} »)
+  ⚠️ FORMAT SIMPLIFIÉ - PAS de parenthèses, PAS d'équivalences, PAS de mesures
+  
+  Exemples CORRECTS:
+  ✅ "T-shirt noir Burberry XS – très bon état"
+  ✅ "Jogging noir Burberry XS – bon état"
+  ✅ "Hoodie Karl Lagerfeld noir M – très bon état"
+  
+  Exemples INTERDITS:
+  ❌ "T-shirt noir Burberry XS (≈ 16Y/165 cm) – très bon état" (PAS de parenthèses)
+  ❌ "Jogging Burberry 16Y / 165 cm – bon état" (utiliser taille adulte)
+  
+  INTERDITS: emojis, superlatifs ("magnifique", "parfait"), marketing ("découvrez", "idéal pour"), parenthèses avec équivalences
 
 description (5–8 lignes, FR, style humain minimal, ZÉRO emoji, ZÉRO marketing)
   Structure: 
