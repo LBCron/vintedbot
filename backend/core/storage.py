@@ -265,6 +265,27 @@ class SQLiteStore:
                 """, (status, draft_id))
             conn.commit()
     
+    def update_draft_photos(self, draft_id: str, photos: List[str]):
+        """Update draft photos list"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            # Get current item_json
+            cursor.execute("SELECT item_json FROM drafts WHERE id = ?", (draft_id,))
+            row = cursor.fetchone()
+            if not row:
+                return
+            
+            item_json = json.loads(row["item_json"]) if row["item_json"] else {}
+            item_json["photos"] = photos
+            
+            # Update item_json with new photos
+            cursor.execute("""
+                UPDATE drafts 
+                SET item_json = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            """, (json.dumps(item_json), draft_id))
+            conn.commit()
+    
     def get_draft(self, draft_id: str) -> Optional[Dict[str, Any]]:
         """Get single draft by ID"""
         with self.get_connection() as conn:

@@ -83,6 +83,47 @@ def validate_image_file(file: UploadFile) -> bool:
     return False
 
 
+def resolve_photo_path(photo_path: str) -> str:
+    """
+    🔧 RÉSOLUTION ROBUSTE DES CHEMINS PHOTOS
+    
+    Gère tous les formats possibles :
+    - "/temp_photos/xxx/photo_000.jpg" → "backend/data/temp_photos/xxx/photo_000.jpg"
+    - "backend/data/temp_photos/xxx/photo_000.jpg" → "backend/data/temp_photos/xxx/photo_000.jpg"
+    - "temp_photos/xxx/photo_000.jpg" → "backend/data/temp_photos/xxx/photo_000.jpg"
+    
+    Returns:
+        Chemin absolu valide qui existe sur le système de fichiers
+    """
+    import os
+    
+    # 1. Si le chemin existe déjà tel quel, retourner
+    if os.path.exists(photo_path):
+        return photo_path
+    
+    # 2. Essayer avec préfixe "backend/data"
+    if not photo_path.startswith("backend/data/"):
+        # Supprimer le "/" au début si présent
+        clean_path = photo_path.lstrip("/")
+        prefixed_path = f"backend/data/{clean_path}"
+        if os.path.exists(prefixed_path):
+            return prefixed_path
+    
+    # 3. Essayer en ajoutant "backend/data/temp_photos"
+    if "temp_photos" not in photo_path:
+        basename = os.path.basename(photo_path)
+        # Chercher le job_id dans le chemin (format: {job_id}/photo_xxx.jpg)
+        parts = photo_path.split("/")
+        if len(parts) >= 2:
+            job_id = parts[-2]
+            test_path = f"backend/data/temp_photos/{job_id}/{basename}"
+            if os.path.exists(test_path):
+                return test_path
+    
+    # 4. Retourner le chemin original (même s'il n'existe pas)
+    return photo_path
+
+
 def save_uploaded_photos(files: List[UploadFile], job_id: str) -> List[str]:
     """Save uploaded photos and return file paths (converts HEIC to JPEG)"""
     temp_dir = Path("backend/data/temp_photos") / job_id
@@ -994,6 +1035,75 @@ async def delete_draft(
         raise HTTPException(status_code=500, detail=f"Failed to delete draft: {str(e)}")
 
 
+@router.post("/drafts/{draft_id}/photos")
+async def add_photos_to_draft(
+    draft_id: str,
+    files: List[UploadFile] = File(...),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    📸 AJOUTER DES PHOTOS À UN BROUILLON EXISTANT
+    
+    Permet d'ajouter des photos supplémentaires à un brouillon déjà créé.
+    Utile pour compléter un article avec plus de détails visuels.
+    
+    **Requires:** Authentication (user ownership validation)
+    
+    **Returns:** {ok, added, total}
+    """
+    try:
+        # Get draft from SQLite (with user ownership check)
+        draft_data = get_store().get_draft(draft_id)
+        
+        if not draft_data:
+            raise HTTPException(status_code=404, detail="Draft not found")
+        
+        # CRITICAL: Verify user ownership
+        if draft_data.get("user_id") and draft_data["user_id"] != str(current_user.id):
+            raise HTTPException(status_code=403, detail="Ce brouillon ne vous appartient pas")
+        
+        # Validate images
+        invalid_files = []
+        for file in files:
+            if not validate_image_file(file):
+                invalid_files.append(file.filename or "unknown")
+        
+        if invalid_files:
+            raise HTTPException(
+                status_code=415,
+                detail=f"Invalid formats (expected JPG/PNG/WEBP/HEIC): {', '.join(invalid_files[:5])}"
+            )
+        
+        # Get current photos from draft
+        item_json = draft_data.get("item_json", {})
+        current_photos = item_json.get("photos", [])
+        
+        # Upload new photos (use draft_id as job_id for consistency)
+        new_photo_paths = save_uploaded_photos(files, draft_id)
+        
+        # Update draft with new photos
+        updated_photos = current_photos + new_photo_paths
+        item_json["photos"] = updated_photos
+        
+        # Save updated draft to database
+        get_store().update_draft_photos(draft_id, updated_photos)
+        
+        print(f"✅ Added {len(new_photo_paths)} photos to draft {draft_id} (total: {len(updated_photos)})")
+        
+        return {
+            "ok": True,
+            "added": len(new_photo_paths),
+            "total": len(updated_photos),
+            "photos": updated_photos
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Add photos error: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to add photos: {str(e)}")
+
+
 @router.post("/drafts/{draft_id}/publish")
 async def publish_draft(
     draft_id: str,
@@ -1045,7 +1155,27 @@ async def publish_draft(
         
         # Extract draft fields
         item_json = draft_data.get("item_json", {})
-        photos = item_json.get("photos", [])
+        photos_raw = item_json.get("photos", [])
+        
+        # 🔧 FIX CRITIQUE: Résoudre les chemins photos de manière robuste
+        photos = []
+        for photo_path in photos_raw:
+            resolved = resolve_photo_path(photo_path)
+            if os.path.exists(resolved):
+                photos.append(resolved)
+                print(f"📸 Photo résolved: {photo_path} → {resolved}")
+            else:
+                print(f"⚠️  Photo introuvable après résolution: {photo_path} (tried {resolved})")
+        
+        if not photos:
+            print(f"❌ [PUBLISH] Aucune photo valide trouvée pour draft {draft_id}")
+            return {
+                "ok": False,
+                "draft_id": draft_id,
+                "status": "prepare_failed",
+                "reason": f"Photos introuvables. Chemins bruts: {photos_raw[:3]}",
+                "dry_run": dry_run
+            }
         
         # Parse price_suggestion from analysis_result
         analysis_result = item_json.get("analysis_result", {})
