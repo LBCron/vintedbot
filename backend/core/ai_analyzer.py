@@ -145,7 +145,7 @@ EXEMPLES :
 HAUT (Hoodie bicolore Karl Lagerfeld) :
 {
   "title": "Hoodie bicolore Karl Lagerfeld L – très bon état",
-  "description": "• Hoodie Karl Lagerfeld noir et gris, broderie poitrine\\n• Très bon état général\\n• Matières : 59% coton, 32% rayonne, 9% spandex\\n• Coupe droite, capuche réglable, poignets élastiqués\\n• Taille L\\n• Mesures poitrine/dos/épaules sur demande\\n• Envoi rapide soigné\\n#karllagerfeld #hoodie #bicolore #streetwear #L",
+  "description": "• Hoodie Karl Lagerfeld noir et gris, broderie poitrine\\n• Très bon état général\\n• Matières : 59% coton, 32% rayonne, 9% spandex\\n• Coupe droite, capuche réglable, poignets élastiqués\\n• Taille L\\n• Envoi rapide soigné\\n#karllagerfeld #hoodie #bicolore #streetwear #L",
   "brand": "Karl Lagerfeld",
   "category": "hoodie",
   "size": "L",
@@ -160,7 +160,7 @@ HAUT (Hoodie bicolore Karl Lagerfeld) :
 BAS (Jogging Burberry) :
 {
   "title": "Jogging noir Burberry L – très bon état",
-  "description": "• Jogging Burberry noir, logo discret\\n• Très bon état général\\n• Matières : à préciser\\n• Coupe droite, cordon de serrage, bas élastiqué\\n• Taille L\\n• Mesures longueur/largeur/entrejambe sur demande\\n• Envoi rapide soigné\\n#burberry #jogging #noir #streetwear #L",
+  "description": "• Jogging Burberry noir, logo discret\\n• Très bon état général\\n• Matières : à préciser\\n• Coupe droite, cordon de serrage, bas élastiqué\\n• Taille L\\n• Envoi rapide soigné\\n#burberry #jogging #noir #streetwear #L",
   "brand": "Burberry",
   "category": "jogging",
   "size": "L",
@@ -276,7 +276,7 @@ def generate_fallback_analysis(photo_paths: List[str]) -> Dict[str, Any]:
     """
     return {
         "title": "Vêtement à identifier – bon état",
-        "description": "Article en bon état visible sur photos. Matière et détails à préciser selon photos fournies. Taille à vérifier. Mesures recommandées pour confirmation avant achat. Envoi rapide. Remise possible si achat groupé. #mode #vinted #occasion",
+        "description": "Article en bon état visible sur photos. Matière et détails à préciser selon photos fournies. Taille à vérifier. Envoi rapide. Remise possible si achat groupé. #mode #vinted #occasion",
         "price": 20,
         "category": "autre",
         "condition": "Bon état",  # MANDATORY: Default value if AI fails
@@ -1029,16 +1029,15 @@ title (≤70 chars, format SIMPLE « {{Catégorie}} {{Couleur}} {{Marque?}} {{Ta
   
   INTERDITS: emojis, superlatifs ("magnifique", "parfait"), marketing ("découvrez", "idéal pour"), parenthèses avec équivalences
 
-description (5–8 lignes, FR, style humain minimal, ZÉRO emoji, ZÉRO marketing)
+description (4–7 lignes, FR, style humain minimal, ZÉRO emoji, ZÉRO marketing)
   Structure: 
   1) ce que c'est (catégorie/coupe/logo)
   2) état factuel + défauts précis
   3) matière/fit/saison/extras
   4) taille d'origine + équivalence adulte si calculée
-  5) invite à vérifier mesures en cm
-  6) logistique + remise lot
+  5) logistique + remise lot
   
-  Exemple: "T-shirt Burberry noir, logo imprimé devant, coupe classique. Très bon état : matière propre, couleur uniforme, pas de trou ou tâche visibles. Coton confortable, col rond. Taille d'origine : 16Y / 165 cm — équiv. XS adulte selon le guide générique. Mesures conseillées à ajouter : poitrine (à plat) et longueur dos, en cm. Envoi rapide ; remise possible si achat de plusieurs pièces."
+  Exemple: "T-shirt Burberry noir, logo imprimé devant, coupe classique. Très bon état : matière propre, couleur uniforme, pas de trou ou tâche visibles. Coton confortable, col rond. Taille d'origine : 16Y / 165 cm — équiv. XS adulte selon le guide générique. Envoi rapide ; remise possible si achat de plusieurs pièces."
   
   INTERDITS ABSOLUS: emojis, phrases marketing ("parfait pour", "style tendance", "casual chic", "look", "découvrez", "idéal"), superlatifs
 
@@ -1094,14 +1093,14 @@ QUALITY GATE (CRITÈRES SANS-ÉCHEC):
 
 INTERDITS ABSOLUS: emojis, marketing creux ("découvrez", "parfait pour", "style tendance", slogans), liens/contacts, promesses hors plateforme, "authentique/original" sans preuve.
 
-STYLE HUMAIN MINIMAL : aucune phrase creuse ni slogan. Si emoji/superlatif détecté, régénère la même sortie en les supprimant. La description doit tenir en 5–8 lignes factuelles : 1) quoi + couleur/coupe, 2) état concret, 3) matière/détails (col, bords-côtes, poches), 4) taille + repère morpho approximatif, 5) mesures à fournir, 6) logistique/remise lot.
+STYLE HUMAIN MINIMAL : aucune phrase creuse ni slogan. Si emoji/superlatif détecté, régénère la même sortie en les supprimant. La description doit tenir en 4–7 lignes factuelles : 1) quoi + couleur/coupe, 2) état concret, 3) matière/détails (col, bords-côtes, poches), 4) taille + repère morpho approximatif, 5) logistique/remise lot.
 
 SORTIE JSON OBLIGATOIRE:
 {{
   "groups": [
     {{
       "title": "T-shirt noir Burberry XS – très bon état",
-      "description": "T-shirt Burberry noir, logo imprimé devant, coupe classique. Très bon état : matière propre, couleur uniforme, pas de trou ou tâche visibles. Coton confortable, col rond. Taille d'origine : 16Y / 165 cm — équiv. XS adulte. Mesures à ajouter : poitrine et longueur. Envoi rapide. #burberry #tshirt #noir #xs #streetwear",
+      "description": "T-shirt Burberry noir, logo imprimé devant, coupe classique. Très bon état : matière propre, couleur uniforme, pas de trou ou tâche visibles. Coton confortable, col rond. Taille d'origine : 16Y / 165 cm — équiv. XS adulte. Envoi rapide. #burberry #tshirt #noir #xs #streetwear",
       "price": 50.0,
       "brand": "Burberry",
       "size": "16Y / 165 cm (≈ XS)",
