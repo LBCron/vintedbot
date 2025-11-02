@@ -68,6 +68,9 @@ class VintedClient:
         Returns:
             Browser context
         """
+        if not self.browser:
+            raise RuntimeError("Browser not initialized. Call init() first.")
+        
         # Parse cookies from header string
         cookies = []
         for cookie_str in session.cookie.split(';'):
@@ -176,6 +179,10 @@ class VintedClient:
             
             # Wait for file input with longer timeout (15s)
             file_input = await page.wait_for_selector(upload_selector, timeout=15000)
+            
+            if not file_input:
+                print(f"❌ File input not found with selector: {upload_selector}")
+                return False
             
             # Upload file
             await file_input.set_input_files(photo_path)
@@ -310,7 +317,8 @@ class VintedClient:
             screenshot_bytes = await page.screenshot(full_page=False)
             if encoding == 'base64':
                 return base64.b64encode(screenshot_bytes).decode()
-            return screenshot_bytes
+            # For non-base64 encoding, return base64 anyway to match return type
+            return base64.b64encode(screenshot_bytes).decode()
         except Exception as e:
             print(f"❌ Screenshot failed: {e}")
             return None

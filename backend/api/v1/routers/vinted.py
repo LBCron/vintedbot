@@ -785,7 +785,7 @@ async def test_session(current_user: User = Depends(get_current_user)):
     """
     try:
         # Get user's session
-        session = vault.get_session(str(current_user.id))
+        session = vault.load_session()
         
         if not session:
             return JSONResponse({
