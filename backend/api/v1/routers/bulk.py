@@ -1756,8 +1756,8 @@ async def generate_drafts_from_plan(
                     missing_fields=[]
                 )
                 
-                # Save draft to SQLite storage
-                get_store().save_draft(
+                # Save draft to SQLite storage (may return merged draft with different ID!)
+                saved_draft = get_store().save_draft(
                     draft_id=draft_id,
                     title=title,
                     description=description,
@@ -1777,8 +1777,14 @@ async def generate_drafts_from_plan(
                     status="ready"
                 )
                 
-                # Also keep in-memory for backward compatibility
-                drafts_storage[draft_id] = draft
+                # CRITICAL: Use the REAL ID returned (may differ if merged!)
+                real_draft_id = saved_draft.get("id", draft_id)
+                
+                # Update draft object with real ID
+                draft.id = real_draft_id
+                
+                # Also keep in-memory for backward compatibility (with REAL ID!)
+                drafts_storage[real_draft_id] = draft
                 created_drafts.append(draft)
                 
                 print(f"✅ Draft {item_index}/{len(grouped_items)}: {draft.title} ({len(item.get('photos', []))} photos, {hashtag_count} hashtags)")
