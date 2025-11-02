@@ -162,24 +162,61 @@ DESCRIPTION (structure STRICTE - 6-8 lignes FACTUELLES) :
 - Phrases vagues : "Mélange de coton, confortable et doux" ← REFUSÉ
 - Généralités : "Matière agréable", "Belle qualité" ← REFUSÉ
 - Marketing : "Parfait pour", "Idéal", "Style tendance" ← REFUSÉ
+- VOCABULAIRE INCORRECT selon catégorie (voir ci-dessous)
+
+🚨 VOCABULAIRE STRICT PAR CATÉGORIE (RÈGLE CRITIQUE) :
+
+📌 HAUTS (sweat, hoodie, pull, t-shirt, chemise, veste) :
+✅ Zones AUTORISÉES : poitrine, épaules, manches, dos, col, capuche
+✅ Mesures : tour de poitrine, longueur dos, largeur épaules
+❌ JAMAIS : taille (waist), entrejambe, cuisses, chevilles
+
+📌 BAS (jogging, pantalon, short, jean, legging) :
+✅ Zones AUTORISÉES : taille (waist), cuisses, jambes, entrejambe, chevilles, poches
+✅ Mesures : tour de taille, longueur totale, entrejambe
+❌ JAMAIS : poitrine, épaules, manches, capuche
 
 ✅ STRUCTURE OBLIGATOIRE (chaque ligne = info précise) :
-1️⃣ IDENTIFICATION : "Jogging Burberry noir à capuche, logo brodé poitrine gauche"
-2️⃣ ÉTAT DÉTAILLÉ : "Bon état général : matière propre, légères traces d'usure cordon capuche, petit boulochage intérieur cuisses"
-3️⃣ MATIÈRE EXACTE : "Composition étiquette : 80% coton, 20% polyester (lu sur étiquette)"
-4️⃣ COUPE/FIT : "Coupe droite standard, poignets élastiques, taille réglable par cordon"
-5️⃣ TAILLE PRÉCISE : "Taille étiquette : L (adulte, confirmé sur étiquette composition)"
+
+🔹 EXEMPLE HAUT (Hoodie) :
+1️⃣ IDENTIFICATION : "Hoodie Burberry noir, logo brodé poitrine gauche, capuche réglable"
+2️⃣ ÉTAT DÉTAILLÉ : "Très bon état : matière propre, légères traces d'usure cordon capuche, bords manches impeccables"
+3️⃣ MATIÈRE EXACTE : "Composition étiquette : 80% coton, 20% polyester"
+4️⃣ COUPE/FIT : "Coupe droite standard, manches longues, poignets élastiques"
+5️⃣ TAILLE PRÉCISE : "Taille étiquette : L (adulte)"
+6️⃣ MESURES : "Mesures à ajouter recommandées : tour de poitrine, longueur dos, largeur épaules"
+7️⃣ LOGISTIQUE : "Envoi rapide soigné. Remise -10% si achat groupé de 2+ articles"
+8️⃣ HASHTAGS : "#burberry #hoodie #noir #L #streetwear"
+
+🔹 EXEMPLE BAS (Jogging) :
+1️⃣ IDENTIFICATION : "Jogging Burberry noir, logo brodé cuisse gauche, taille élastique"
+2️⃣ ÉTAT DÉTAILLÉ : "Bon état général : matière propre, léger boulochage intérieur cuisses, chevilles impeccables"
+3️⃣ MATIÈRE EXACTE : "Composition étiquette : 80% coton, 20% polyester"
+4️⃣ COUPE/FIT : "Coupe droite standard, poches latérales, chevilles resserrées"
+5️⃣ TAILLE PRÉCISE : "Taille étiquette : L (adulte)"
 6️⃣ MESURES : "Mesures à ajouter recommandées : tour de taille, longueur totale, entrejambe"
 7️⃣ LOGISTIQUE : "Envoi rapide soigné. Remise -10% si achat groupé de 2+ articles"
 8️⃣ HASHTAGS : "#burberry #jogging #noir #L #streetwear"
 
-✅ BON EXEMPLE COMPLET :
-"Jogging Burberry noir à capuche, logo brodé poitrine gauche. Bon état général : matière propre, légères traces d'usure cordon capuche, petit boulochage intérieur cuisses. Composition étiquette : 80% coton, 20% polyester. Coupe droite standard, poignets élastiques, taille réglable par cordon. Taille étiquette : L (adulte). Mesures à ajouter recommandées : tour de taille, longueur totale, entrejambe. Envoi rapide soigné. Remise -10% si achat groupé. #burberry #jogging #noir #L #streetwear"
+SORTIE JSON OBLIGATOIRE (adapte l'exemple selon la catégorie détectée) :
 
-SORTIE JSON OBLIGATOIRE:
+🔹 Si HAUT (hoodie/sweat/pull/t-shirt/chemise) :
+{
+    "title": "Hoodie noir Burberry L – très bon état",
+    "description": "Hoodie Burberry noir, logo brodé poitrine gauche, capuche réglable. Très bon état : matière propre, légères traces d'usure cordon capuche, bords manches impeccables. Composition étiquette : 80% coton, 20% polyester. Coupe droite standard, manches longues, poignets élastiques. Taille étiquette : L (adulte). Mesures à ajouter recommandées : tour de poitrine, longueur dos, largeur épaules. Envoi rapide soigné. #burberry #hoodie #noir #L #streetwear",
+    "price": 60,
+    "category": "hoodie",
+    "condition": "Très bon état",
+    "color": "noir",
+    "brand": "Burberry",
+    "size": "L",
+    "confidence": 0.95
+}
+
+🔹 Si BAS (jogging/pantalon/short/jean) :
 {
     "title": "Jogging noir Burberry L – bon état",
-    "description": "Jogging Burberry noir, coupe droite, logo brodé. Bon état : matière propre, léger boulochage visible. Coton confortable. Taille L. Mesures à ajouter : tour de taille et longueur. Envoi rapide. #burberry #jogging #noir #L #sportswear",
+    "description": "Jogging Burberry noir, logo brodé cuisse gauche, taille élastique. Bon état général : matière propre, léger boulochage intérieur cuisses, chevilles impeccables. Composition étiquette : 80% coton, 20% polyester. Coupe droite standard, poches latérales, chevilles resserrées. Taille étiquette : L (adulte). Mesures à ajouter recommandées : tour de taille, longueur totale, entrejambe. Envoi rapide soigné. #burberry #jogging #noir #L #streetwear",
     "price": 45,
     "category": "jogging",
     "condition": "Bon état",
@@ -604,6 +641,129 @@ def _auto_polish_draft(draft: Dict[str, Any]) -> Dict[str, Any]:
             description = re.sub(rf'\b{re.escape(phrase)}\b', '', description, flags=re.IGNORECASE)
             description = re.sub(r'\s+', ' ', description).strip()  # Nettoyer espaces
             print(f"🧹 Phrase marketing supprimée : '{phrase}'")
+    
+    # 2.5 VALIDER VOCABULAIRE PAR CATÉGORIE (CRITIQUE - MATCHING FLEXIBLE)
+    category = draft.get("category", "").lower()
+    
+    # Mapping catégories → groupes (matching par sous-chaîne pour robustesse)
+    TOPS_KEYWORDS = ["hoodie", "sweat", "pull", "t-shirt", "tshirt", "tee", "chemise", 
+                     "blouse", "veste", "blouson", "manteau", "doudoune", "parka", "cardigan",
+                     "top", "débardeur", "gilet"]
+    BOTTOMS_KEYWORDS = ["jogging", "pantalon", "jean", "short", "bermuda", "legging", 
+                        "survêtement", "jogger", "cargo", "chino"]
+    
+    # Détection flexible : catégorie contient-elle un mot-clé ?
+    is_top = any(keyword in category for keyword in TOPS_KEYWORDS)
+    is_bottom = any(keyword in category for keyword in BOTTOMS_KEYWORDS)
+    
+    # Termes interdits par groupe (avec mapping vers remplacements contextuels)
+    if is_bottom:
+        # BAS : SUPPRIMER TOTALEMENT vocabulaire HAUTS
+        forbidden_replacements = {
+            r'\bpoitrine\b': 'cuisse',
+            r'\bépaules?\b': 'taille',
+            r'\bmanches?\b': 'jambes',
+            r'\bcapuche\b': '',  # Supprimer complètement (illogique pour un bas)
+            r'\bcol\b': '',
+            r'\bdos\b': '',
+            r'\bencolure\b': '',
+            r'\bpoignets?\b': 'chevilles',
+            r'\bbrodé poitrine\b': 'brodé cuisse',
+            r'\bimprimé poitrine\b': 'imprimé cuisse',
+            r'\bdétail dos\b': 'détail arrière',
+            r'\bmanches longues\b': 'jambes longues',
+            r'\bmanches courtes\b': 'jambes courtes'
+        }
+        
+        for pattern, replacement in forbidden_replacements.items():
+            if re.search(pattern, description_lower):
+                match_text = re.search(pattern, description_lower)
+                if match_text:
+                    print(f"🚨 VOCABULAIRE INCORRECT '{match_text.group()}' dans {category} (BAS) → '{replacement or 'supprimé'}'")
+                if replacement:
+                    description = re.sub(pattern, replacement, description, flags=re.IGNORECASE)
+                else:
+                    # Supprimer le terme + contexte autour
+                    description = re.sub(rf'[,\s]*{pattern}[,\s]*', ' ', description, flags=re.IGNORECASE)
+                    description = re.sub(r'\s+', ' ', description).strip()
+    
+    elif is_top:
+        # HAUTS : SUPPRIMER TOTALEMENT vocabulaire BAS (EXHAUSTIF)
+        forbidden_replacements = {
+            r'\bentrejambe\b': '',
+            r'\bcuisses?\b': 'manches',
+            r'\bchevilles?\b': 'poignets',
+            # Tous les contextes "taille" = WAIST (pas SIZE)
+            r'\btaille élastique\b': 'poignets élastiques',
+            r'\btaille ajustable\b': 'poignets ajustables',
+            r'\btaille réglable\b': 'poignets réglables',
+            r'\btaille resserrée\b': 'poignets resserrés',
+            r'\btaille cintrée\b': 'coupe cintrée',
+            r'\btaille stretch\b': 'tissu stretch',
+            r'\bserrage à la taille\b': 'serrage aux poignets',
+            r'\bceinture à la taille\b': 'bord côtelé',
+            r'\bà la taille\b': 'à la taille basse',  # Edge case : peut rester si contexte bas de vêtement
+            r'\btour de taille\b': 'tour de poitrine',
+            r'\bpoches taille\b': 'poches poitrine',
+            # Autres vocabulaire BAS
+            r'\bbrodé cuisse\b': 'brodé poitrine',
+            r'\bimprimé cuisse\b': 'imprimé poitrine',
+            r'\bjambes longues\b': 'manches longues',
+            r'\bjambes courtes\b': 'manches courtes'
+        }
+        
+        for pattern, replacement in forbidden_replacements.items():
+            if re.search(pattern, description_lower):
+                match_text = re.search(pattern, description_lower)
+                if match_text:
+                    print(f"🚨 VOCABULAIRE INCORRECT '{match_text.group()}' dans {category} (HAUT) → '{replacement or 'supprimé'}'")
+                if replacement:
+                    description = re.sub(pattern, replacement, description, flags=re.IGNORECASE)
+                else:
+                    # Supprimer le terme
+                    description = re.sub(rf'[,\s]*{pattern}[,\s]*', ' ', description, flags=re.IGNORECASE)
+                    description = re.sub(r'\s+', ' ', description).strip()
+    
+    # VÉRIFICATION FINALE : S'assurer qu'AUCUN terme interdit ne subsiste
+    if is_bottom:
+        # BAS : aucun vocabulaire de HAUTS ne doit survivre
+        final_check = [
+            r'\bpoitrine\b', r'\bépaules?\b', r'\bmanches?\b', r'\bcapuche\b', 
+            r'\bcol\b', r'\bdos\b', r'\bencolure\b', r'\bpoignets?\b'
+        ]
+        for pattern in final_check:
+            if re.search(pattern, description.lower()):
+                # Dernier filet de sécurité : supprimer brutalement
+                print(f"⚠️  ALERTE : terme interdit '{pattern}' détecté après corrections → suppression forcée")
+                description = re.sub(pattern, '', description, flags=re.IGNORECASE)
+                description = re.sub(r'\s+', ' ', description).strip()
+    
+    elif is_top:
+        # HAUTS : aucun vocabulaire de BAS ne doit survivre (EXHAUSTIF : tous les contextes "taille"=WAIST)
+        final_check = [
+            r'\bentrejambe\b', r'\bcuisses?\b', r'\bchevilles?\b',
+            # Tous les usages "taille" = WAIST (pas SIZE)
+            r'\btour de taille\b', r'\btaille ajustable\b', r'\btaille élastique\b',
+            r'\btaille réglable\b', r'\btaille resserrée\b', r'\btaille cintrée\b',
+            r'\btaille stretch\b', r'\bserrage à la taille\b', r'\bceinture à la taille\b',
+            r'\btaille \(waist\)', r'\bpoches taille\b',
+            r'\bjambes?\s+(longues?|courtes?)\b'  # "jambes longues" mais pas "jambes" seul
+        ]
+        for pattern in final_check:
+            if re.search(pattern, description.lower()):
+                print(f"⚠️  ALERTE : terme interdit '{pattern}' détecté après corrections → suppression forcée")
+                description = re.sub(pattern, '', description, flags=re.IGNORECASE)
+                description = re.sub(r'\s+', ' ', description).strip()
+    
+    else:
+        # FALLBACK CONSERVATEUR pour catégories non gérées (robes, jupes, accessoires)
+        # → Appliquer règles TOPS par défaut (plus sûr que de ne rien faire)
+        if category and category not in ["vêtement", "", "autre"]:
+            print(f"ℹ️  Catégorie '{category}' non classée → application des règles TOPS par défaut")
+            # Supprimer vocabulaire BAS évident (entrejambe, cuisses)
+            description = re.sub(r'\bentrejambe\b', '', description, flags=re.IGNORECASE)
+            description = re.sub(r'\bcuisses?\b', '', description, flags=re.IGNORECASE)
+            description = re.sub(r'\s+', ' ', description).strip()
     
     # 3. NORMALISER ET GARANTIR CHAMPS OBLIGATOIRES
     
