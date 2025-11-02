@@ -531,11 +531,22 @@ async def prepare_listing(
                         )
                     
                     print(f"📸 Uploading photo [{idx+1}/{len(request.photos)}]: {os.path.basename(photo_path)}")
-                    if not await client.upload_photo(page, photo_path):
+                    upload_success = await client.upload_photo(page, photo_path)
+                    
+                    if not upload_success:
+                        # Check if we were redirected to login/session page
+                        current_url = page.url
+                        if 'session-refresh' in current_url or 'session/new' in current_url or 'member/login' in current_url:
+                            print(f"❌ Session Vinted expirée (redirigé vers {current_url})")
+                            raise HTTPException(
+                                status_code=401,
+                                detail=f"SESSION_EXPIRED: Votre session Vinted a expiré. Veuillez actualiser votre cookie dans Settings. Testez votre session avec le bouton 'Tester ma session'."
+                            )
+                        
                         print(f"⚠️ Photo upload failed: {photo_ref}")
                         raise HTTPException(
                             status_code=500,
-                            detail=f"Failed to upload photo: {photo_ref}"
+                            detail=f"Failed to upload photo: {photo_ref}. Vérifiez votre connexion ou testez votre session Vinted."
                         )
             
             # Fill form
@@ -759,3 +770,81 @@ async def publish_listing(
     except Exception as e:
         print(f"❌ Publish error: {e}")
         raise HTTPException(status_code=500, detail=f"Publish failed: {str(e)}")
+
+
+@router.post("/session/test")
+async def test_session(current_user: User = Depends(get_current_user)):
+    """
+    Test if Vinted session cookie is still valid
+    
+    Returns:
+        - valid: Session is active and working
+        - expired: Session expired, need to refresh cookie
+        - missing: No session found
+        - error: Error during test
+    """
+    try:
+        # Get user's session
+        session = vault.get_session(str(current_user.id))
+        
+        if not session:
+            return JSONResponse({
+                "ok": False,
+                "status": "missing",
+                "message": "❌ Aucune session Vinted configurée. Veuillez ajouter votre cookie dans Settings.",
+                "action": "add_cookie"
+            })
+        
+        print(f"🔍 Testing Vinted session for user {current_user.id}...")
+        
+        # Create browser context and test
+        async with VintedClient(headless=True) as client:
+            await client.create_context(session)
+            page = await client.new_page()
+            
+            # Navigate to a page that requires auth
+            await page.goto("https://www.vinted.fr/items/new", wait_until="networkidle", timeout=15000)
+            
+            # Check current URL
+            current_url = page.url
+            
+            # If redirected to session-refresh or login, session is expired
+            if 'session-refresh' in current_url or 'session/new' in current_url or 'member/login' in current_url:
+                print(f"❌ Session expired (redirected to {current_url})")
+                return JSONResponse({
+                    "ok": False,
+                    "status": "expired",
+                    "message": "❌ Votre session Vinted a expiré. Veuillez actualiser votre cookie.",
+                    "action": "refresh_cookie",
+                    "detected_url": current_url
+                })
+            
+            # If we're still on /items/new, session is valid
+            if '/items/new' in current_url:
+                print(f"✅ Session valid!")
+                return JSONResponse({
+                    "ok": True,
+                    "status": "valid",
+                    "message": "✅ Votre session Vinted est active et valide !",
+                    "action": None
+                })
+            
+            # Unknown state
+            print(f"⚠️ Unknown state: {current_url}")
+            return JSONResponse({
+                "ok": False,
+                "status": "unknown",
+                "message": f"⚠️ État inconnu. URL actuelle: {current_url}",
+                "action": "check_manually",
+                "detected_url": current_url
+            })
+            
+    except Exception as e:
+        print(f"❌ Session test error: {e}")
+        return JSONResponse({
+            "ok": False,
+            "status": "error",
+            "message": f"❌ Erreur lors du test: {str(e)}",
+            "action": "retry",
+            "error": str(e)
+        }, status_code=500)

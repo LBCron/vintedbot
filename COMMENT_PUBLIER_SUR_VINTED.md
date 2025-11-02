@@ -4,7 +4,22 @@
 
 Pour publier sur Vinted, tu dois donner à l'app un accès temporaire à ton compte Vinted via un **cookie de session**.
 
-### **Étapes détaillées** :
+### **Méthode 1 : Via les DevTools (Recommandée)**
+
+1. **Ouvre Chrome/Firefox** et va sur [https://www.vinted.fr](https://www.vinted.fr)
+2. **Connecte-toi** à ton compte Vinted
+3. **Ouvre les DevTools** (appuie sur **F12**)
+4. **Va dans l'onglet "Application"** (ou "Stockage" sur Firefox)
+5. Dans le menu de gauche, clique sur **"Cookies"** → `https://www.vinted.fr`
+6. Cherche la ligne **`_vinted_fr_session`**
+7. **Double-clique** sur la valeur dans la colonne "Value"
+8. **Copie** (Ctrl+C)
+9. **Va dans Settings de l'app** VintedBot
+10. **Colle le cookie** dans le champ "Vinted Session Cookie"
+11. **Sauvegarde**
+12. **Clique sur "Tester ma session"** pour vérifier que tout fonctionne ✅
+
+### **Méthode 2 : Via la Console (Alternative)**
 
 1. **Ouvre Chrome/Firefox** et va sur [https://www.vinted.fr](https://www.vinted.fr)
 2. **Connecte-toi** à ton compte Vinted
@@ -21,6 +36,7 @@ document.cookie.split('; ').find(row => row.startsWith('_vinted_fr_session')).sp
 6. **Va dans Settings de l'app** VintedBot
 7. **Colle le cookie** dans le champ "Vinted Session Cookie"
 8. **Sauvegarde**
+9. **Clique sur "Tester ma session"** pour vérifier ✅
 
 ### **⚠️ Notes importantes** :
 
