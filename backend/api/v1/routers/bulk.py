@@ -1468,6 +1468,8 @@ async def analyze_bulk_photos(
     **Status:** "processing" (use GET /bulk/jobs/{job_id} to poll progress)
     """
     try:
+        print(f"📥 Received analyze request: files={len(files) if files else 0}, auto_grouping={auto_grouping}, user={current_user.id}")
+        
         if not files:
             raise HTTPException(status_code=400, detail="No files provided")
         
