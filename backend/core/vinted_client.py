@@ -37,11 +37,26 @@ class VintedClient:
     
     async def init(self):
         """Initialize browser and context"""
+        import subprocess
+        
+        # Get Chromium path from Nix (fix for Replit NixOS)
+        try:
+            chromium_path = subprocess.check_output(['which', 'chromium']).decode().strip()
+        except:
+            chromium_path = None  # Fallback to Playwright's bundled browser
+        
         playwright = await async_playwright().start()
-        self.browser = await playwright.chromium.launch(
-            headless=self.headless,
-            args=['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
-        )
+        
+        launch_kwargs = {
+            'headless': self.headless,
+            'args': ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+        }
+        
+        # Use system Chromium if available (fixes libgbm1 dependency issue on NixOS)
+        if chromium_path:
+            launch_kwargs['executable_path'] = chromium_path
+        
+        self.browser = await playwright.chromium.launch(**launch_kwargs)
     
     async def create_context(self, session: VintedSession) -> BrowserContext:
         """

@@ -69,7 +69,18 @@ async def run_playwright_job(job_id: str, headless: bool = True):
     update_job_status(job_id, JobStatus.running, logs=logs)
     
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=headless)
+        # Get Chromium path from Nix (fix for Replit NixOS)
+        import subprocess
+        try:
+            chromium_path = subprocess.check_output(['which', 'chromium']).decode().strip()
+            browser = await p.chromium.launch(
+                executable_path=chromium_path,
+                headless=headless,
+                args=['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+            )
+        except:
+            # Fallback to Playwright's bundled browser
+            browser = await p.chromium.launch(headless=headless)
         context = await browser.new_context()
         
         # Add cookie to context
