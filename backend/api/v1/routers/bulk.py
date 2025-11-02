@@ -185,7 +185,8 @@ async def process_bulk_job(
     photos_per_item: int,
     use_smart_grouping: bool = False,
     style: str = "classique",
-    update_db: bool = True  # Update photo_plans in DB for real-time progress
+    update_db: bool = True,  # Update photo_plans in DB for real-time progress
+    user_id: Optional[str] = None  # User ID for duplicate detection
 ):
     """
     Background task: Process bulk photos and create drafts
@@ -326,7 +327,8 @@ async def process_bulk_job(
                     brand=draft.brand,
                     size=draft.size,
                     item_json=item_json,
-                    status="ready"
+                    status="ready",
+                    user_id=user_id  # CRITICAL: Pass user_id for duplicate detection
                 )
                 print(f"✅ Created draft (SQLite + memory): {draft.title} ({draft.price}€)")
             except Exception as e:
@@ -462,7 +464,8 @@ async def bulk_upload_photos(
                 photo_paths, 
                 photos_per_item, 
                 use_smart_grouping=False,
-                style="classique"
+                style="classique",
+                user_id=str(current_user.id)  # CRITICAL: Pass user_id for duplicate detection
             )
         )
         
@@ -573,7 +576,8 @@ async def bulk_analyze_smart(
                 photo_paths, 
                 photos_per_item=4,  # Ignored when smart_grouping=True
                 use_smart_grouping=True,  # ✅ ALWAYS use smart grouping
-                style=style
+                style=style,
+                user_id=str(current_user.id)  # CRITICAL: Pass user_id for duplicate detection
             )
         )
         
@@ -756,7 +760,8 @@ async def bulk_ingest_photos(
                     photo_paths,
                     photos_per_item=4,
                     use_smart_grouping=True,
-                    style=style
+                    style=style,
+                    user_id=str(current_user.id)  # CRITICAL: Pass user_id for duplicate detection
                 )
             )
             mode_desc = f"AI intelligent grouping"
@@ -1461,7 +1466,8 @@ async def analyze_bulk_photos(
                 photo_paths=photo_paths,
                 photos_per_item=7,  # Default 7 photos per item
                 use_smart_grouping=use_smart_grouping,
-                style="classique"
+                style="classique",
+                user_id=str(current_user.id)  # CRITICAL: Pass user_id for duplicate detection
             )
         )
         
@@ -1766,6 +1772,7 @@ async def generate_drafts_from_plan(
                         "ai_validated": True,
                         "photos_validated": True
                     },
+                    user_id=str(current_user.id),  # CRITICAL: Pass user_id for duplicate detection
                     status="ready"
                 )
                 
@@ -1900,7 +1907,8 @@ This is a metadata-only backup for quick restoration.
 
 @router.post("/import/drafts")
 async def import_drafts(
-    file: UploadFile = File(..., description="ZIP archive or JSON file with drafts")
+    file: UploadFile = File(..., description="ZIP archive or JSON file with drafts"),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Import drafts from ZIP or JSON (SQLite-based, zero cost)
@@ -1953,7 +1961,8 @@ async def import_drafts(
                     size=draft.get("size"),
                     color=draft.get("color"),
                     category=draft.get("category"),
-                    status="pending"  # Force pending for review
+                    status="pending",  # Force pending for review
+                    user_id=str(current_user.id)  # CRITICAL: Pass user_id for duplicate detection
                 )
                 
                 imported_count += 1

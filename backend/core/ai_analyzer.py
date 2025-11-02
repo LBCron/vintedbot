@@ -157,14 +157,24 @@ TAILLES (LECTURE INTELLIGENTE DE L'ÉTIQUETTE) - RÈGLES ABSOLUES:
 - size: "L / 16Y" ← INTERDIT, juste "L"
 - size: "XS-S" ← INTERDIT, choisis UNE taille
 
-DESCRIPTION (structure obligatoire):
-1) Ce que c'est (catégorie/coupe/logo)
-2) État factuel + défauts précis
-3) Matière/fit/détails
-4) Taille EXACTE lue sur l'étiquette
-5) Mesures à ajouter
-6) Logistique + remise lot
-Exemple: "Jogging Burberry noir, coupe droite, logo brodé. Bon état : matière propre, léger boulochage visible. Coton confortable. Taille étiquette : L (adulte). Mesures conseillées : tour de taille et longueur. Envoi rapide. #burberry #jogging #noir #L #sportswear"
+DESCRIPTION (structure STRICTE - 6-8 lignes FACTUELLES) :
+❌ INTERDICTIONS TOTALES :
+- Phrases vagues : "Mélange de coton, confortable et doux" ← REFUSÉ
+- Généralités : "Matière agréable", "Belle qualité" ← REFUSÉ
+- Marketing : "Parfait pour", "Idéal", "Style tendance" ← REFUSÉ
+
+✅ STRUCTURE OBLIGATOIRE (chaque ligne = info précise) :
+1️⃣ IDENTIFICATION : "Jogging Burberry noir à capuche, logo brodé poitrine gauche"
+2️⃣ ÉTAT DÉTAILLÉ : "Bon état général : matière propre, légères traces d'usure cordon capuche, petit boulochage intérieur cuisses"
+3️⃣ MATIÈRE EXACTE : "Composition étiquette : 80% coton, 20% polyester (lu sur étiquette)"
+4️⃣ COUPE/FIT : "Coupe droite standard, poignets élastiques, taille réglable par cordon"
+5️⃣ TAILLE PRÉCISE : "Taille étiquette : L (adulte, confirmé sur étiquette composition)"
+6️⃣ MESURES : "Mesures à ajouter recommandées : tour de taille, longueur totale, entrejambe"
+7️⃣ LOGISTIQUE : "Envoi rapide soigné. Remise -10% si achat groupé de 2+ articles"
+8️⃣ HASHTAGS : "#burberry #jogging #noir #L #streetwear"
+
+✅ BON EXEMPLE COMPLET :
+"Jogging Burberry noir à capuche, logo brodé poitrine gauche. Bon état général : matière propre, légères traces d'usure cordon capuche, petit boulochage intérieur cuisses. Composition étiquette : 80% coton, 20% polyester. Coupe droite standard, poignets élastiques, taille réglable par cordon. Taille étiquette : L (adulte). Mesures à ajouter recommandées : tour de taille, longueur totale, entrejambe. Envoi rapide soigné. Remise -10% si achat groupé. #burberry #jogging #noir #L #streetwear"
 
 SORTIE JSON OBLIGATOIRE:
 {
