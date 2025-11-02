@@ -120,29 +120,51 @@ RÈGLES STRICTES (QUALITY GATE):
 - price: Prix réaliste (t-shirt 10€, hoodie 25€, jeans 25€, veste 35€) × multiplicateurs
 - INTERDITS ABSOLUS: emojis, superlatifs ("magnifique", "parfait", "tendance"), phrases marketing
 
-TAILLES (normalisation):
-- Si taille enfant/ado (16Y, 165cm), calculer équivalence adulte (ex: 16Y ≈ XS)
-- Noter : "16Y / 165 cm (≈ XS adulte)"
+TAILLES (LECTURE INTELLIGENTE DE L'ÉTIQUETTE) - RÈGLES STRICTES:
+🔴 PRIORITÉ ABSOLUE : Lis EXACTEMENT ce qui est écrit sur l'étiquette de taille
+
+1. Si l'étiquette montre UNE TAILLE ADULTE (XS, S, M, L, XL, XXL) :
+   → Retourne CETTE taille directement dans le champ "size"
+   → Exemple : étiquette montre "L" → size: "L"
+   → PAS de conversion, PAS d'équivalence
+
+2. Si l'étiquette montre UNIQUEMENT une taille enfant (16Y, 14 ans, 165cm) :
+   → Retourne la taille enfant + estimation adulte prudente
+   → Exemple : "16Y (≈ S/M adulte)" ou "165 cm (≈ M adulte)"
+   → ATTENTION : 16Y peut être S, M ou même L selon la marque !
+
+3. Si l'étiquette montre LES DEUX (ex: "16Y / L") :
+   → Privilégie la taille adulte : size: "L"
+   → Mentionne la taille enfant dans la description uniquement
+
+4. Si AUCUNE taille visible :
+   → size: "Taille non visible sur les photos"
+
+EXEMPLES CORRECTS :
+- Étiquette montre "L" seul → size: "L" (PAS "16Y (≈ XS)")
+- Étiquette montre "M" seul → size: "M" 
+- Étiquette montre "16Y" seul → size: "16Y (≈ S/M adulte)"
+- Étiquette montre "16Y + L" → size: "L"
 
 DESCRIPTION (structure obligatoire):
 1) Ce que c'est (catégorie/coupe/logo)
 2) État factuel + défauts précis
 3) Matière/fit/détails
-4) Taille + équivalence si calculée
+4) Taille EXACTE lue sur l'étiquette
 5) Mesures à ajouter
 6) Logistique + remise lot
-Exemple: "T-shirt Burberry noir, logo imprimé devant, coupe classique. Très bon état : matière propre, pas de trou. Coton confortable, col rond. Taille 16Y / 165 cm — équiv. XS adulte. Mesures conseillées : poitrine et longueur en cm. Envoi rapide. #burberry #tshirt #noir #xs #streetwear"
+Exemple: "Jogging Burberry noir, coupe droite, logo brodé. Bon état : matière propre, léger boulochage visible. Coton confortable. Taille étiquette : L (adulte). Mesures conseillées : tour de taille et longueur. Envoi rapide. #burberry #jogging #noir #L #sportswear"
 
 SORTIE JSON OBLIGATOIRE:
 {
-    "title": "T-shirt noir Burberry XS – très bon état",
-    "description": "T-shirt Burberry noir, logo imprimé devant. Très bon état : matière propre, pas de trou. Coton, col rond. Taille 16Y / 165 cm (≈ XS). Mesures à ajouter : poitrine et longueur. Envoi rapide. #burberry #tshirt #noir #xs #streetwear",
-    "price": 50,
-    "category": "t-shirt",
-    "condition": "Très bon état",
+    "title": "Jogging noir Burberry L – bon état",
+    "description": "Jogging Burberry noir, coupe droite, logo brodé. Bon état : matière propre, léger boulochage visible. Coton confortable. Taille L. Mesures à ajouter : tour de taille et longueur. Envoi rapide. #burberry #jogging #noir #L #sportswear",
+    "price": 45,
+    "category": "jogging",
+    "condition": "Bon état",
     "color": "noir",
     "brand": "Burberry",
-    "size": "16Y / 165 cm (≈ XS)",
+    "size": "L",
     "confidence": 0.90
 }
 
@@ -828,28 +850,38 @@ CHAMPS OBLIGATOIRES (NE JAMAIS LAISSER VIDE):
   ⚠️ CE CHAMP NE DOIT JAMAIS ÊTRE null, undefined, ou vide ⚠️
   ⚠️ RETOURNER UNIQUEMENT LA TAILLE ADULTE NORMALISÉE (XS/S/M/L/XL/XXL) ⚠️
   
-  RÈGLES CRITIQUES POUR LE CHAMP 'size':
-  • Examiner TOUTES les photos pour trouver l'étiquette de taille (cousue, tag papier, inscription)
-  • Si taille adulte visible (XS/S/M/L/XL) → retourner directement (ex: "M")
-  • Si taille enfant/ado (16Y, 165cm, 12 ans) → CONVERTIR en taille adulte équivalente (ex: "XS")
+  🔴 RÈGLES CRITIQUES - LIS EXACTEMENT L'ÉTIQUETTE (PRIORITÉ ABSOLUE):
   
-  CONVERSIONS TAILLES ENFANT → ADULTE:
-  • 16Y / 165cm → "XS"
-  • 14Y / 152-158cm → "XXS"
-  • 18Y / 170-176cm → "S"
+  1️⃣ Si l'étiquette montre UNE TAILLE ADULTE (XS, S, M, L, XL, XXL) :
+     → Retourne CETTE taille directement : "L", "M", "XS", etc.
+     → PAS de conversion, PAS d'équivalence
+     → Exemple : étiquette dit "L" → size: "L" (JAMAIS "XS" !)
+  
+  2️⃣ Si l'étiquette montre UNIQUEMENT une taille enfant (16Y, 14 ans, 165cm) :
+     → Estime la taille adulte PRUDEMMENT (16Y peut être S, M ou L selon marque!)
+     → Exemple : "16Y" seul → size: "M" (estimation moyenne prudente)
+     → ATTENTION : NE PAS supposer automatiquement que 16Y = XS !
+  
+  3️⃣ Si l'étiquette montre LES DEUX (ex: "16Y / L" ou "165cm / M") :
+     → PRIVILÉGIE TOUJOURS la taille adulte : size: "L"
+     → Ignore la taille enfant dans le champ size
+  
+  4️⃣ Si AUCUNE taille visible sur les photos :
+     → size: "Taille non visible"
+  
+  ESTIMATIONS PRUDENTES (si UNIQUEMENT taille enfant visible):
+  • 14Y / 152-158cm → "S" ou "XS" (prudent: "S")
+  • 16Y / 165cm → "M" ou "L" (prudent: "M") ⚠️ PAS automatiquement "XS" !
+  • 18Y / 170-176cm → "L" ou "M" (prudent: "L")
   • Si doute → "M" (taille moyenne par défaut)
   
   FORMAT À RESPECTER ABSOLUMENT:
-  ✅ BON : "XS" (taille finale simple)
-  ✅ BON : "M" (taille finale simple)
+  ✅ BON : "L" (si étiquette montre "L")
+  ✅ BON : "M" (si étiquette montre "M" ou estimation 16Y)
+  ✅ BON : "XS" (si étiquette montre "XS")
   ❌ MAUVAIS : "16Y / 165 cm (≈ XS)" (NE JAMAIS inclure taille d'origine)
   ❌ MAUVAIS : "XS (≈ 16Y)" (PAS de parenthèses ni équivalences)
-  
-  📝 NOTE : Mettre les détails de conversion dans le champ 'size_details' séparé (backend gérera):
-  {{
-    "size": "XS",
-    "size_details": "Taille d'origine 16Y / 165 cm, équivaut à XS adulte"
-  }}
+  ❌ MAUVAIS : "XS" si l'étiquette montre "L" (ERREUR GRAVE !)
   
   🔴 RÈGLE ABSOLUE : Si aucune taille n'est visible → retourner "Taille non visible" (texte exact)
   🔴 INTERDIT ABSOLU : Retourner null, undefined, "", ou omettre ce champ. Le JSON sera REJETÉ.
