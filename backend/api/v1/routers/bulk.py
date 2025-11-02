@@ -1242,7 +1242,10 @@ async def publish_draft(
         async with httpx.AsyncClient() as client:
             # Get auth token from current_user (simulate JWT)
             from backend.core.auth import create_access_token
-            access_token = create_access_token({"sub": str(current_user.id)})
+            access_token = create_access_token({
+                "user_id": current_user.id,
+                "email": current_user.email
+            })
             
             prepare_response_raw = await client.post(
                 "http://localhost:5000/vinted/listings/prepare",
