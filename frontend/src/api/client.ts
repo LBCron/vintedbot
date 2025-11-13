@@ -92,7 +92,13 @@ export const bulkAPI = {
 
   publishDraft: (draftId: string) =>
     apiClient.post(`/bulk/drafts/${draftId}/publish`),
-  
+
+  // Sprint 1 Feature: Optimized 1-click direct publish
+  publishDraftDirect: (draftId: string, publishMode: 'auto' | 'draft' = 'auto') =>
+    apiClient.post(`/bulk/drafts/${draftId}/publish-direct`, null, {
+      params: { publish_mode: publishMode }
+    }),
+
   deleteDraft: (draftId: string) =>
     apiClient.delete(`/bulk/drafts/${draftId}`),
 };

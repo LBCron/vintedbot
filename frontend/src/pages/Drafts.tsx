@@ -39,15 +39,84 @@ export default function Drafts() {
   };
 
   const handlePublish = async (id: string) => {
-    if (!confirm('Publish this draft to Vinted?')) return;
+    // Show confirmation dialog with enhanced messaging
+    if (!confirm('🚀 Publier cet article sur Vinted maintenant ?\n\nCette action utilisera la nouvelle publication directe optimisée avec anti-détection.')) return;
 
     setPublishingId(id);
+
+    // Show loading toast
+    const loadingToast = toast.loading('Publication en cours... ⏳');
+
     try {
-      await bulkAPI.publishDraft(id);
-      toast.success('Draft published successfully!');
+      // Use the new optimized 1-click publish endpoint
+      const response = await bulkAPI.publishDraftDirect(id, 'auto');
+
+      // Dismiss loading toast
+      toast.dismiss(loadingToast);
+
+      // Show success message with listing URL if available
+      if (response.data.listing_url) {
+        toast.success(
+          <div>
+            <strong>✅ Annonce publiée avec succès !</strong>
+            <br />
+            <a
+              href={response.data.listing_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary-600 hover:underline font-medium mt-1 inline-block"
+            >
+              Voir sur Vinted →
+            </a>
+          </div>,
+          { duration: 5000 }
+        );
+      } else {
+        toast.success(response.data.message || 'Annonce publiée avec succès ! 🎉');
+      }
+
+      // Reload drafts to update status
       loadDrafts();
     } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Failed to publish draft');
+      // Dismiss loading toast
+      toast.dismiss(loadingToast);
+
+      // Enhanced error handling
+      const errorDetail = error.response?.data?.detail;
+      const errorReason = error.response?.data?.reason;
+
+      if (errorReason?.includes('Session expirée') || errorReason?.includes('cookie')) {
+        toast.error(
+          <div>
+            <strong>❌ Session Vinted expirée</strong>
+            <br />
+            <span className="text-sm">Veuillez actualiser vos cookies Vinted dans les paramètres</span>
+          </div>,
+          { duration: 6000 }
+        );
+      } else if (errorReason?.includes('Captcha')) {
+        toast.error(
+          <div>
+            <strong>⚠️ Captcha détecté</strong>
+            <br />
+            <span className="text-sm">Vinted demande une vérification. Réessayez dans quelques minutes.</span>
+          </div>,
+          { duration: 6000 }
+        );
+      } else if (errorReason?.includes('photo')) {
+        toast.error(
+          <div>
+            <strong>❌ Erreur photos</strong>
+            <br />
+            <span className="text-sm">{errorReason}</span>
+          </div>,
+          { duration: 5000 }
+        );
+      } else {
+        toast.error(errorDetail || errorReason || 'Échec de la publication. Veuillez réessayer.');
+      }
+
+      logger.error('Failed to publish draft', error);
     } finally {
       setPublishingId(null);
     }

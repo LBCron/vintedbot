@@ -1684,6 +1684,190 @@ async def publish_draft(
         raise HTTPException(status_code=500, detail=f"Failed to publish draft: {str(e)}")
 
 
+@router.post("/drafts/{draft_id}/publish-direct")
+async def publish_draft_direct(
+    draft_id: str,
+    publish_mode: str = Query(default="auto", description="'auto' = publish directly, 'draft' = save as Vinted draft"),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    SPRINT 1 FEATURE: Optimized 1-Click Direct Publish to Vinted
+
+    This is the simplified, faster endpoint for direct publication using the new
+    publish_item_complete() workflow with advanced anti-detection.
+
+    **Differences from /publish:**
+    - Uses new publish_item_complete() method for full automation
+    - Single-phase workflow (no separate prepare/publish steps)
+    - Optimized for speed and simplicity
+    - Enhanced anti-detection measures
+    - Human-like typing and delays
+
+    **Requires:** Authentication (user ownership validation) + publications quota
+
+    **Returns:** {ok, draft_id, status, listing_url, vinted_id, vinted_draft_url}
+
+    **publish_mode:**
+    - 'auto': Direct publish to Vinted (default)
+    - 'draft': Save as Vinted draft for manual review
+    """
+    try:
+        from backend.core.vinted_client import VintedClient
+        from backend.core.session import get_vinted_session
+
+        # Get draft from SQLite (with user ownership check)
+        draft_data = get_store().get_draft(draft_id)
+
+        if not draft_data:
+            print(f"[WARNING] [PUBLISH-DIRECT] Draft {draft_id} not found")
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "error": "draft_not_found",
+                    "message": "Ce brouillon n'existe plus",
+                    "draft_id": draft_id
+                }
+            )
+
+        # CRITICAL: Verify user ownership
+        if draft_data.get("user_id") and draft_data["user_id"] != str(current_user.id):
+            print(f"[WARNING] [PUBLISH-DIRECT] User {current_user.id} denied access to draft {draft_id}")
+            raise HTTPException(
+                status_code=403,
+                detail="Ce brouillon ne vous appartient pas"
+            )
+
+        # Check publications quota
+        await check_and_consume_quota(current_user, "publications", amount=1)
+
+        print(f"[PUBLISH-DIRECT] User {current_user.id} publishing draft {draft_id} (mode: {publish_mode})")
+
+        # Extract draft fields
+        item_json = draft_data.get("item_json", {})
+        photos_raw = item_json.get("photos", [])
+
+        # Resolve photo paths
+        photos = []
+        for photo_path in photos_raw:
+            resolved = resolve_photo_path(photo_path)
+            if os.path.exists(resolved):
+                photos.append(resolved)
+                print(f"[PHOTO] Resolved: {photo_path} -> {resolved}")
+            else:
+                print(f"[WARNING] Photo not found: {photo_path}")
+
+        if not photos:
+            print(f"[ERROR] No valid photos for draft {draft_id}")
+            return {
+                "ok": False,
+                "draft_id": draft_id,
+                "status": "failed",
+                "reason": "Aucune photo valide trouvée"
+            }
+
+        print(f"[INFO] Found {len(photos)} valid photos")
+
+        # Get Vinted session
+        session = get_vinted_session(current_user.id)
+        if not session:
+            print(f"[ERROR] No Vinted session for user {current_user.id}")
+            raise HTTPException(
+                status_code=400,
+                detail="Session Vinted non configurée. Veuillez ajouter vos cookies Vinted."
+            )
+
+        # Extract all listing data
+        title = draft_data["title"]
+        price = draft_data["price"]
+        description = draft_data["description"]
+        brand = draft_data.get("brand")
+        size = draft_data.get("size")
+        condition = item_json.get("condition", "Bon état")
+        color = draft_data.get("color")
+        category = draft_data.get("category")
+
+        print(f"[INFO] Publishing: {title[:50]}... ({len(photos)} photos, {price}€)")
+
+        # Initialize VintedClient with anti-detection
+        async with VintedClient(headless=True) as client:
+            await client.init()
+
+            # Create context with session
+            await client.create_context(session)
+
+            # Create page
+            page = await client.new_page()
+
+            # Execute 1-click publish workflow
+            print("[INFO] Starting 1-click publish workflow...")
+            success, error_message, result_data = await client.publish_item_complete(
+                page=page,
+                title=title,
+                price=price,
+                description=description,
+                photos=photos,
+                brand=brand,
+                size=size,
+                condition=condition,
+                color=color,
+                category_hint=category,
+                publish_mode=publish_mode
+            )
+
+            if not success:
+                print(f"[ERROR] Publish workflow failed: {error_message}")
+                return {
+                    "ok": False,
+                    "draft_id": draft_id,
+                    "status": "failed",
+                    "reason": error_message
+                }
+
+            # Update draft status in database
+            if publish_mode == "draft":
+                # Update with Vinted draft info
+                vinted_draft_url = result_data.get("vinted_draft_url")
+                vinted_draft_id = result_data.get("vinted_draft_id")
+                get_store().update_draft_vinted_info(draft_id, vinted_draft_url, vinted_draft_id, publish_mode)
+
+                print(f"[SUCCESS] Vinted draft created: {vinted_draft_url}")
+
+                return {
+                    "ok": True,
+                    "draft_id": draft_id,
+                    "status": "draft_created",
+                    "vinted_draft_url": vinted_draft_url,
+                    "vinted_draft_id": vinted_draft_id,
+                    "publish_mode": "draft",
+                    "message": f"Brouillon créé sur Vinted ! Validez-le manuellement : {vinted_draft_url}"
+                }
+            else:
+                # Update with published listing info
+                listing_url = result_data.get("listing_url")
+                listing_id = result_data.get("listing_id")
+                get_store().update_draft_status(draft_id, "published")
+
+                print(f"[SUCCESS] Published to Vinted: {listing_url}")
+
+                return {
+                    "ok": True,
+                    "draft_id": draft_id,
+                    "status": "published",
+                    "listing_url": listing_url,
+                    "vinted_id": listing_id,
+                    "publish_mode": "auto",
+                    "message": "Annonce publiée sur Vinted avec succès ! 🎉"
+                }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] Direct publish error: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Erreur lors de la publication: {str(e)}")
+
+
 @router.post("/photos/analyze")
 async def analyze_bulk_photos(
     request: Request,

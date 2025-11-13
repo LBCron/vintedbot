@@ -1,6 +1,7 @@
 """
 Vinted automation client using Playwright.
 Handles listing creation, photo uploads, and captcha detection.
+Enhanced with advanced anti-detection measures for Sprint 1.
 """
 import asyncio
 import base64
@@ -11,6 +12,7 @@ from pathlib import Path
 from playwright.async_api import async_playwright, Browser, BrowserContext, Page, TimeoutError as PlaywrightTimeout
 from backend.core.session import VintedSession
 from backend.core.circuit_breaker import playwright_breaker, CircuitBreakerError
+from backend.core.anti_detection import HumanBehavior, BrowserFingerprint, SelectorRotator
 from loguru import logger
 
 
@@ -91,17 +93,20 @@ class VintedClient:
     
     async def create_context(self, session: VintedSession) -> BrowserContext:
         """
-        Create browser context with session cookies
-        
+        Create browser context with session cookies and anti-detection fingerprint
+
         Args:
             session: VintedSession with cookie and user_agent
-            
+
         Returns:
-            Browser context
+            Browser context with randomized fingerprint
         """
         if not self.browser:
             raise RuntimeError("Browser not initialized. Call init() first.")
-        
+
+        # Generate realistic browser fingerprint
+        fingerprint = BrowserFingerprint.generate()
+
         # Parse cookies from header string
         cookies = []
         for cookie_str in session.cookie.split(';'):
@@ -114,15 +119,32 @@ class VintedClient:
                     'domain': '.vinted.fr',
                     'path': '/'
                 })
-        
+
+        # Create context with randomized fingerprint
         self.context = await self.browser.new_context(
-            user_agent=session.user_agent,
-            viewport={'width': 1280, 'height': 720}
+            user_agent=session.user_agent or fingerprint['user_agent'],
+            viewport=fingerprint['viewport'],
+            locale=fingerprint['locale'],
+            timezone_id=fingerprint['timezone_id'],
+            # Additional anti-detection headers
+            extra_http_headers={
+                'Accept-Language': fingerprint['accept_language'],
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'DNT': '1',
+                'Connection': 'keep-alive',
+                'Upgrade-Insecure-Requests': '1'
+            }
         )
-        
+
+        # Apply advanced anti-detection scripts
+        await BrowserFingerprint.apply_to_context(self.context, fingerprint)
+
         # Add cookies
         await self.context.add_cookies(cookies)
-        
+
+        logger.info(f"Created context with fingerprint: {fingerprint['user_agent'][:60]}...")
+
         return self.context
     
     async def new_page(self) -> Page:
@@ -143,8 +165,80 @@ class VintedClient:
             await self.browser.close()
     
     async def human_delay(self, min_ms: int = 100, max_ms: int = 500):
-        """Random human-like delay"""
-        await asyncio.sleep(random.randint(min_ms, max_ms) / 1000)
+        """
+        Random human-like delay using advanced HumanBehavior patterns
+
+        Args:
+            min_ms: Minimum delay in milliseconds
+            max_ms: Maximum delay in milliseconds
+        """
+        min_sec = min_ms / 1000
+        max_sec = max_ms / 1000
+        await HumanBehavior.human_delay(min_sec, max_sec)
+
+    async def human_type(self, page: Page, selector: str, text: str, clear_first: bool = True):
+        """
+        Type text with human-like timing and mistakes
+
+        Args:
+            page: Playwright page
+            selector: CSS selector for input field
+            text: Text to type
+            clear_first: Clear field before typing
+        """
+        try:
+            # Click the field first
+            await page.click(selector)
+            await self.human_delay(200, 500)
+
+            # Clear if requested
+            if clear_first:
+                await page.fill(selector, '')
+                await self.human_delay(100, 300)
+
+            # Type with human-like delays
+            await HumanBehavior.human_typing(text, page)
+
+            # Small pause after typing (like user reviewing what they typed)
+            await self.human_delay(300, 800)
+
+        except Exception as e:
+            logger.error(f"Human typing failed for {selector}: {e}")
+            # Fallback to standard fill
+            await page.fill(selector, text)
+
+    async def human_mouse_movement(self, page: Page, x: int, y: int):
+        """
+        Move mouse to coordinates with human-like curve
+
+        Args:
+            page: Playwright page
+            x: Target X coordinate
+            y: Target Y coordinate
+        """
+        try:
+            # Get current mouse position (approximate)
+            current_x, current_y = random.randint(100, 500), random.randint(100, 500)
+
+            # Calculate bezier curve points for natural movement
+            steps = random.randint(10, 20)
+            for i in range(steps):
+                progress = i / steps
+                # Add some curve/wobble to the movement
+                wobble_x = random.randint(-5, 5)
+                wobble_y = random.randint(-5, 5)
+
+                intermediate_x = int(current_x + (x - current_x) * progress + wobble_x)
+                intermediate_y = int(current_y + (y - current_y) * progress + wobble_y)
+
+                await page.mouse.move(intermediate_x, intermediate_y)
+                await asyncio.sleep(random.uniform(0.005, 0.015))
+
+            # Final position
+            await page.mouse.move(x, y)
+
+        except Exception as e:
+            logger.debug(f"Mouse movement simulation failed: {e}")
     
     async def detect_challenge(self, page: Page) -> bool:
         """
@@ -788,6 +882,226 @@ class VintedClient:
                     continue
             
             return (False, "Send button not found")
-            
+
         except Exception as e:
             return (False, f"Send message failed: {e}")
+
+    async def publish_item_complete(
+        self,
+        page: Page,
+        title: str,
+        price: float,
+        description: str,
+        photos: List[str],
+        brand: Optional[str] = None,
+        size: Optional[str] = None,
+        condition: Optional[str] = None,
+        color: Optional[str] = None,
+        category_hint: Optional[str] = None,
+        publish_mode: str = "auto"
+    ) -> Tuple[bool, Optional[str], Optional[Dict[str, Any]]]:
+        """
+        SPRINT 1 FEATURE: Complete 1-click publish workflow with anti-detection
+
+        Orchestrates the full publication process:
+        1. Navigate to /items/new with human-like delays
+        2. Upload photos with realistic timing
+        3. Fill form fields with human typing
+        4. Click publish or save as draft
+        5. Extract listing/draft ID and URL
+
+        Args:
+            page: Playwright page
+            title: Item title
+            price: Item price
+            description: Item description
+            photos: List of photo file paths
+            brand: Brand name
+            size: Size
+            condition: Condition
+            color: Color
+            category_hint: Category hint
+            publish_mode: 'auto' (publish directly) or 'draft' (save as Vinted draft)
+
+        Returns:
+            (success, error_message, result_data)
+            result_data contains: listing_id, listing_url, vinted_draft_id, vinted_draft_url
+        """
+        try:
+            logger.info(f"Starting 1-click publish for: {title[:50]}...")
+            result_data = {}
+
+            # STEP 1: Navigate to new listing page
+            logger.info("Step 1: Navigating to /items/new")
+            await page.goto("https://www.vinted.fr/items/new", wait_until='networkidle')
+            await self.human_delay(2000, 4000)  # Human reads the page
+
+            # Check for login redirect
+            if 'login' in page.url or 'session' in page.url:
+                logger.error("Session expired - redirected to login")
+                return (False, "Session expirée - veuillez actualiser votre cookie Vinted", None)
+
+            # Check for captcha
+            if await self.detect_challenge(page):
+                logger.warning("Captcha detected on listing page")
+                return (False, "Captcha détecté - veuillez réessayer plus tard", None)
+
+            # STEP 2: Upload photos with realistic delays
+            logger.info(f"Step 2: Uploading {len(photos)} photos")
+            photos_uploaded = 0
+
+            for i, photo_path in enumerate(photos):
+                logger.info(f"Uploading photo {i+1}/{len(photos)}: {photo_path}")
+
+                # Human-like delay between photo uploads (reviewing each photo)
+                if i > 0:
+                    await self.human_delay(1500, 3000)
+
+                success = await self.upload_photo(page, photo_path)
+                if success:
+                    photos_uploaded += 1
+                    logger.info(f"✅ Photo {i+1} uploaded successfully")
+                else:
+                    logger.warning(f"⚠️ Photo {i+1} upload failed")
+
+                # Wait for upload to process (Vinted needs time to compress/optimize)
+                await self.human_delay(2000, 3000)
+
+            if photos_uploaded == 0:
+                return (False, "Aucune photo n'a pu être uploadée", None)
+
+            logger.info(f"Photos uploaded: {photos_uploaded}/{len(photos)}")
+
+            # Small pause to let photos finish processing
+            await self.human_delay(2000, 3000)
+
+            # STEP 3: Fill form fields with human-like typing
+            logger.info("Step 3: Filling listing form")
+
+            # Use the enhanced human_type method for realistic typing
+            title_selector = 'input[name="title"], input[placeholder*="Titre"], input[placeholder*="titre"]'
+            try:
+                await self.human_type(page, title_selector, title)
+                logger.info("✅ Title filled")
+            except Exception as e:
+                logger.error(f"Failed to fill title: {e}")
+                return (False, f"Erreur lors de la saisie du titre: {e}", None)
+
+            # Description
+            desc_selector = 'textarea[name="description"], textarea[placeholder*="Description"], textarea[placeholder*="description"]'
+            try:
+                await self.human_type(page, desc_selector, description)
+                logger.info("✅ Description filled")
+            except Exception as e:
+                logger.error(f"Failed to fill description: {e}")
+                return (False, f"Erreur lors de la saisie de la description: {e}", None)
+
+            # Price (humans pause before entering price, thinking)
+            await self.human_delay(1000, 2000)
+            price_selector = 'input[name="price"], input[type="number"], input[placeholder*="Prix"], input[placeholder*="prix"]'
+            try:
+                await page.fill(price_selector, str(price))
+                logger.info(f"✅ Price filled: {price}€")
+                await self.human_delay(500, 1000)
+            except Exception as e:
+                logger.error(f"Failed to fill price: {e}")
+                return (False, f"Erreur lors de la saisie du prix: {e}", None)
+
+            # Optional fields (brand, size, condition, color)
+            if brand:
+                brand_selector = 'input[name="brand"], input[placeholder*="Marque"], input[placeholder*="marque"]'
+                try:
+                    await self.human_type(page, brand_selector, brand)
+                    logger.info(f"✅ Brand filled: {brand}")
+                except Exception as e:
+                    logger.warning(f"Failed to fill brand (optional): {e}")
+
+            if size:
+                size_selector = 'select[name="size"], input[name="size"]'
+                try:
+                    await page.fill(size_selector, size)
+                    await self.human_delay(500, 1000)
+                    logger.info(f"✅ Size filled: {size}")
+                except Exception as e:
+                    logger.warning(f"Failed to fill size (optional): {e}")
+
+            if condition:
+                condition_selector = 'select[name="condition"], select[name="status"]'
+                try:
+                    await page.select_option(condition_selector, label=condition)
+                    await self.human_delay(500, 1000)
+                    logger.info(f"✅ Condition filled: {condition}")
+                except Exception as e:
+                    logger.warning(f"Failed to fill condition (optional): {e}")
+
+            if color:
+                color_selector = 'select[name="color"], input[name="color"]'
+                try:
+                    await page.fill(color_selector, color)
+                    await self.human_delay(500, 1000)
+                    logger.info(f"✅ Color filled: {color}")
+                except Exception as e:
+                    logger.warning(f"Failed to fill color (optional): {e}")
+
+            # STEP 4: Human reviews the form (realistic pause)
+            logger.info("Step 4: User reviewing form before submission...")
+            await self.human_delay(3000, 6000)  # User scrolls and reviews
+
+            # STEP 5: Click publish or save as draft
+            if publish_mode == "draft":
+                logger.info("Step 5: Saving as Vinted draft")
+                success, error = await self.click_save_as_draft(page)
+
+                if not success:
+                    return (False, error or "Échec de la sauvegarde du brouillon", None)
+
+                # Wait for navigation
+                await self.human_delay(2000, 3000)
+
+                # Extract draft ID and URL
+                draft_id = await self.extract_draft_id(page)
+                draft_url = page.url
+
+                result_data = {
+                    "vinted_draft_id": draft_id,
+                    "vinted_draft_url": draft_url,
+                    "publish_mode": "draft"
+                }
+
+                logger.info(f"✅ Draft saved successfully: {draft_url}")
+                return (True, None, result_data)
+
+            else:  # publish_mode == "auto"
+                logger.info("Step 5: Publishing to Vinted")
+                success, error = await self.click_publish(page)
+
+                if not success:
+                    return (False, error or "Échec de la publication", None)
+
+                # Wait for navigation and processing
+                await self.human_delay(3000, 5000)
+
+                # Extract listing ID and URL
+                listing_id = await self.extract_listing_id(page)
+                listing_url = page.url
+
+                result_data = {
+                    "listing_id": listing_id,
+                    "listing_url": listing_url,
+                    "publish_mode": "auto"
+                }
+
+                logger.info(f"✅ Published successfully: {listing_url}")
+                return (True, None, result_data)
+
+        except CaptchaDetected as e:
+            logger.error(f"Captcha detected: {e}")
+            return (False, "Captcha détecté - veuillez réessayer plus tard", None)
+        except PlaywrightTimeout as e:
+            logger.error(f"Timeout during publish: {e}")
+            return (False, "Timeout - la page Vinted a mis trop de temps à répondre", None)
+        except Exception as e:
+            logger.error(f"Unexpected error during publish: {e}")
+            import traceback
+            traceback.print_exc()
+            return (False, f"Erreur inattendue: {str(e)}", None)
