@@ -430,3 +430,213 @@ async def google_callback(code: str, state: str):
     })
 
     return Token(access_token=jwt_token)
+
+
+# ========== Sprint 2 + Mobile App Security Endpoints ==========
+
+from pydantic import BaseModel
+from backend.vinted.vinted_auth import authenticate_vinted_account
+from backend.security.totp_manager import enable_2fa_for_user, verify_2fa_code, disable_2fa_for_user, get_totp_storage
+from backend.security.jwt_manager import get_jwt_manager
+
+
+class VintedConnectRequest(BaseModel):
+    """Request to connect Vinted account"""
+    email: str
+    password: str
+
+
+@router.post("/connect-vinted")
+async def connect_vinted_account(
+    request: VintedConnectRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Connect Vinted account using email/password (Mobile App Feature)
+
+    - Automatically logs into Vinted
+    - Extracts and saves session cookies
+    - Encrypts credentials for security
+    - Returns success status
+    """
+    from loguru import logger
+
+    logger.info(f"User {current_user['id']} attempting to connect Vinted account")
+
+    # Authenticate with Vinted
+    result = await authenticate_vinted_account(
+        email=request.email,
+        password=request.password,
+        user_id=current_user['id'],
+        save_session=True
+    )
+
+    if not result.success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=result.error,
+            headers={"X-Error-Code": result.error_code}
+        )
+
+    return {
+        "ok": True,
+        "message": "Vinted account connected successfully",
+        "vinted_user_id": result.session.vinted_user_id if result.session else None
+    }
+
+
+@router.post("/2fa/setup")
+async def setup_2fa(
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Set up 2FA for user account (Mobile App Feature)
+
+    Returns:
+    - QR code for authenticator app
+    - Secret key (for manual entry)
+    - Backup codes (save these!)
+    """
+    from loguru import logger
+
+    logger.info(f"User {current_user['id']} setting up 2FA")
+
+    # Generate 2FA setup
+    setup = await enable_2fa_for_user(
+        user_id=current_user['id'],
+        user_email=current_user['email']
+    )
+
+    return {
+        "ok": True,
+        "message": "2FA setup successful. Scan the QR code with your authenticator app.",
+        "secret": setup.secret,
+        "qr_code": setup.qr_code_data,
+        "backup_codes": setup.backup_codes,
+        "provisioning_uri": setup.provisioning_uri
+    }
+
+
+class Verify2FARequest(BaseModel):
+    """Request to verify 2FA code"""
+    code: str
+
+
+@router.post("/2fa/verify")
+async def verify_2fa(
+    request: Verify2FARequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Verify 2FA code (Mobile App Feature)
+
+    - Verifies 6-digit TOTP code
+    - Also accepts backup codes
+    """
+    from loguru import logger
+
+    logger.info(f"User {current_user['id']} verifying 2FA code")
+
+    # Verify code
+    is_valid = await verify_2fa_code(
+        user_id=current_user['id'],
+        code=request.code
+    )
+
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid 2FA code"
+        )
+
+    return {
+        "ok": True,
+        "message": "2FA code verified successfully"
+    }
+
+
+@router.post("/2fa/disable")
+async def disable_2fa(
+    current_user: dict = Depends(get_current_user)
+):
+    """Disable 2FA for user account"""
+    from loguru import logger
+
+    logger.info(f"User {current_user['id']} disabling 2FA")
+
+    await disable_2fa_for_user(current_user['id'])
+
+    return {
+        "ok": True,
+        "message": "2FA disabled successfully"
+    }
+
+
+@router.get("/2fa/status")
+async def get_2fa_status(
+    current_user: dict = Depends(get_current_user)
+):
+    """Check if 2FA is enabled for user"""
+    storage = get_totp_storage()
+
+    is_enabled = storage.is_2fa_enabled(current_user['id'])
+
+    return {
+        "ok": True,
+        "enabled": is_enabled
+    }
+
+
+class RefreshTokenRequest(BaseModel):
+    """Request to refresh access token"""
+    refresh_token: str
+    device_id: Optional[str] = None
+
+
+@router.post("/refresh")
+async def refresh_access_token(request: RefreshTokenRequest):
+    """
+    Refresh access token using refresh token (Mobile App Feature)
+
+    - Uses JWT refresh token
+    - Returns new access + refresh token pair
+    - Implements token rotation for security
+    """
+    jwt_manager = get_jwt_manager()
+
+    # Refresh tokens
+    new_tokens = jwt_manager.refresh_access_token(
+        refresh_token=request.refresh_token,
+        device_id=request.device_id
+    )
+
+    if not new_tokens:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired refresh token"
+        )
+
+    return {
+        "ok": True,
+        **new_tokens.to_dict()
+    }
+
+
+@router.post("/logout/all-devices")
+async def logout_all_devices(
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Logout from all devices (Mobile App Feature)
+
+    - Revokes all refresh tokens
+    - Forces re-authentication on all devices
+    """
+    jwt_manager = get_jwt_manager()
+
+    jwt_manager.revoke_all_user_tokens(current_user['id'])
+
+    return {
+        "ok": True,
+        "message": "Logged out from all devices successfully"
+    }
