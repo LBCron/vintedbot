@@ -55,7 +55,7 @@ Pendant que le script tourne, il te demandera :
 ### 1. OpenAI API Key
 - Va sur : https://platform.openai.com/api-keys
 - Clique "Create new secret key"
-- Copie la clé : `sk-...`
+- Copie la clé : `sk_...`
 
 ### 2. Stripe API Key (optionnel, pour tester)
 - Va sur : https://dashboard.stripe.com/test/apikeys

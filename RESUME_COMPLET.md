@@ -496,7 +496,7 @@ DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..."
 DISCORD_BOT_TOKEN="your_bot_token"
 GMAIL_CLIENT_ID="..."
 INSTAGRAM_USERNAME="..."
-OPENAI_API_KEY="sk-..."
+OPENAI_API_KEY="sk_..."
 TELEGRAM_BOT_TOKEN="..."
 VINTEDBOT_API_URL="http://localhost:5000"
 ```

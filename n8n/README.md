@@ -89,7 +89,7 @@ INSTAGRAM_PASSWORD="your_password"
 INSTAGRAM_SESSION="your_session"
 
 # OpenAI
-OPENAI_API_KEY="sk-..."
+OPENAI_API_KEY="sk_..."
 
 # Telegram
 TELEGRAM_BOT_TOKEN="your_token"

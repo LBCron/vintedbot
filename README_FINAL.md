@@ -109,7 +109,7 @@ Avant de déployer, éditez `.env.production` :
 
 ```bash
 # OBLIGATOIRE
-OPENAI_API_KEY=sk-...              # API OpenAI pour IA
+OPENAI_API_KEY=sk_...              # API OpenAI pour IA
 JWT_SECRET=<auto-généré>           # Sécurité JWT
 ENCRYPTION_KEY=<auto-généré>       # Chiffrement sessions
 
