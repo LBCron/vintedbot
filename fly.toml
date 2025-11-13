@@ -1,0 +1,35 @@
+app = "vintedbot-backend"
+primary_region = "cdg"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8000"
+  ENV = "production"
+  JOBS_ENABLED = "true"
+  PLAYWRIGHT_HEADLESS = "true"
+  ENABLE_SYSTEM_MONITORING = "true"
+  USE_HTTPONLY_COOKIES = "true"
+  CSRF_PROTECTION = "true"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 200
+    hard_limit = 250
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512
+
+[mounts]
+  source = "vintedbot_data"
+  destination = "/data"

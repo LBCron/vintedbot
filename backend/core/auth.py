@@ -10,19 +10,21 @@ from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from pydantic import BaseModel, EmailStr
 from dotenv import load_dotenv
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import os
+from pathlib import Path
 
-# Load environment variables FIRST
-load_dotenv()
+# Load environment variables FIRST from root .env file
+env_path = Path(__file__).parent.parent.parent / ".env"
+load_dotenv(dotenv_path=env_path)
 
 # JWT Configuration
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 if not SECRET_KEY or SECRET_KEY == "CHANGEME_IN_PRODUCTION_USE_SECURE_RANDOM_KEY":
     import sys
-    print("❌ FATAL: JWT_SECRET_KEY not set!")
-    print("⚠️  Generate a secure key:")
+    print("FATAL: JWT_SECRET_KEY not set!")
+    print("Generate a secure key:")
     print("    python3 -c \"import secrets; print(f'JWT_SECRET_KEY={secrets.token_urlsafe(64)}')\"")
     print("    Then add it to your .env file")
     sys.exit(1)
@@ -139,41 +141,68 @@ def decode_access_token(token: str) -> Optional[TokenData]:
 
 # ========== FastAPI Dependencies ==========
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)  # Don't auto-error, we also check cookies
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
 ) -> User:
     """
     FastAPI dependency to get current authenticated user from JWT token
-    
+
+    Supports BOTH:
+    - HTTP-only cookies (preferred, more secure)
+    - Authorization Bearer header (backwards compatibility)
+
     Usage:
         @router.get("/protected")
         async def protected_route(current_user: User = Depends(get_current_user)):
             return {"user_id": current_user.id}
     """
-    token = credentials.credentials
+    token = None
+
+    # Try to get token from cookie first (preferred method)
+    token = request.cookies.get("auth_token")
+
+    # Fallback to Authorization header if no cookie
+    if not token and credentials:
+        token = credentials.credentials
+
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated. Please login.",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+
     token_data = decode_access_token(token)
-    
+
     if not token_data or not token_data.user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     # Get user from database
     from backend.core.storage import get_storage
     storage = get_storage()
     user_data = storage.get_user_by_id(token_data.user_id)
-    
+
     if not user_data:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
+    # Check account status
+    if user_data.get("status") != "active":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Account is {user_data.get('status')}. Please contact support."
+        )
+
     return User(
         id=user_data["id"],
         email=user_data["email"],

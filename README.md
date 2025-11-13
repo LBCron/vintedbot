@@ -1,216 +1,313 @@
-# VintedBot API - AI-Powered Clothing Resale Assistant
+# 🚀 VintedBot - Le Bot Vinted Le Plus Sophistiqué du Marché
 
-An intelligent FastAPI backend system that automates the process of creating and managing clothing resale listings. The application uses AI to analyze photos and generate complete product listings with pricing suggestions, automated price management, duplicate detection, and comprehensive inventory tracking.
+**VintedBot** est une plateforme d'automatisation Vinted alimentée par l'IA qui transforme vos photos de vêtements en annonces complètes en quelques secondes, avec des fonctionnalités d'automation premium uniques sur le marché.
 
-## Features
+---
 
-### 🧠 AI-Powered Listing Generation
-- Upload photos (URLs or files) and automatically generate complete product listings
-- Generates: title, description, brand, category, size, condition, and keywords
-- Intelligent pricing suggestions with min/max/target prices and justification
-- Smart mock mode when OpenAI API key is not available
+## ✨ Fonctionnalités Uniques
 
-### 📦 Inventory Management
-- Complete CRUD operations for items
-- Status tracking: draft → listed → sold → archived
-- Automatic timestamps and history tracking
-- JSON file-based storage for simplicity
+### 🤖 **Analyse IA Automatique (GPT-4 Vision)**
+- Upload multiple de photos (jusqu'à 500)
+- Génération automatique : titre, description, prix, catégorie, taille, couleur, marque, état
+- Création de brouillons prêts à publier
+- Analyse intelligente par IA
 
-### 🔁 Duplicate Detection
-- Text similarity matching using rapidfuzz (80% threshold)
-- Perceptual image hashing for visual duplicate detection
-- Automatic flagging of potential duplicates
+### 📊 **Analytics Dashboard** (UNIQUE - absent de TOUS les concurrents !)
+- **Performance heatmap** : découvrez vos meilleures heures/jours pour poster
+- **Top/Bottom performers** : identifiez vos annonces les plus/moins performantes
+- **Analyse par catégorie** : comparez les performances entre catégories
+- Métriques en temps réel : vues, likes, messages, taux de conversion
 
-### 💸 Automated Pricing
-- Daily automatic price drops (5% default) for listed items
-- Price floor protection (won't drop below minimum)
-- Complete price history tracking
-- Price simulation endpoint for testing strategies
+### 🔄 **Auto-Bump Intelligent**
+- Remonte vos annonces automatiquement en tête de liste
+- **Économise de l'argent** vs bumps payants Vinted (0.95€/bump)
+- Rotation intelligente pour éviter les patterns suspects
+- Skip annonces récemment bumpées
+- Scheduler automatique toutes les 5 minutes
 
-### 📊 Statistics & Analytics
-- Total items, value, average price
-- Top brands analysis
-- Duplicate detection counts
-- Average days since creation
+### 👥 **Auto-Follow/Unfollow**
+- Follow automatique d'utilisateurs ciblés
+- Unfollow automatique après X jours si pas de follow-back
+- Ciblage par catégories
+- Tracking complet dans base de données
+- Limites quotidiennes configurables
 
-### 📤 Import/Export
-- CSV import/export
-- Vinted-compatible CSV export
-- JSON export
-- PDF export with formatted tables
+### 💬 **Auto-Messages**
+- Système de templates avec variables : `{{username}}`, `{{item_title}}`, `{{price}}`
+- Envoi automatique selon déclencheurs (nouveau follower, nouveau like, etc.)
+- Frappe caractère par caractère (50-150ms) pour imiter un humain
+- Délais aléatoires anti-détection
 
-### 🎁 Bonus Features
-- Test photoset generator (creates 5 sample listings)
-- Recommendations endpoint (suggests items to relist)
-- Multi-price simulation
+### 🔐 **Système Multi-Utilisateurs Complet**
+- Authentification JWT sécurisée
+- Gestion de quotas par plan d'abonnement
+- Support multi-comptes Vinted par utilisateur
+- Stripe integration pour paiements
 
-## Quick Start
+---
 
-The server is already running! Visit:
-- **API Documentation**: [/docs](/docs) (Swagger UI)
-- **Alternative Docs**: [/redoc](/redoc) (ReDoc)
-- **Root**: [/](/) (API info)
+## 🏗️ Architecture Technique
 
-### Public API URL
+### **Backend (Python FastAPI)**
+- API REST complète avec 17 tables SQLite (backend/data/vbs.db)
+- Scheduler APScheduler (6 jobs automatiques)
+- Playwright pour automation Vinted
+- GPT-4 Vision pour analyse photos
+- Chiffrement AES-256 pour sessions
+- Rate limiting et gestion quotas
 
-The API is deployed and accessible at:
-```
-https://b3358a26-d290-4c55-82fc-cc0ad63fac5b-00-29ghky26cw3zi.janeway.replit.dev
-```
+### **Frontend (React + TypeScript)**
+- React 18 + Vite + TailwindCSS
+- 10 pages complètes (Dashboard, Upload, Analytics, Automation, etc.)
+- Responsive mobile-first
+- Recharts pour graphiques analytics
+- JWT authentication avec interceptor Axios
 
-For Lovable.dev integration, use:
-```bash
-VITE_API_BASE_URL=https://b3358a26-d290-4c55-82fc-cc0ad63fac5b-00-29ghky26cw3zi.janeway.replit.dev
-```
+---
 
-## API Endpoints
+## 🚀 Démarrage Rapide
 
-### Photo Ingestion
-- `POST /ingest/photos` - Generate listing from photos
-- `POST /ingest/save-draft` - Save generated draft as item
+### **Prérequis**
+- Python 3.11+
+- Bun ou Node.js 18+
+- SQLite (inclus, aucune installation requise)
 
-### Listings Management
-- `GET /listings/all` - Get all items
-- `GET /listings/{id}` - Get single item
-- `PUT /listings/{id}` - Update item
-- `DELETE /listings/{id}` - Delete item
-- `GET /listings/status/{status}` - Get items by status
-
-### Pricing
-- `POST /pricing/simulate` - Simulate price trajectory
-
-### Export
-- `GET /export/csv` - Export as CSV
-- `GET /export/vinted` - Export Vinted-compatible CSV
-- `GET /export/json` - Export as JSON
-- `GET /export/pdf` - Export as PDF
-
-### Import
-- `POST /import/csv` - Import from CSV
-
-### Statistics
-- `GET /stats` - Get inventory statistics
-- `GET /health` - System health check
-
-### Bonus Features
-- `GET /bonus/test/photoset` - Generate 5 test listings
-- `GET /bonus/recommendations` - Get relist recommendations
-- `POST /bonus/simulate/multi-price` - Simulate multiple price strategies
-
-## Environment Variables
-
-Create a `.env` file (see `.env.example`):
+### **1. Installation Backend**
 
 ```bash
-# Optional - enables real AI generation
-OPENAI_API_KEY=your_openai_api_key_here
+# Installer les dépendances Python
+pip install -r backend/requirements.txt
 
-# CORS Configuration
-ALLOWED_ORIGINS=https://lovable.dev,https://*.lovable.dev,https://*.lovable.app
+# Configurer les variables d'environnement
+# Ajouter votre OPENAI_API_KEY dans les Secrets Replit
 
-# Price drop cron (default: 3 AM daily)
-PRICE_DROP_CRON=0 3 * * *
+# Démarrer le backend (port 8000)
+uvicorn backend.app:app --host 0.0.0.0 --port 8000
 ```
 
-**Note**: If no OpenAI key is provided, the system uses intelligent mock mode with realistic data.
+### **2. Installation Frontend**
 
-## Deployment
-
-The application is configured for Replit deployment with "Always On" capability:
-
-1. **Development Mode**: The API runs automatically when you open the Repl
-2. **Production Mode**: Use the Replit "Deploy" button to enable Always On
-3. **Port Configuration**: The application is configured to run on port 5000
-4. **CORS**: Pre-configured for Lovable.dev integration
-
-To deploy:
-1. Click the "Deploy" button in Replit
-2. Select "Reserved VM" deployment type
-3. Enable "Always On" to keep the API running 24/7
-4. Your API will be accessible at the public URL above
-
-## Architecture
-
-```
-backend/
-├── app.py                    # Main FastAPI application
-├── models/
-│   ├── schemas.py           # Pydantic models
-│   └── db.py                # JSON database service
-├── services/
-│   ├── ai.py                # AI listing generation
-│   ├── duplicates.py        # Duplicate detection
-│   ├── pricing.py           # Price management
-│   ├── stats.py             # Statistics calculation
-│   └── export.py            # Export services
-├── routes/
-│   ├── ingest.py            # Photo ingestion routes
-│   ├── listings.py          # Listing CRUD routes
-│   ├── pricing.py           # Pricing routes
-│   ├── export.py            # Export routes
-│   ├── import_route.py      # Import routes
-│   ├── stats.py             # Stats routes
-│   └── bonus.py             # Bonus features
-├── jobs/
-│   └── scheduler.py         # APScheduler background jobs
-└── data/
-    ├── items.json           # Item database
-    └── uploads/             # Uploaded images
-```
-
-## Background Jobs
-
-The system runs a daily cron job (midnight) that automatically applies 5% price drops to all listed items. The scheduler starts automatically with the application.
-
-## Console Notifications
-
-The system provides real-time console notifications:
-- 🧠 New AI draft created
-- 💸 Price drops applied
-- ⚠️ Duplicates detected
-
-## Example Usage
-
-### Generate a listing from photo URL:
 ```bash
-curl -X POST http://localhost:5000/ingest/photos \
-  -H "Content-Type: application/json" \
-  -d '{"urls": ["https://example.com/shirt.jpg"]}'
+# Aller dans le dossier frontend
+cd frontend
+
+# Installer les dépendances
+bun install
+
+# Démarrer le frontend (port 5000)
+bun run dev
 ```
 
-### Get statistics:
+### **3. Accéder à l'Application**
+
+- **Frontend** : http://localhost:5000 (ou votre webview Replit)
+- **Backend API** : http://localhost:8000
+- **API Docs** : http://localhost:8000/docs
+
+---
+
+## 📡 Endpoints API Principaux
+
+### **Authentification**
 ```bash
-curl http://localhost:5000/stats
+POST /auth/register  # Créer un compte
+POST /auth/login     # Se connecter
+GET  /auth/me        # Infos utilisateur + quotas
 ```
 
-### Export inventory as CSV:
+### **Upload & Analyse IA**
 ```bash
-curl http://localhost:5000/export/csv -o inventory.csv
+POST /bulk/photos/analyze        # Upload photos + analyse IA
+GET  /bulk/jobs/{job_id}         # Suivi progression
+GET  /bulk/drafts                # Liste brouillons
+PATCH /bulk/drafts/{id}          # Modifier brouillon
+POST /bulk/drafts/{id}/publish   # Publier sur Vinted
 ```
 
-## Dependencies
+### **Analytics (PREMIUM)**
+```bash
+GET /analytics/dashboard         # Dashboard complet
+POST /analytics/events/view      # Track vue
+POST /analytics/events/like      # Track like
+POST /analytics/events/message   # Track message
+```
 
-All dependencies are managed via uv:
-- fastapi - Web framework
-- uvicorn - ASGI server
-- pydantic - Data validation
-- apscheduler - Background jobs
-- pillow - Image processing
-- imagehash - Perceptual hashing
-- python-dotenv - Environment management
-- rapidfuzz - Text similarity
-- pandas - Data processing
-- reportlab - PDF generation
-- python-multipart - File uploads
-- requests - HTTP client
+### **Automation (PREMIUM)**
+```bash
+GET  /automation/rules           # Liste règles automation
+POST /automation/bump/configure  # Config auto-bump
+POST /automation/follow/configure # Config auto-follow
+POST /automation/messages/configure # Config auto-messages
+POST /automation/bump/execute    # Exécuter bump manuel
+```
 
-## Future Enhancements
+---
 
-Ready for frontend integration with Lovable.dev or other frameworks:
-- Full REST API with OpenAPI documentation
-- CORS enabled for all origins
-- Clean, documented endpoints
+## 🗄️ Base de Données (17 Tables)
 
-## License
+### **Tables Principales**
+- `users` - Comptes utilisateurs
+- `listings` - Annonces Vinted
+- `drafts` - Brouillons en attente
+- `bulk_jobs` - Jobs d'analyse IA
 
-This project is a personal assistant tool for clothing resale automation.
+### **Tables Premium**
+- `analytics_events` - Tracking vues/likes/messages
+- `aggregated_metrics` - Métriques pré-calculées
+- `automation_rules` - Règles d'automation
+- `automation_jobs` - Historique exécutions
+- `vinted_accounts` - Comptes Vinted multiples
+- `message_templates` - Templates messages
+- `conversations` - Historique conversations
+- `follows` - Tracking follow/unfollow
+
+---
+
+## ⚙️ Configuration
+
+### **Variables d'Environnement (Replit Secrets)**
+
+```bash
+# Obligatoire
+OPENAI_API_KEY=sk-...
+
+# Optionnel - Stripe
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_STARTER_PRICE_ID=price_...
+STRIPE_PRO_PRICE_ID=price_...
+STRIPE_SCALE_PRICE_ID=price_...
+
+# Optionnel - CORS
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5000
+```
+
+**Note:** Le backend utilise **SQLite** (fichier `backend/data/vbs.db`). Aucune configuration database externe n'est nécessaire !
+
+### **Plans d'Abonnement**
+
+| Plan | AI Analyses | Drafts | Publications | Storage |
+|------|-------------|--------|--------------|---------|
+| **Free** | 20/mois | 50 | 10/mois | 500 MB |
+| **Starter** | 100/mois | 200 | 50/mois | 2 GB |
+| **Pro** | 500/mois | 1000 | 200/mois | 10 GB |
+| **Scale** | Illimité | Illimité | Illimité | 50 GB |
+
+---
+
+## 🛡️ Sécurité & Anti-Détection
+
+### **Mesures Anti-Détection Vinted**
+- Délais aléatoires entre actions (1-3 secondes)
+- Frappe caractère par caractère avec timing humain
+- Multiple selectors pour robustesse
+- Rotation des patterns d'utilisation
+- Gestion intelligente des captchas
+
+### **Sécurité Données**
+- JWT tokens avec expiration
+- Chiffrement AES-256 pour sessions Vinted
+- Hashage Argon2 pour mots de passe
+- Rate limiting sur toutes les routes
+- Validation stricte des inputs
+
+---
+
+## 🎯 Comparaison Concurrents
+
+| Fonctionnalité | VintedBot | Dotb | VatBot | Sales Bot |
+|----------------|-----------|------|--------|-----------|
+| Analyse IA Photos | ✅ | ❌ | ❌ | ❌ |
+| **Analytics Dashboard** | ✅ **UNIQUE** | ❌ | ❌ | ❌ |
+| Auto-Bump | ✅ | ✅ | ✅ | ❌ |
+| Auto-Follow | ✅ | ❌ | ✅ | ❌ |
+| Auto-Messages | ✅ | ✅ | ❌ | ✅ |
+| Multi-Comptes | ✅ | ✅ | ❌ | ❌ |
+| Mode Draft (évite captcha) | ✅ | ❌ | ❌ | ❌ |
+| API Complète | ✅ | ❌ | ❌ | ❌ |
+
+---
+
+## 📊 Scheduler Automatique
+
+Le backend exécute automatiquement 6 jobs :
+
+1. **Inbox Sync** - Toutes les 15 minutes
+2. **Publish Poll** - Toutes les 30 secondes  
+3. **Price Drop** - Quotidien à 3h
+4. **Vacuum & Prune** - Quotidien à 2h
+5. **Clean Temp Photos** - Toutes les 6 heures
+6. **Automation Executor** - Toutes les 5 minutes ⭐ (exécute auto-bump/follow/messages)
+
+---
+
+## 🐛 Debugging
+
+### **Logs Backend**
+```bash
+# Logs en temps réel
+tail -f backend/data/app.log
+
+# Vérifier santé
+curl http://localhost:8000/health
+```
+
+### **Logs Frontend**
+```bash
+# Console navigateur (F12)
+# Ou logs Vite dans la console Replit
+```
+
+### **Problèmes Courants**
+
+**"Session Vinted expirée"**
+→ Reconnecter votre compte Vinted dans Settings
+
+**"Quota exceeded"**
+→ Vérifier `/auth/me` pour voir vos limites
+
+**"Captcha détecté"**
+→ Utiliser le mode Draft au lieu d'auto-publish
+
+---
+
+## 📝 Structure du Projet
+
+```
+vintedbot/
+├── backend/                # Backend FastAPI
+│   ├── api/               # Routes API v1
+│   ├── core/              # Core modules (storage, vinted client, session)
+│   ├── data/              # Database + uploads
+│   ├── middleware/        # Middlewares (quotas, etc.)
+│   ├── routes/            # Routes legacy
+│   ├── schemas/           # Pydantic schemas
+│   ├── utils/             # Utilities
+│   ├── app.py            # FastAPI app
+│   └── jobs.py           # Scheduler jobs
+│
+├── frontend/              # Frontend React
+│   ├── src/
+│   │   ├── api/          # API client
+│   │   ├── components/   # React components
+│   │   ├── contexts/     # React contexts (Auth)
+│   │   ├── pages/        # Pages (Dashboard, Analytics, etc.)
+│   │   └── types/        # TypeScript types
+│   ├── package.json
+│   └── vite.config.ts
+│
+└── README.md             # This file
+```
+
+---
+
+## 🤝 Support
+
+Pour toute question ou problème :
+- Consulter la documentation API : http://localhost:8000/docs
+- Vérifier les logs backend et frontend
+- Tester avec le mode mock (OPENAI_API_KEY non requis)
+
+---
+
+**VintedBot** - Automatisez votre business Vinted avec l'IA 🚀

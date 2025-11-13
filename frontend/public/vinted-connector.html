@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion Vinted - VintedBot</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .step {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+
+        .step-number {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 30px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .step-content {
+            display: inline-block;
+            vertical-align: top;
+            width: calc(100% - 50px);
+        }
+
+        input[type="email"], input[type="password"], input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 15px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, opacity 0.3s;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .success {
+            background: #d4edda;
+            border: 2px solid #c3e6cb;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .error {
+            background: #f8d7da;
+            border: 2px solid #f5c6cb;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 13px;
+        }
+
+        a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Connexion Automatique Vinted</h1>
+        <p class="subtitle">Cette page s'exécute dans VOTRE navigateur, donc Vinted ne peut pas bloquer la connexion!</p>
+
+        <div class="step">
+            <span class="step-number">1</span>
+            <div class="step-content">
+                <strong>Entrez vos identifiants Vinted</strong><br>
+                <small>Vos identifiants restent 100% privés dans votre navigateur</small>
+            </div>
+        </div>
+
+        <form id="loginForm">
+            <input type="text" id="nickname" placeholder="Nom du compte (ex: Mon Compte Principal)" required>
+            <input type="email" id="email" placeholder="Email Vinted" required>
+            <input type="password" id="password" placeholder="Mot de passe Vinted" required>
+            <button type="submit" id="submitBtn">Se connecter à Vinted</button>
+        </form>
+
+        <div class="success" id="successMsg"></div>
+        <div class="error" id="errorMsg"></div>
+
+        <div class="step" style="margin-top: 30px; border-left-color: #28a745;">
+            <span class="step-number" style="background: #28a745;">2</span>
+            <div class="step-content">
+                <strong>Comment ça marche?</strong><br>
+                <small>
+                    1. On se connecte à Vinted dans un iframe caché<br>
+                    2. On récupère automatiquement votre cookie de session<br>
+                    3. On l'envoie directement à VintedBot<br>
+                    4. Vous êtes connecté! ✅
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = window.location.hostname === 'localhost'
+            ? 'http://localhost:8001'
+            : 'https://vintedbot-backend.fly.dev';
+
+        const form = document.getElementById('loginForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const successMsg = document.getElementById('successMsg');
+        const errorMsg = document.getElementById('errorMsg');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const nickname = document.getElementById('nickname').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            // Reset messages
+            successMsg.style.display = 'none';
+            errorMsg.style.display = 'none';
+
+            // Disable button
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="loader"></span> Connexion en cours...';
+
+            try {
+                // Create hidden iframe to login
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.src = 'https://www.vinted.fr/member/login';
+                document.body.appendChild(iframe);
+
+                // Wait for iframe to load
+                await new Promise((resolve) => {
+                    iframe.onload = resolve;
+                });
+
+                // Wait a bit for the page to fully render
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                // Try to fill the form in the iframe
+                try {
+                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+
+                    // Find and fill email
+                    const emailInput = iframeDoc.querySelector('input[name="username"], input[type="email"]');
+                    if (emailInput) {
+                        emailInput.value = email;
+                        emailInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+
+                    // Find and fill password
+                    const passwordInput = iframeDoc.querySelector('input[name="password"], input[type="password"]');
+                    if (passwordInput) {
+                        passwordInput.value = password;
+                        passwordInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+
+                    // Wait a bit
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+
+                    // Find and click submit
+                    const submitButton = iframeDoc.querySelector('button[type="submit"]');
+                    if (submitButton) {
+                        submitButton.click();
+
+                        // Wait for login to complete
+                        await new Promise(resolve => setTimeout(resolve, 5000));
+
+                        // Try to get cookies
+                        const cookies = document.cookie;
+
+                        if (!cookies || cookies.length === 0) {
+                            throw new Error('Impossible de récupérer les cookies. Vérifiez vos identifiants.');
+                        }
+
+                        // Send to backend
+                        const token = localStorage.getItem('auth_token');
+                        if (!token) {
+                            throw new Error('Vous devez être connecté à VintedBot. Connectez-vous d\'abord sur vintedbot-frontend.fly.dev');
+                        }
+
+                        const response = await fetch(`${API_URL}/accounts/add`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${token}`
+                            },
+                            body: JSON.stringify({
+                                name: nickname,
+                                cookie: cookies,
+                                user_agent: navigator.userAgent
+                            })
+                        });
+
+                        if (!response.ok) {
+                            const error = await response.json();
+                            throw new Error(error.detail || 'Erreur lors de l\'ajout du compte');
+                        }
+
+                        successMsg.innerHTML = `
+                            ✅ <strong>Compte Vinted connecté avec succès!</strong><br>
+                            <small>Retournez sur <a href="https://vintedbot-frontend.fly.dev/accounts" target="_blank">VintedBot</a> pour voir votre compte.</small>
+                        `;
+                        successMsg.style.display = 'block';
+
+                        // Reset form
+                        form.reset();
+
+                        // Remove iframe
+                        document.body.removeChild(iframe);
+
+                    } else {
+                        throw new Error('Formulaire de connexion non trouvé');
+                    }
+
+                } catch (iframeError) {
+                    throw new Error('Impossible d\'accéder au formulaire Vinted (bloqué par CORS). Utilisez la méthode manuelle à la place.');
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                errorMsg.innerHTML = `
+                    ❌ <strong>Erreur:</strong> ${error.message}<br><br>
+                    <small>
+                        <strong>Solution alternative:</strong> Copiez manuellement votre cookie Vinted:<br>
+                        1. Allez sur <a href="https://www.vinted.fr" target="_blank">vinted.fr</a> et connectez-vous<br>
+                        2. Appuyez sur F12 → Application → Cookies → vinted.fr<br>
+                        3. Copiez la valeur de <code>_vinted_fr_session</code><br>
+                        4. Collez-la dans VintedBot (Mode Manuel)
+                    </small>
+                `;
+                errorMsg.style.display = 'block';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Se connecter à Vinted';
+            }
+        });
+    </script>
+</body>
+</html>

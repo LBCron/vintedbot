@@ -10,7 +10,7 @@ import zipfile
 from datetime import datetime
 from typing import List, Dict, Optional
 from pathlib import Path
-from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Query, Form, Depends, Request
+from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Query, Form, Depends, Request, Body
 from fastapi.responses import JSONResponse, StreamingResponse
 from PIL import Image
 import io
@@ -85,41 +85,42 @@ def validate_image_file(file: UploadFile) -> bool:
 
 def resolve_photo_path(photo_path: str) -> str:
     """
-    🔧 RÉSOLUTION ROBUSTE DES CHEMINS PHOTOS (pour backend filesystem access)
-    
+    RÉSOLUTION ROBUSTE DES CHEMINS PHOTOS (pour backend filesystem access)
+
     Gère tous les formats possibles :
-    - "/temp_photos/xxx/photo_000.jpg" → "backend/data/temp_photos/xxx/photo_000.jpg"
-    - "backend/data/temp_photos/xxx/photo_000.jpg" → "backend/data/temp_photos/xxx/photo_000.jpg"
-    - "temp_photos/xxx/photo_000.jpg" → "backend/data/temp_photos/xxx/photo_000.jpg"
-    
+    - "/temp_photos/xxx/photo_000.jpg" → "{DATA_DIR}/temp_photos/xxx/photo_000.jpg"
+    - "backend/data/temp_photos/xxx/photo_000.jpg" → "{DATA_DIR}/temp_photos/xxx/photo_000.jpg"
+    - "temp_photos/xxx/photo_000.jpg" → "{DATA_DIR}/temp_photos/xxx/photo_000.jpg"
+
     Returns:
         Chemin absolu valide qui existe sur le système de fichiers
     """
     import os
-    
+    from backend.settings import settings as resolve_settings
+
     # 1. Si le chemin existe déjà tel quel, retourner
     if os.path.exists(photo_path):
         return photo_path
-    
-    # 2. Essayer avec préfixe "backend/data"
-    if not photo_path.startswith("backend/data/"):
-        # Supprimer le "/" au début si présent
-        clean_path = photo_path.lstrip("/")
-        prefixed_path = f"backend/data/{clean_path}"
+
+    # 2. Essayer avec le DATA_DIR
+    if not photo_path.startswith(resolve_settings.DATA_DIR):
+        # Supprimer "backend/data/" ou "/" au début si présent
+        clean_path = photo_path.replace("backend/data/", "").lstrip("/")
+        prefixed_path = f"{resolve_settings.DATA_DIR}/{clean_path}"
         if os.path.exists(prefixed_path):
             return prefixed_path
-    
-    # 3. Essayer en ajoutant "backend/data/temp_photos"
+
+    # 3. Essayer en ajoutant DATA_DIR/temp_photos
     if "temp_photos" not in photo_path:
         basename = os.path.basename(photo_path)
         # Chercher le job_id dans le chemin (format: {job_id}/photo_xxx.jpg)
         parts = photo_path.split("/")
         if len(parts) >= 2:
             job_id = parts[-2]
-            test_path = f"backend/data/temp_photos/{job_id}/{basename}"
+            test_path = f"{resolve_settings.DATA_DIR}/temp_photos/{job_id}/{basename}"
             if os.path.exists(test_path):
                 return test_path
-    
+
     # 4. Retourner le chemin original (même s'il n'existe pas)
     return photo_path
 
@@ -171,40 +172,58 @@ def normalize_draft_for_frontend(draft: Dict) -> Dict:
 
 def save_uploaded_photos(files: List[UploadFile], job_id: str) -> List[str]:
     """Save uploaded photos and return file paths (converts HEIC to JPEG)"""
-    temp_dir = Path("backend/data/temp_photos") / job_id
+    from backend.settings import settings as bulk_settings
+
+    # ✅ CRITICAL: Register HEIC support for PIL in this function context
+    try:
+        from pillow_heif import register_heif_opener
+        register_heif_opener()
+        print("[HEIC] Registered HEIC support for PIL")
+    except Exception as e:
+        print(f"[HEIC] Warning: Failed to register HEIC support: {e}")
+
+    temp_dir = Path(f"{bulk_settings.DATA_DIR}/temp_photos") / job_id
     temp_dir.mkdir(parents=True, exist_ok=True)
-    
+
     saved_paths = []
-    
+
     for i, file in enumerate(files):
         # Read file content
         content = file.file.read()
-        
+
         # Check if file is HEIC/HEIF
         original_ext = Path(file.filename or "photo.jpg").suffix.lower()
         is_heic = original_ext in ['.heic', '.heif']
-        
+
         if is_heic:
             # Convert HEIC to JPEG
             try:
                 from PIL import Image
                 import io
-                
-                # Open HEIC image from bytes
-                img = Image.open(io.BytesIO(content))
-                
+
+                # ✅ FIX: Save HEIC to disk first, then open it (pillow-heif needs file path)
+                temp_heic = temp_dir / f"temp_{i:03d}.heic"
+                with open(temp_heic, "wb") as f:
+                    f.write(content)
+
+                # Open HEIC image from file path
+                img = Image.open(temp_heic)
+
                 # Convert to RGB if needed
                 if img.mode != 'RGB':
                     img = img.convert('RGB')
-                
+
                 # Save as JPEG
                 filename = f"photo_{i:03d}.jpg"
                 filepath = temp_dir / filename
                 img.save(filepath, 'JPEG', quality=90)
-                
-                print(f"✅ Converted HEIC → JPEG: {filename}")
+
+                # Delete temp HEIC file
+                temp_heic.unlink()
+
+                print(f"[HEIC] Converted HEIC -> JPEG: {filename}")
             except Exception as e:
-                print(f"❌ Failed to convert HEIC {file.filename}: {e}")
+                print(f"[ERROR] Failed to convert HEIC {file.filename}: {e}")
                 # Fallback: save as original
                 filename = f"photo_{i:03d}{original_ext}"
                 filepath = temp_dir / filename
@@ -217,7 +236,7 @@ def save_uploaded_photos(files: List[UploadFile], job_id: str) -> List[str]:
             filepath = temp_dir / filename
             with open(filepath, "wb") as f:
                 f.write(content)
-            print(f"💾 Saved: {filename}")
+            print(f"[SAVE] Saved: {filename}")
         
         saved_paths.append(str(filepath))
     
@@ -237,7 +256,7 @@ async def process_bulk_job(
     Background task: Process bulk photos and create drafts
     """
     try:
-        print(f"\n🚀 Starting bulk job {job_id} (smart_grouping={use_smart_grouping}, style={style})")
+        print(f"\n[START] Starting bulk job {job_id} (smart_grouping={use_smart_grouping}, style={style})")
         bulk_jobs[job_id]["status"] = "processing"
         bulk_jobs[job_id]["started_at"] = datetime.utcnow()
         
@@ -249,14 +268,14 @@ async def process_bulk_job(
         analysis_results = []
         
         # CHECKPOINT 25%: Initial setup and grouping complete
-        print(f"📦 Step 1/4: Grouping photos...")
+        print(f"[STEP_1] Step 1/4: Grouping photos...")
         bulk_jobs[job_id]["progress_percent"] = 25.0
         if update_db and get_photo_plan(job_id):
             get_store().update_photo_plan(job_id, progress_percent=25.0)
         
         if use_smart_grouping:
             # INTELLIGENT GROUPING: Let AI analyze all photos and group them
-            print(f"🧠 Using intelligent grouping for {len(photo_paths)} photos...")
+            print(f"[AI] Using intelligent grouping for {len(photo_paths)} photos...")
             
             try:
                 # Run smart grouping in thread pool (single API call for all photos)
@@ -270,13 +289,13 @@ async def process_bulk_job(
                 bulk_jobs[job_id]["completed_items"] = len(analysis_results)
                 
                 # CHECKPOINT 50%: AI analysis complete
-                print(f"✅ Step 2/4: AI analysis complete ({len(analysis_results)} items detected)")
+                print(f"[DONE] Step 2/4: AI analysis complete ({len(analysis_results)} items detected)")
                 bulk_jobs[job_id]["progress_percent"] = 50.0
                 if update_db and get_photo_plan(job_id):
                     get_store().update_photo_plan(job_id, progress_percent=50.0)
                 
             except Exception as e:
-                print(f"❌ Smart grouping failed: {e}, falling back to simple grouping")
+                print(f"[ERROR] Smart grouping failed: {e}, falling back to simple grouping")
                 # Fallback to simple grouping
                 use_smart_grouping = False
         
@@ -287,7 +306,7 @@ async def process_bulk_job(
             
             # Analyze each group (run in thread pool to avoid blocking event loop)
             for i, group in enumerate(photo_groups):
-                print(f"\n📸 Analyzing item {i+1}/{len(photo_groups)}...")
+                print(f"\n[ANALYZING] Analyzing item {i+1}/{len(photo_groups)}...")
                 
                 try:
                     # Run synchronous OpenAI call in thread pool to avoid blocking event loop
@@ -305,15 +324,15 @@ async def process_bulk_job(
                     if update_db and (i % max(1, len(photo_groups) // 5) == 0 or i == len(photo_groups) - 1):
                         if get_photo_plan(job_id):
                             get_store().update_photo_plan(job_id, progress_percent=progress)
-                            print(f"📊 Progress: {int(progress)}% ({i+1}/{len(photo_groups)} items analyzed)")
+                            print(f"[PROGRESS] Progress: {int(progress)}% ({i+1}/{len(photo_groups)} items analyzed)")
                     
                 except Exception as e:
-                    print(f"❌ Analysis failed for item {i+1}: {e}")
+                    print(f"[ERROR] Analysis failed for item {i+1}: {e}")
                     bulk_jobs[job_id]["failed_items"] += 1
                     bulk_jobs[job_id]["errors"].append(f"Item {i+1}: {str(e)}")
         
         # CHECKPOINT 50%: Analysis complete, starting draft creation
-        print(f"📝 Step 3/4: Creating drafts from {len(analysis_results)} analysis results...")
+        print(f"[STEP_3] Step 3/4: Creating drafts from {len(analysis_results)} analysis results...")
         bulk_jobs[job_id]["progress_percent"] = 50.0
         if update_db and get_photo_plan(job_id):
             get_store().update_photo_plan(job_id, progress_percent=50.0)
@@ -325,9 +344,14 @@ async def process_bulk_job(
             # Convert local paths to URLs
             photo_urls = []
             for path in result.get('photos', []):
-                # Extract relative path from job_id onwards
-                rel_path = str(Path(path).relative_to("backend/data/temp_photos"))
-                photo_urls.append(f"/temp_photos/{rel_path}")
+                # Extract relative path from DATA_DIR/temp_photos onwards
+                try:
+                    temp_photos_base = f"{settings.DATA_DIR}/temp_photos"
+                    rel_path = str(Path(path).relative_to(temp_photos_base))
+                    photo_urls.append(f"/temp_photos/{rel_path}")
+                except ValueError:
+                    # Fallback if relative_to fails
+                    photo_urls.append(f"/temp_photos/{Path(path).name}")
             
             draft = DraftItem(
                 id=draft_id,
@@ -375,9 +399,9 @@ async def process_bulk_job(
                     status="ready",
                     user_id=user_id  # CRITICAL: Pass user_id for duplicate detection
                 )
-                print(f"✅ Created draft (SQLite + memory): {draft.title} ({draft.price}€)")
+                print(f"[DRAFT] Created draft (SQLite + memory): {draft.title} ({draft.price}€)")
             except Exception as e:
-                print(f"⚠️ Failed to save draft to SQLite: {e} (continuing with in-memory only)")
+                print(f"[WARNING] Failed to save draft to SQLite: {e} (continuing with in-memory only)")
             
             # Map draft creation progress from 50% → 100%
             progress = 50.0 + ((idx + 1) / len(analysis_results) * 50.0)
@@ -387,7 +411,7 @@ async def process_bulk_job(
             if update_db and (idx % max(1, len(analysis_results) // 10) == 0 or idx == len(analysis_results) - 1):
                 if get_photo_plan(job_id):
                     get_store().update_photo_plan(job_id, progress_percent=progress)
-                    print(f"📊 Progress: {int(progress)}% ({idx+1}/{len(analysis_results)} drafts created)")
+                    print(f"[PROGRESS] Progress: {int(progress)}% ({idx+1}/{len(analysis_results)} drafts created)")
         
         bulk_jobs[job_id]["status"] = "completed"
         bulk_jobs[job_id]["completed_at"] = datetime.utcnow()
@@ -404,10 +428,10 @@ async def process_bulk_job(
                 progress_percent=100.0
             )
         
-        print(f"\n✅ Bulk job {job_id} completed: {len(analysis_results)} drafts created")
+        print(f"\n[DONE] Bulk job {job_id} completed: {len(analysis_results)} drafts created")
         
     except Exception as e:
-        print(f"❌ Bulk job {job_id} failed: {e}")
+        print(f"[ERROR] Bulk job {job_id} failed: {e}")
         bulk_jobs[job_id]["status"] = "failed"
         bulk_jobs[job_id]["errors"].append(str(e))
         
@@ -419,9 +443,9 @@ async def process_bulk_job(
                     status="failed",
                     progress_percent=bulk_jobs[job_id].get("progress_percent", 0.0)
                 )
-                print(f"✅ Updated DB status to 'failed' for job {job_id}")
+                print(f"[DB] Updated DB status to 'failed' for job {job_id}")
             except Exception as db_error:
-                print(f"⚠️  Failed to update DB status: {db_error}")
+                print(f"[WARNING] Failed to update DB status: {db_error}")
 
 
 @router.post("/upload", response_model=BulkUploadResponse)
@@ -514,7 +538,7 @@ async def bulk_upload_photos(
             )
         )
         
-        print(f"📦 Bulk job {job_id} created: {len(photo_paths)} photos, {estimated_items} estimated items")
+        print(f"[JOB] Bulk job {job_id} created: {len(photo_paths)} photos, {estimated_items} estimated items")
         
         return BulkUploadResponse(
             ok=True,
@@ -528,7 +552,7 @@ async def bulk_upload_photos(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ Bulk upload error: {e}")
+        print(f"[ERROR] Bulk upload error: {e}")
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 
@@ -539,7 +563,7 @@ async def bulk_analyze_smart(
     current_user: User = Depends(get_current_user)
 ):
     """
-    🧠 SMART BULK ANALYSIS with AI-powered grouping
+    SMART BULK ANALYSIS with AI-powered grouping
     
     **Requires:** Authentication + AI quota + storage quota
     
@@ -620,13 +644,13 @@ async def bulk_analyze_smart(
                 job_id, 
                 photo_paths, 
                 photos_per_item=4,  # Ignored when smart_grouping=True
-                use_smart_grouping=True,  # ✅ ALWAYS use smart grouping
+                use_smart_grouping=True,  # ALWAYS use smart grouping
                 style=style,
                 user_id=str(current_user.id)  # CRITICAL: Pass user_id for duplicate detection
             )
         )
         
-        print(f"🧠 Smart bulk job {job_id} created: {len(photo_paths)} photos -> AI grouping, style={style}")
+        print(f"[AI] Smart bulk job {job_id} created: {len(photo_paths)} photos -> AI grouping, style={style}")
         
         return BulkUploadResponse(
             ok=True,
@@ -640,7 +664,7 @@ async def bulk_analyze_smart(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ Smart bulk analyze error: {e}")
+        print(f"[ERROR] Smart bulk analyze error: {e}")
         raise HTTPException(status_code=500, detail=f"Smart analysis failed: {str(e)}")
 
 
@@ -650,7 +674,7 @@ async def process_single_item_job(job_id: str, photo_paths: List[str], style: st
     Perfect for users uploading multiple photos of one item
     """
     try:
-        print(f"📦 Processing single item job {job_id}: {len(photo_paths)} photos")
+        print(f"[JOB] Processing single item job {job_id}: {len(photo_paths)} photos")
         bulk_jobs[job_id]["status"] = "processing"
         bulk_jobs[job_id]["started_at"] = datetime.utcnow()
         
@@ -688,10 +712,10 @@ async def process_single_item_job(job_id: str, photo_paths: List[str], style: st
         bulk_jobs[job_id]["completed_at"] = datetime.utcnow()
         bulk_jobs[job_id]["progress_percent"] = 100.0
         
-        print(f"✅ Single item job {job_id} completed: {draft.title} ({draft.price}€)")
+        print(f"[DONE] Single item job {job_id} completed: {draft.title} ({draft.price}€)")
         
     except Exception as e:
-        print(f"❌ Single item job {job_id} failed: {e}")
+        print(f"[ERROR] Single item job {job_id} failed: {e}")
         bulk_jobs[job_id]["status"] = "failed"
         bulk_jobs[job_id]["errors"].append(str(e))
         bulk_jobs[job_id]["failed_items"] = 1
@@ -705,7 +729,7 @@ async def bulk_ingest_photos(
     current_user: User = Depends(get_current_user)
 ):
     """
-    📦 SAFE BULK INGEST - Zero failed drafts
+    SAFE BULK INGEST - Zero failed drafts
     
     Intelligently processes photos with automatic single-item detection.
     
@@ -811,7 +835,7 @@ async def bulk_ingest_photos(
             )
             mode_desc = f"AI intelligent grouping"
         
-        print(f"📦 Ingest job {job_id} created: {photo_count} photos -> {mode_desc}, style={style}")
+        print(f"[JOB] Ingest job {job_id} created: {photo_count} photos -> {mode_desc}, style={style}")
         
         return BulkUploadResponse(
             ok=True,
@@ -825,7 +849,7 @@ async def bulk_ingest_photos(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ Bulk ingest error: {e}")
+        print(f"[ERROR] Bulk ingest error: {e}")
         raise HTTPException(status_code=500, detail=f"Ingest failed: {str(e)}")
 
 
@@ -906,7 +930,7 @@ async def get_bulk_job_status(job_id: str):
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ Get job status error: {e}")
+        print(f"[ERROR] Get job status error: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to get job status: {str(e)}")
 
 
@@ -930,7 +954,9 @@ async def list_drafts(
         db_drafts = []
         for row in db_drafts_raw:
             if row["item_json"]:
-                item_data = row["item_json"]
+                # Deserialize JSON string to dict
+                import json
+                item_data = json.loads(row["item_json"]) if isinstance(row["item_json"], str) else row["item_json"]
                 # Normalize photo URLs for frontend
                 normalized_photos = [normalize_photo_url_for_frontend(p) for p in item_data.get("photos", [])]
                 draft = DraftItem(
@@ -947,7 +973,7 @@ async def list_drafts(
                     created_at=datetime.fromisoformat(row["created_at"]),
                     updated_at=datetime.fromisoformat(row["updated_at"]),
                     analysis_result=item_data,
-                    flags=PublishFlags(**row["flags_json"]) if row["flags_json"] else PublishFlags(),
+                    flags=PublishFlags(**json.loads(row["flags_json"]) if isinstance(row["flags_json"], str) else row["flags_json"]) if row["flags_json"] else PublishFlags(),
                     missing_fields=[]
                 )
                 db_drafts.append(draft)
@@ -984,7 +1010,7 @@ async def list_drafts(
         )
         
     except Exception as e:
-        print(f"❌ List drafts error: {e}")
+        print(f"[ERROR] List drafts error: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to list drafts: {str(e)}")
 
 
@@ -995,69 +1021,218 @@ async def get_draft(
 ):
     """
     Get a specific draft by ID
-    
+
     **Requires:** Authentication (user ownership validation)
     """
     try:
         # Get draft from SQLite
         draft_data = get_store().get_draft(draft_id)
-        
+
         if not draft_data:
             raise HTTPException(status_code=404, detail="Draft not found")
-        
+
         # Verify user ownership
         if draft_data.get("user_id") and draft_data["user_id"] != str(current_user.id):
             raise HTTPException(status_code=403, detail="Ce brouillon ne vous appartient pas")
-        
-        # Fallback to in-memory if SQLite data incomplete
+
+        # First try in-memory (fastest)
         if draft_id in drafts_storage:
             return drafts_storage[draft_id]
-        
-        # Convert SQLite data to DraftItem (minimal version)
-        raise HTTPException(status_code=404, detail="Draft data incomplete")
-        
+
+        # Convert SQLite data to DraftItem
+        item_json = draft_data.get("item_json", {})
+        photos = item_json.get("photos", [])
+        normalized_photos = [normalize_photo_url_for_frontend(p) for p in photos]
+
+        draft = DraftItem(
+            id=draft_data["id"],
+            title=draft_data["title"],
+            description=draft_data["description"],
+            price=draft_data["price"],
+            brand=draft_data.get("brand", "Non spécifié"),
+            size=draft_data.get("size", "Non spécifié"),
+            color=draft_data.get("color", "Non spécifié"),
+            category=draft_data.get("category", "autre"),
+            photos=normalized_photos,
+            status=draft_data["status"],
+            condition=item_json.get("condition", "Bon état"),
+            confidence=item_json.get("confidence", 0.8),
+            created_at=datetime.fromisoformat(draft_data["created_at"]),
+            updated_at=datetime.fromisoformat(draft_data["updated_at"]),
+            sku=draft_data.get("sku"),
+            location=draft_data.get("location"),
+            stock_quantity=draft_data.get("stock_quantity", 1),
+            analysis_result=item_json.get("analysis_result", {}),
+            flags=PublishFlags(**draft_data["flags_json"]) if draft_data.get("flags_json") else PublishFlags(),
+            missing_fields=[]
+        )
+
+        return draft
+
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ Get draft error: {e}")
+        print(f"[ERROR] Get draft error: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to get draft: {str(e)}")
 
 
 @router.patch("/drafts/{draft_id}", response_model=DraftItem)
 async def update_draft(
-    draft_id: str, 
+    draft_id: str,
     updates: DraftUpdateRequest,
     current_user: User = Depends(get_current_user)
 ):
     """
     Update a draft (edit title, price, description, etc.)
-    
+
     **Requires:** Authentication (user ownership validation)
     """
     try:
-        if draft_id not in drafts_storage:
+        # Get draft from database first
+        draft_data = get_store().get_draft(draft_id)
+        if not draft_data:
             raise HTTPException(status_code=404, detail="Draft not found")
-        
-        draft = drafts_storage[draft_id]
-        
+
+        # Verify user ownership
+        if draft_data.get("user_id") and draft_data["user_id"] != str(current_user.id):
+            raise HTTPException(status_code=403, detail="Ce brouillon ne vous appartient pas")
+
+        # Check in-memory storage
+        if draft_id in drafts_storage:
+            draft = drafts_storage[draft_id]
+        else:
+            # Reconstruct from database
+            item_json = draft_data.get("item_json", {})
+            photos = item_json.get("photos", [])
+            normalized_photos = [normalize_photo_url_for_frontend(p) for p in photos]
+
+            draft = DraftItem(
+                id=draft_data["id"],
+                title=draft_data["title"],
+                description=draft_data["description"],
+                price=draft_data["price"],
+                brand=draft_data.get("brand", "Non spécifié"),
+                size=draft_data.get("size", "Non spécifié"),
+                color=draft_data.get("color", "Non spécifié"),
+                category=draft_data.get("category", "autre"),
+                photos=normalized_photos,
+                status=draft_data["status"],
+                condition=item_json.get("condition", "Bon état"),
+                confidence=item_json.get("confidence", 0.8),
+                created_at=datetime.fromisoformat(draft_data["created_at"]),
+                updated_at=datetime.fromisoformat(draft_data["updated_at"]),
+                sku=draft_data.get("sku"),
+                location=draft_data.get("location"),
+                stock_quantity=draft_data.get("stock_quantity", 1),
+                analysis_result=item_json.get("analysis_result", {}),
+                flags=PublishFlags(**draft_data["flags_json"]) if draft_data.get("flags_json") else PublishFlags(),
+                missing_fields=[]
+            )
+
         # Apply updates
         update_data = updates.model_dump(exclude_unset=True)
         for key, value in update_data.items():
             if hasattr(draft, key):
                 setattr(draft, key, value)
-        
+
         draft.updated_at = datetime.utcnow()
+
+        # Persist to database
+        get_store().update_draft(
+            draft_id=draft_id,
+            title=draft.title,
+            description=draft.description,
+            price=draft.price,
+            brand=draft.brand,
+            size=draft.size,
+            color=draft.color,
+            category=draft.category,
+            status=draft.status,
+            sku=draft.sku,
+            location=draft.location,
+            stock_quantity=draft.stock_quantity
+        )
+
+        # Update in-memory
         drafts_storage[draft_id] = draft
-        
-        print(f"✅ Draft updated: {draft_id}")
-        
+
+        print(f"[UPDATE] Draft updated: {draft_id}")
+
         return draft
-        
+
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ Update draft error: {e}")
+        print(f"[ERROR] Update draft error: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to update draft: {str(e)}")
+
+
+@router.patch("/drafts/{draft_id}/photos/reorder")
+async def reorder_draft_photos(
+    draft_id: str,
+    photos: List[str] = Body(..., embed=True),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Reorder photos in a draft
+
+    **Requires:** Authentication (user ownership validation)
+
+    **Body:** {"photos": ["url1", "url2", ...]} - List of photo URLs in the new desired order
+
+    **Returns:** Updated draft with reordered photos
+    """
+    try:
+        # Get draft from SQLite for ownership check
+        draft_data = get_store().get_draft(draft_id)
+
+        if not draft_data:
+            raise HTTPException(status_code=404, detail="Draft not found")
+
+        # CRITICAL: Verify user ownership
+        if draft_data.get("user_id") and draft_data["user_id"] != str(current_user.id):
+            raise HTTPException(status_code=403, detail="Ce brouillon ne vous appartient pas")
+
+        # Validate that all photos in the request belong to this draft
+        current_photos = draft_data.get("item_json", {}).get("photos", [])
+        current_photos_normalized = [normalize_photo_url_for_frontend(p) for p in current_photos]
+
+        # Check if all provided photos exist in the current draft
+        for photo in photos:
+            if photo not in current_photos_normalized:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Photo not found in draft: {photo}"
+                )
+
+        # Update photos order in database
+        get_store().update_draft_photos(draft_id, photos)
+
+        # Also update in-memory if present
+        if draft_id in drafts_storage:
+            draft = drafts_storage[draft_id]
+            draft.photos = photos
+            draft.updated_at = datetime.utcnow()
+            drafts_storage[draft_id] = draft
+
+        print(f"[REORDER] Photos reordered for draft {draft_id}: {len(photos)} photos")
+
+        return {
+            "ok": True,
+            "draft_id": draft_id,
+            "photos": photos,
+            "message": "Photos reordered successfully"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] Reorder photos error: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to reorder photos: {str(e)}")
 
 
 @router.delete("/drafts/{draft_id}")
@@ -1067,7 +1242,7 @@ async def delete_draft(
 ):
     """
     Delete a draft (from BOTH SQLite and memory)
-    
+
     **Requires:** Authentication (user ownership validation)
     """
     try:
@@ -1088,14 +1263,14 @@ async def delete_draft(
         if draft_id in drafts_storage:
             del drafts_storage[draft_id]
         
-        print(f"✅ Draft deleted (SQLite + memory): {draft_id}")
+        print(f"[DELETE] Draft deleted (SQLite + memory): {draft_id}")
         
         return {"ok": True, "message": "Draft deleted"}
         
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ Delete draft error: {e}")
+        print(f"[ERROR] Delete draft error: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to delete draft: {str(e)}")
 
 
@@ -1106,7 +1281,7 @@ async def add_photos_to_draft(
     current_user: User = Depends(get_current_user)
 ):
     """
-    📸 AJOUTER DES PHOTOS À UN BROUILLON EXISTANT
+    AJOUTER DES PHOTOS À UN BROUILLON EXISTANT
     
     Permet d'ajouter des photos supplémentaires à un brouillon déjà créé.
     Utile pour compléter un article avec plus de détails visuels.
@@ -1152,7 +1327,7 @@ async def add_photos_to_draft(
         # Save updated draft to database
         get_store().update_draft_photos(draft_id, updated_photos)
         
-        print(f"✅ Added {len(new_photo_paths)} photos to draft {draft_id} (total: {len(updated_photos)})")
+        print(f"[ADDED] Added {len(new_photo_paths)} photos to draft {draft_id} (total: {len(updated_photos)})")
         
         return {
             "ok": True,
@@ -1164,7 +1339,7 @@ async def add_photos_to_draft(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ Add photos error: {e}")
+        print(f"[ERROR] Add photos error: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to add photos: {str(e)}")
 
 
@@ -1172,11 +1347,12 @@ async def add_photos_to_draft(
 async def publish_draft(
     draft_id: str,
     dry_run: bool = Query(default=False, description="If true, simulate without real publication"),
+    publish_mode: str = Query(default="auto", description="'auto' = publish directly, 'draft' = save as Vinted draft"),
     current_user: User = Depends(get_current_user)
 ):
     """
-    🚀 REAL VINTED PUBLICATION (2-Phase Workflow)
-    
+    REAL VINTED PUBLICATION (2-Phase Workflow)
+
     **Requires:** Authentication (user ownership validation) + publications quota
     
     **Workflow:**
@@ -1193,7 +1369,7 @@ async def publish_draft(
         draft_data = get_store().get_draft(draft_id)
         
         if not draft_data:
-            print(f"⚠️  [PUBLISH] Draft {draft_id} not found in database")
+            print(f"[WARNING] [PUBLISH] Draft {draft_id} not found in database")
             raise HTTPException(
                 status_code=404,
                 detail={
@@ -1205,7 +1381,7 @@ async def publish_draft(
         
         # CRITICAL: Verify user ownership
         if draft_data.get("user_id") and draft_data["user_id"] != str(current_user.id):
-            print(f"⚠️  [PUBLISH] User {current_user.id} trying to publish draft owned by {draft_data['user_id']}")
+            print(f"[WARNING] [PUBLISH] User {current_user.id} trying to publish draft owned by {draft_data['user_id']}")
             raise HTTPException(
                 status_code=403,
                 detail="Ce brouillon ne vous appartient pas"
@@ -1215,24 +1391,24 @@ async def publish_draft(
         if not dry_run:
             await check_and_consume_quota(current_user, "publications", amount=1)
         
-        print(f"{'🧪 [DRY-RUN]' if dry_run else '🚀'} [PUBLISH] User {current_user.id} publishing draft {draft_id}")
+        print(f"{'[DRY-RUN]' if dry_run else '[PUBLISH]'} User {current_user.id} publishing draft {draft_id}")
         
         # Extract draft fields
         item_json = draft_data.get("item_json", {})
         photos_raw = item_json.get("photos", [])
         
-        # 🔧 FIX CRITIQUE: Résoudre les chemins photos de manière robuste
+        # FIX CRITIQUE: Résoudre les chemins photos de manière robuste
         photos = []
         for photo_path in photos_raw:
             resolved = resolve_photo_path(photo_path)
             if os.path.exists(resolved):
                 photos.append(resolved)
-                print(f"📸 Photo résolved: {photo_path} → {resolved}")
+                print(f"[PHOTO] Photo résolved: {photo_path} -> {resolved}")
             else:
-                print(f"⚠️  Photo introuvable après résolution: {photo_path} (tried {resolved})")
+                print(f"[WARNING] Photo introuvable après résolution: {photo_path} (tried {resolved})")
         
         if not photos:
-            print(f"❌ [PUBLISH] Aucune photo valide trouvée pour draft {draft_id}")
+            print(f"[ERROR] [PUBLISH] Aucune photo valide trouvée pour draft {draft_id}")
             return {
                 "ok": False,
                 "draft_id": draft_id,
@@ -1288,10 +1464,10 @@ async def publish_draft(
         )
         
         # PHASE A: Prepare listing on Vinted
-        print(f"📸 Phase A: Preparing listing '{draft_data['title'][:50]}...'")
+        print(f"[PHASE_A] Phase A: Preparing listing '{draft_data['title'][:50]}...'")
         
-        # Build prepare request payload
-        prepare_payload = {
+        # Build request payload
+        request_payload = {
             "title": draft_data["title"],
             "price": draft_data["price"],
             "description": description,
@@ -1312,28 +1488,86 @@ async def publish_draft(
                 "ai_validated": flags.ai_validated,
                 "photos_validated": flags.photos_validated
             },
+            "publish_mode": publish_mode,
             "dry_run": dry_run
         }
         
-        # Call prepare endpoint via internal HTTP request
+        # Get auth token for internal requests
         import httpx
-        async with httpx.AsyncClient(timeout=60.0) as client:  # 60s timeout for Playwright
-            # Get auth token from current_user (simulate JWT)
-            from backend.core.auth import create_access_token
-            access_token = create_access_token({
-                "user_id": current_user.id,
-                "email": current_user.email
-            })
+        from backend.core.auth import create_access_token
+        from backend.settings import settings
+        access_token = create_access_token({
+            "user_id": current_user.id,
+            "email": current_user.email
+        })
+
+        # MODE DRAFT: Create draft on Vinted (single-phase, no publish)
+        if publish_mode == "draft":
+            print(f"[DRAFT] Creating Vinted draft (no publish)...")
+
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                draft_response_raw = await client.post(
+                    f"http://localhost:{settings.PORT}/vinted/listings/draft",
+                    json=request_payload,
+                    headers={"Authorization": f"Bearer {access_token}"}
+                )
+                
+                if draft_response_raw.status_code != 200:
+                    error_detail = draft_response_raw.json().get("detail", "Unknown error")
+                    print(f"[ERROR] Draft creation failed: {error_detail}")
+                    return {
+                        "ok": False,
+                        "draft_id": draft_id,
+                        "status": "draft_failed",
+                        "reason": error_detail,
+                        "dry_run": dry_run
+                    }
+                
+                draft_response = draft_response_raw.json()
             
+            if not draft_response.get("ok"):
+                reason = draft_response.get("reason", "Unknown error")
+                print(f"[ERROR] Draft creation failed: {reason}")
+                return {
+                    "ok": False,
+                    "draft_id": draft_id,
+                    "status": "draft_failed",
+                    "reason": reason,
+                    "dry_run": dry_run
+                }
+            
+            vinted_draft_url = draft_response.get("vinted_draft_url")
+            vinted_draft_id = draft_response.get("vinted_draft_id")
+            print(f"[SUCCESS] Vinted draft created: {vinted_draft_url}")
+            
+            # Update draft in DB with Vinted draft info
+            if not dry_run:
+                get_store().update_draft_vinted_info(draft_id, vinted_draft_url, vinted_draft_id, publish_mode)
+            
+            return {
+                "ok": True,
+                "draft_id": draft_id,
+                "status": "draft_created",
+                "vinted_draft_url": vinted_draft_url,
+                "vinted_draft_id": vinted_draft_id,
+                "publish_mode": "draft",
+                "dry_run": dry_run,
+                "message": f"Brouillon créé sur Vinted ! Validez-le manuellement : {vinted_draft_url}" if not dry_run else "Simulation réussie (dry_run=true)"
+            }
+        
+        # MODE AUTO: Prepare + Publish (2-phase workflow)
+        print(f"[PHASE_A] Phase A: Preparing listing '{draft_data['title'][:50]}...'")
+
+        async with httpx.AsyncClient(timeout=60.0) as client:
             prepare_response_raw = await client.post(
-                "http://localhost:5000/vinted/listings/prepare",
-                json=prepare_payload,
+                f"http://localhost:{settings.PORT}/vinted/listings/prepare",
+                json=request_payload,
                 headers={"Authorization": f"Bearer {access_token}"}
             )
             
             if prepare_response_raw.status_code != 200:
                 error_detail = prepare_response_raw.json().get("detail", "Unknown error")
-                print(f"❌ Phase A failed: {error_detail}")
+                print(f"[ERROR] Phase A failed: {error_detail}")
                 return {
                     "ok": False,
                     "draft_id": draft_id,
@@ -1346,7 +1580,7 @@ async def publish_draft(
         
         if not prepare_response.get("ok"):
             reason = prepare_response.get("reason", "Unknown error")
-            print(f"❌ Phase A failed: {reason}")
+            print(f"[ERROR] Phase A failed: {reason}")
             return {
                 "ok": False,
                 "draft_id": draft_id,
@@ -1356,10 +1590,10 @@ async def publish_draft(
             }
         
         confirm_token = prepare_response.get("confirm_token")
-        print(f"✅ Phase A complete: confirm_token={confirm_token[:20] if confirm_token else 'N/A'}...")
+        print(f"[SUCCESS] Phase A complete: confirm_token={confirm_token[:20] if confirm_token else 'N/A'}...")
         
         # PHASE B: Publish listing
-        print(f"📢 Phase B: Publishing to Vinted...")
+        print(f"[PHASE_B] Phase B: Publishing to Vinted...")
         
         # Generate idempotency key
         import hashlib
@@ -1374,7 +1608,7 @@ async def publish_draft(
         # Call publish endpoint via internal HTTP request
         async with httpx.AsyncClient(timeout=60.0) as client:  # 60s timeout for Playwright
             publish_response_raw = await client.post(
-                "http://localhost:5000/vinted/listings/publish",
+                f"http://localhost:{settings.PORT}/vinted/listings/publish",
                 json=publish_payload,
                 headers={
                     "Authorization": f"Bearer {access_token}",
@@ -1383,7 +1617,7 @@ async def publish_draft(
             )
             
             if publish_response_raw.status_code == 409:
-                print(f"⚠️  Duplicate publish attempt blocked (idempotency key already used)")
+                print(f"[WARNING] Duplicate publish attempt blocked (idempotency key already used)")
                 raise HTTPException(
                     status_code=409,
                     detail="Cette annonce a déjà été publiée (clé d'idempotence utilisée)"
@@ -1391,7 +1625,7 @@ async def publish_draft(
             
             if publish_response_raw.status_code != 200:
                 error_detail = publish_response_raw.json().get("detail", "Unknown error")
-                print(f"❌ Phase B failed: {error_detail}")
+                print(f"[ERROR] Phase B failed: {error_detail}")
                 return {
                     "ok": False,
                     "draft_id": draft_id,
@@ -1404,7 +1638,7 @@ async def publish_draft(
         
         if not publish_response.get("ok"):
             reason = publish_response.get("reason", "Unknown error")
-            print(f"❌ Phase B failed: {reason}")
+            print(f"[ERROR] Phase B failed: {reason}")
             return {
                 "ok": False,
                 "draft_id": draft_id,
@@ -1415,7 +1649,7 @@ async def publish_draft(
         
         listing_url = publish_response.get("listing_url")
         vinted_id = publish_response.get("listing_id")
-        print(f"✅ Phase B complete: {listing_url}")
+        print(f"[SUCCESS] Phase B complete: {listing_url}")
         
         # Update draft status in SQLite
         if not dry_run:
@@ -1429,7 +1663,7 @@ async def publish_draft(
             draft.updated_at = datetime.utcnow()
             drafts_storage[draft_id] = draft
         
-        print(f"✅ {'[DRY-RUN]' if dry_run else ''} Draft published: {draft_id} → {listing_url}")
+        print(f"[SUCCESS] {'[DRY-RUN]' if dry_run else ''} Draft published: {draft_id} -> {listing_url}")
         
         return {
             "ok": True,
@@ -1444,7 +1678,7 @@ async def publish_draft(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ Publish draft error: {e}")
+        print(f"[ERROR] Publish draft error: {e}")
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to publish draft: {str(e)}")
@@ -1456,16 +1690,26 @@ async def analyze_bulk_photos(
     current_user: User = Depends(get_current_user)
 ):
     """
-    📸 ANALYZE PHOTOS WITH REAL AI (Frontend-compatible endpoint)
-    
+    ANALYZE PHOTOS WITH REAL AI (Frontend-compatible endpoint)
+
     Uploads photos and launches REAL AI analysis in background.
     This endpoint is called by the Lovable frontend.
-    
+
     **Requires:** Authentication + AI analyses quota
-    
+
     **Returns:** {job_id, status, total_photos, estimated_items, plan_id}
     **Status:** "processing" (use GET /bulk/jobs/{job_id} to poll progress)
     """
+    import traceback
+    import sys
+
+    print("=" * 80)
+    print(f"[ENDPOINT] analyze_bulk_photos REACHED")
+    print(f"User ID: {current_user.id if current_user else 'NONE'}")
+    print(f"Email: {current_user.email if current_user else 'NONE'}")
+    print("=" * 80)
+    sys.stdout.flush()
+
     try:
         # Parse multipart form data manually to handle any field names
         form = await request.form()
@@ -1480,7 +1724,7 @@ async def analyze_bulk_photos(
             elif field_name == "auto_grouping":
                 auto_grouping = str(field_value).lower() == "true"
         
-        print(f"📥 Received analyze request: files={len(files)}, auto_grouping={auto_grouping}, user={current_user.id}")
+        print(f"[REQUEST] Received analyze request: files={len(files)}, auto_grouping={auto_grouping}, user={current_user.id}")
         
         if not files:
             raise HTTPException(status_code=400, detail="No files provided")
@@ -1501,9 +1745,9 @@ async def analyze_bulk_photos(
         
         # Check AI quota before processing
         await check_and_consume_quota(current_user, "ai_analyses", amount=1)
-        
+
         # Check storage quota
-        total_size_mb = sum([f.size for f in files if f.size]) / (1024 * 1024)
+        total_size_mb = sum([f.size or 0 for f in files]) / (1024 * 1024)
         await check_storage_quota(current_user, total_size_mb)
         
         # Save photos temporarily and create job ID
@@ -1554,7 +1798,7 @@ async def analyze_bulk_photos(
             estimated_items=estimated_items
         )
         
-        print(f"📸 Launched AI analysis job {job_id}: {photo_count} photos, estimated {estimated_items} items")
+        print(f"[JOB] Launched AI analysis job {job_id}: {photo_count} photos, estimated {estimated_items} items")
         
         return {
             "job_id": job_id,
@@ -1567,7 +1811,27 @@ async def analyze_bulk_photos(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ Analyze photos error: {e}")
+        print("=" * 80)
+        print(f"[ERROR] ANALYZE PHOTOS ERROR: {type(e).__name__}: {e}")
+        print("=" * 80)
+        import traceback
+        import sys
+        error_details = traceback.format_exc()
+        print(error_details)
+        sys.stdout.flush()
+
+        # Also write to a dedicated error log file
+        try:
+            with open("backend/data/analyze_error.log", "a", encoding='utf-8') as f:
+                f.write(f"\n{'='*80}\n")
+                f.write(f"Timestamp: {datetime.utcnow().isoformat()}\n")
+                f.write(f"User: {current_user.id if current_user else 'NONE'}\n")
+                f.write(f"Error: {type(e).__name__}: {e}\n")
+                f.write(f"Traceback:\n{error_details}\n")
+                f.write(f"{'='*80}\n")
+        except:
+            pass
+
         raise HTTPException(status_code=500, detail=f"Failed to analyze photos: {str(e)}")
 
 
@@ -1579,7 +1843,7 @@ async def create_grouping_plan(
     current_user: User = Depends(get_current_user)
 ):
     """
-    🎯 CREATE GROUPING PLAN (Anti-Saucisson)
+    CREATE GROUPING PLAN (Anti-Saucisson)
     
     Analyzes photos and creates an intelligent grouping plan WITHOUT generating drafts yet.
     
@@ -1637,7 +1901,7 @@ async def create_grouping_plan(
             
         else:
             # MULTI-ITEM MODE: AI Vision detection with label attachment
-            print(f"🧠 Running AI Vision grouping for {photo_count} photos...")
+            print(f"[AI] Running AI Vision grouping for {photo_count} photos...")
             
             # Use existing smart_analyze_and_group_photos to get AI grouping
             grouped_results = await asyncio.to_thread(
@@ -1688,14 +1952,14 @@ async def create_grouping_plan(
         
         grouping_plans[plan_id] = plan
         
-        print(f"📋 Created grouping plan {plan_id}: {photo_count} photos → {estimated_items} items ({grouping_reason})")
+        print(f"[PLAN] Created grouping plan {plan_id}: {photo_count} photos -> {estimated_items} items ({grouping_reason})")
         
         return plan
         
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ Create plan error: {e}")
+        print(f"[ERROR] Create plan error: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to create plan: {str(e)}")
 
 
@@ -1800,7 +2064,7 @@ async def generate_drafts_from_plan(
                     error_msg = f"Item {item_index} ({title[:30]}...): {'; '.join(validation_errors)}"
                     errors.append(error_msg)
                     skipped_items.append(item)
-                    print(f"⚠️ Skipped item {item_index}: {error_msg}")
+                    print(f"[WARNING] Skipped item {item_index}: {error_msg}")
                     continue
                 
                 # All validations passed → Create draft for this item
@@ -1876,7 +2140,7 @@ async def generate_drafts_from_plan(
         if plan_id:
             draft_ids_list = [d.id for d in created_drafts]
             update_photo_plan_results(plan_id, detected_count, draft_ids_list)
-            print(f"📊 Updated plan {plan_id}: {detected_count} detected items, {success_count} valid drafts")
+            print(f"[UPDATE] Updated plan {plan_id}: {detected_count} detected items, {success_count} valid drafts")
         
         if success_count == 0:
             return GenerateResponse(
@@ -2063,4 +2327,178 @@ async def import_drafts(
     except Exception as e:
         print(f"❌ Import error: {e}")
         raise HTTPException(status_code=500, detail=f"Import failed: {str(e)}")
+
+
+# ==================== AI ANALYTICS ENDPOINTS ====================
+
+@router.get("/analytics/ai-performance")
+async def get_ai_performance_metrics(
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get AI performance analytics
+
+    Returns:
+        - Cache hit rate (cost savings)
+        - Quality validation metrics
+        - Confidence score distribution
+        - Fallback usage rate
+    """
+    try:
+        from backend.services.redis_cache import get_cache_stats, get_quality_metrics
+
+        cache_stats = get_cache_stats()
+        quality_metrics = get_quality_metrics()
+
+        # Calculate cost savings estimate
+        cache_hit_rate = cache_stats.get("hit_rate", 0)
+        total_analyses = quality_metrics.get("total", 0)
+
+        # Assuming $0.05 per analysis average (6 photos * ~3 tiles each * $0.01275/tile)
+        COST_PER_ANALYSIS = 0.05
+        estimated_cost_saved = (cache_stats.get("hits", 0) * COST_PER_ANALYSIS)
+        estimated_total_cost = (total_analyses * COST_PER_ANALYSIS)
+        actual_cost = estimated_total_cost - estimated_cost_saved
+
+        return {
+            "cache": {
+                "hits": cache_stats.get("hits", 0),
+                "misses": cache_stats.get("misses", 0),
+                "saves": cache_stats.get("saves", 0),
+                "hit_rate": cache_hit_rate,
+                "cost_saved": round(estimated_cost_saved, 2),
+                "actual_cost": round(actual_cost, 2),
+                "total_cost_without_cache": round(estimated_total_cost, 2)
+            },
+            "quality": {
+                "total_analyses": total_analyses,
+                "passed": quality_metrics.get("passed", 0),
+                "failed": quality_metrics.get("failed", 0),
+                "pass_rate": quality_metrics.get("pass_rate", 0),
+                "confidence_distribution": {
+                    "high": quality_metrics.get("confidence_high", 0),
+                    "medium": quality_metrics.get("confidence_medium", 0),
+                    "low": quality_metrics.get("confidence_low", 0)
+                },
+                "fallback_used": quality_metrics.get("fallback_used", 0),
+                "fallback_rate": round(
+                    (quality_metrics.get("fallback_used", 0) / total_analyses * 100) if total_analyses > 0 else 0,
+                    2
+                )
+            }
+        }
+
+    except ImportError:
+        # Redis not available
+        return {
+            "cache": {
+                "hits": 0,
+                "misses": 0,
+                "saves": 0,
+                "hit_rate": 0,
+                "cost_saved": 0,
+                "actual_cost": 0,
+                "total_cost_without_cache": 0,
+                "note": "Redis cache not available"
+            },
+            "quality": {
+                "total_analyses": 0,
+                "passed": 0,
+                "failed": 0,
+                "pass_rate": 0,
+                "confidence_distribution": {
+                    "high": 0,
+                    "medium": 0,
+                    "low": 0
+                },
+                "fallback_used": 0,
+                "fallback_rate": 0,
+                "note": "Metrics tracking not available"
+            }
+        }
+    except Exception as e:
+        print(f"❌ Analytics error: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get analytics: {str(e)}")
+
+
+@router.post("/analytics/cache/clear")
+async def clear_ai_cache(
+    pattern: str = Query("ai_analysis:*", description="Redis key pattern to clear"),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Clear AI analysis cache (admin tool for testing/debugging)
+
+    Use cases:
+    - Clear all cache: pattern="ai_analysis:*"
+    - Clear specific cache: pattern="ai_analysis:abc123..."
+    """
+    try:
+        from backend.services.redis_cache import clear_cache
+
+        deleted_count = clear_cache(pattern)
+
+        return {
+            "ok": True,
+            "deleted": deleted_count,
+            "message": f"Cleared {deleted_count} cached entries"
+        }
+
+    except ImportError:
+        raise HTTPException(status_code=503, detail="Redis cache not available")
+    except Exception as e:
+        print(f"❌ Cache clear error: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to clear cache: {str(e)}")
+
+
+@router.post("/analytics/image/estimate-cost")
+async def estimate_image_processing_cost(
+    files: List[UploadFile] = File(..., description="Images to estimate cost for"),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Estimate OpenAI Vision API cost for image processing
+    Shows cost before/after optimization
+
+    Useful for:
+    - Cost planning before bulk upload
+    - Understanding optimization savings
+    """
+    try:
+        from backend.services.image_optimizer import estimate_api_cost
+
+        # Save uploaded files temporarily
+        temp_paths = []
+        for file in files:
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
+            content = await file.read()
+            temp_file.write(content)
+            temp_file.close()
+            temp_paths.append(temp_file.name)
+
+        # Estimate costs
+        cost_estimate = estimate_api_cost(temp_paths)
+
+        # Cleanup temp files
+        for path in temp_paths:
+            try:
+                os.unlink(path)
+            except:
+                pass
+
+        return {
+            "ok": True,
+            "images_count": cost_estimate["images_count"],
+            "cost_before_optimization": f"${cost_estimate['cost_before']}",
+            "cost_after_optimization": f"${cost_estimate['cost_after']}",
+            "savings": f"${cost_estimate['savings']}",
+            "savings_percent": f"{cost_estimate['savings_percent']}%",
+            "recommendation": "✅ Image optimization saves ~75% API costs" if cost_estimate['savings_percent'] > 50 else "ℹ️ Minimal savings expected"
+        }
+
+    except ImportError:
+        raise HTTPException(status_code=503, detail="Image optimizer not available")
+    except Exception as e:
+        print(f"❌ Cost estimation error: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to estimate cost: {str(e)}")
 

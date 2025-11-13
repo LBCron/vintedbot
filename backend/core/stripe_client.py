@@ -16,12 +16,12 @@ STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 # Validate Stripe configuration at startup
 if not stripe.api_key or stripe.api_key == "":
     import sys
-    print("⚠️  WARNING: STRIPE_SECRET_KEY not set - Stripe features disabled")
+    print("WARNING: STRIPE_SECRET_KEY not set - Stripe features disabled")
     print("   Set STRIPE_SECRET_KEY to enable subscriptions")
 
 if not STRIPE_WEBHOOK_SECRET:
     import sys
-    print("⚠️  WARNING: STRIPE_WEBHOOK_SECRET not set - webhooks will fail")
+    print("WARNING: STRIPE_WEBHOOK_SECRET not set - webhooks will fail")
 
 # Pricing Configuration (monthly prices in cents)
 PRICING_PLANS = {
@@ -76,7 +76,7 @@ for plan_key in ["starter", "pro", "scale"]:
     price_id = PRICING_PLANS[plan_key]["price_id"]
     if not price_id:
         import sys
-        print(f"⚠️  WARNING: STRIPE_{plan_key.upper()}_PRICE_ID not set - {plan_key} plan unavailable")
+        print(f"WARNING: STRIPE_{plan_key.upper()}_PRICE_ID not set - {plan_key} plan unavailable")
 
 
 def create_checkout_session(

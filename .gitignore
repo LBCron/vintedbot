@@ -161,4 +161,70 @@ cython_debug/
 
 # VintedBot specific
 backend/data/uploads/
+backend/data/temp_uploads/
+backend/data/temp_photos/
+backend/data/backups/
+backend/data/*.sqlite
+backend/data/*.db
+backend/backend/data/*.sqlite
+backend/backend/data/*.db
 .env.local
+.env.production
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Build outputs
+.next/
+out/
+
+# OS files
+.DS_Store
+Thumbs.db
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.settings/
+.classpath
+
+# Fly.io
+.fly/
+
+# Media files (temp only)
+backend/data/temp_photos/**/*.jpg
+backend/data/temp_photos/**/*.jpeg
+backend/data/temp_photos/**/*.png
+backend/data/temp_photos/**/*.gif
+backend/data/temp_photos/**/*.HEIC
+backend/data/temp_photos/**/*.heic
+
+# Documentation archives
+*.tar.gz
+DOCUMENTATION_*.tar.gz
+
+# Windows reserved names
+nul
+CON
+PRN
+AUX
+NUL
+COM1
+COM2
+LPT1
+LPT2

@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VintedBot - Connexion Mobile</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px 20px;
+            max-width: 500px;
+            margin: 0 auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 24px;
+            text-align: center;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 25px;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .method {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .method-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .step {
+            background: white;
+            border-left: 3px solid #667eea;
+            padding: 12px;
+            margin-bottom: 12px;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .step-number {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 24px;
+            font-weight: bold;
+            margin-right: 8px;
+            font-size: 14px;
+        }
+
+        .bookmarklet {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: bold;
+            display: block;
+            text-decoration: none;
+            margin: 15px 0;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .bookmarklet:active {
+            transform: scale(0.98);
+        }
+
+        .warning {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            color: #856404;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin: 15px 0;
+        }
+
+        .input-group {
+            margin: 15px 0;
+        }
+
+        .input-group label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .input-group input,
+        .input-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .input-group textarea {
+            min-height: 100px;
+            resize: vertical;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+        }
+
+        .success {
+            background: #d4edda;
+            border: 2px solid #c3e6cb;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            display: none;
+            font-size: 14px;
+        }
+
+        .error {
+            background: #f8d7da;
+            border: 2px solid #f5c6cb;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            display: none;
+            font-size: 14px;
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: monospace;
+        }
+
+        .divider {
+            text-align: center;
+            margin: 30px 0;
+            color: #999;
+            font-weight: bold;
+        }
+
+        a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📱 VintedBot Mobile</h1>
+        <p class="subtitle">Connecte ton compte Vinted depuis ton iPhone/Android</p>
+
+        <div class="method">
+            <div class="method-title">
+                <span>🔗</span>
+                <span>Méthode 1: Bookmarklet (Recommandé)</span>
+            </div>
+
+            <div class="step">
+                <span class="step-number">1</span>
+                Maintiens ton doigt sur ce bouton et choisis "Ajouter aux favoris":
+            </div>
+
+            <a href="javascript:(function(){var c=document.cookie;if(!c||c.length===0){alert('❌ Aucun cookie trouvé. Connecte-toi d\'abord sur vinted.fr');return;}var s=prompt('Cookie capturé! Copie-le maintenant:',c);if(s){var t=document.createElement('textarea');t.value=c;document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);alert('✅ Cookie copié dans le presse-papier!');}})();" class="bookmarklet">
+                📋 VintedBot - Capturer Cookie
+            </a>
+
+            <div class="step">
+                <span class="step-number">2</span>
+                Va sur <a href="https://www.vinted.fr" target="_blank">vinted.fr</a> et connecte-toi
+            </div>
+
+            <div class="step">
+                <span class="step-number">3</span>
+                Ouvre tes favoris et clique sur "VintedBot - Capturer Cookie"
+            </div>
+
+            <div class="step">
+                <span class="step-number">4</span>
+                Le cookie s'affiche - copie-le et colle-le ci-dessous
+            </div>
+        </div>
+
+        <div class="divider">OU</div>
+
+        <div class="method">
+            <div class="method-title">
+                <span>✍️</span>
+                <span>Méthode 2: Extraction Manuelle</span>
+            </div>
+
+            <div class="step">
+                <span class="step-number">1</span>
+                Sur iPhone: Safari → Réglages → Avancé → Données de sites web → vinted.fr
+            </div>
+
+            <div class="step">
+                <span class="step-number">2</span>
+                Trouve le cookie <code>_vinted_fr_session</code>
+            </div>
+
+            <div class="step">
+                <span class="step-number">3</span>
+                Copie sa valeur et colle-la ci-dessous
+            </div>
+        </div>
+
+        <div class="warning">
+            ⚠️ <strong>Important:</strong> Tu dois être connecté sur vinted.fr dans le même navigateur!
+        </div>
+
+        <form id="connectForm">
+            <div class="input-group">
+                <label for="accountName">Nom du compte</label>
+                <input type="text" id="accountName" placeholder="Mon Compte Vinted" required>
+            </div>
+
+            <div class="input-group">
+                <label for="cookieValue">Cookie Vinted</label>
+                <textarea id="cookieValue" placeholder="Colle ton cookie ici..." required></textarea>
+            </div>
+
+            <button type="submit" id="submitBtn">Connecter mon compte</button>
+        </form>
+
+        <div class="success" id="successMsg"></div>
+        <div class="error" id="errorMsg"></div>
+
+        <div style="margin-top: 30px; padding: 15px; background: #f8f9fa; border-radius: 10px; font-size: 13px; color: #666;">
+            💡 <strong>Astuce:</strong> Le cookie ressemble à <code>BAh7CEkiD3Nlc3Npb25faWQGOgZF...</code> (très long)
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://vintedbot-backend.fly.dev';
+
+        document.getElementById('connectForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const btn = document.getElementById('submitBtn');
+            const successMsg = document.getElementById('successMsg');
+            const errorMsg = document.getElementById('errorMsg');
+            const accountName = document.getElementById('accountName').value;
+            const cookieValue = document.getElementById('cookieValue').value;
+
+            // Reset messages
+            successMsg.style.display = 'none';
+            errorMsg.style.display = 'none';
+
+            // Disable button
+            btn.disabled = true;
+            btn.textContent = 'Connexion en cours...';
+
+            try {
+                // Get auth token from localStorage
+                const token = localStorage.getItem('auth_token');
+                if (!token) {
+                    throw new Error('Tu dois d\'abord te connecter sur VintedBot. Va sur vintedbot-frontend.fly.dev et connecte-toi.');
+                }
+
+                const response = await fetch(`${API_URL}/accounts/add`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        name: accountName,
+                        cookie: cookieValue,
+                        user_agent: navigator.userAgent
+                    })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Erreur lors de l\'ajout du compte');
+                }
+
+                successMsg.innerHTML = `
+                    ✅ <strong>Compte "${accountName}" connecté avec succès!</strong><br>
+                    <small>Retourne sur <a href="https://vintedbot-frontend.fly.dev/dashboard">VintedBot</a> pour utiliser ton compte.</small>
+                `;
+                successMsg.style.display = 'block';
+
+                // Clear form
+                document.getElementById('connectForm').reset();
+
+            } catch (error) {
+                errorMsg.innerHTML = `❌ <strong>Erreur:</strong> ${error.message}`;
+                errorMsg.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Connecter mon compte';
+            }
+        });
+    </script>
+</body>
+</html>

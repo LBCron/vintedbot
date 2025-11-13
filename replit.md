@@ -1,175 +1,301 @@
-# VintedBot API - AI-Powered Clothing Resale Assistant
+# VintedBot - AI-Powered Vinted Automation Platform
 
-## Overview
-VintedBot is a FastAPI-based backend system designed to automate and streamline the process of creating and managing clothing resale listings, primarily for platforms like Vinted. It leverages AI to analyze clothing photos, generate comprehensive product listings with pricing suggestions, and manage inventory. The system features automated price adjustments, duplicate detection, and multi-format export capabilities, aiming to simplify the resale workflow and optimize listing creation.
+## 🎯 Overview
+VintedBot est la plateforme d'automatisation Vinted la plus sophistiquée du marché, combinant analyse IA (GPT-4 Vision), analytics dashboard unique, et automation premium (auto-bump, auto-follow, auto-messages). Interface React moderne + backend FastAPI robuste.
 
-## User Preferences
-Preferred communication style: Simple, everyday language (French speaker).
-Zero failed drafts requirement - all drafts must pass strict validation before creation.
+## 👤 User Preferences
+- Communication: Français, langage simple et clair
+- Zero failed drafts requirement - validation stricte avant création
+- Mode Draft préféré pour éviter les captchas Vinted
 
-## System Architecture
+## 🏗️ Architecture Globale
 
-### API Framework
-- **FastAPI** provides the core web framework, including automatic OpenAPI documentation.
-- **CORS middleware** is configured to allow requests from `https://*.lovable.dev` and other configurable origins.
-- **Lifespan context manager** handles application startup and shutdown, including scheduler initialization.
-- **JSONResponse wrapper** ensures consistent JSON formatting and CORS compatibility.
+### **Backend (Python FastAPI)**
+- API REST complète avec 17 tables SQLite
+- Scheduler APScheduler (6 jobs automatiques)
+- Playwright pour automation Vinted (bump/follow/messages)
+- GPT-4 Vision pour analyse photos
+- JWT authentication + quotas par plan
+- Chiffrement AES-256 pour sessions Vinted
 
-### Data Storage (SQLite - October 2025)
-- **SQLite Storage Backend** (`backend/core/storage.py`) - 100% local, zero cost, survives VM restarts:
-  - **File**: `backend/data/vbs.db` (persistent on Replit VM)
-  - **Tables**:
-    - `drafts`: All generated drafts with quality gate tracking (title, description, price, brand, size, photos, status, flags)
-    - `listings`: Active Vinted listings with vinted_id and listing_url
-    - `publish_log`: Publication audit trail with idempotency protection (prevents duplicate publishes)
-    - `photo_plans`: Photo analysis plans (migrated from PostgreSQL)
-    - `bulk_jobs`: Legacy ingest job tracking
-  - **TTL Auto-Purge**: Daily vacuum_and_prune job (02:00) removes old drafts (30d) and logs (90d)
-  - **Export/Import**: GET /export/drafts returns ZIP, POST /import/drafts restores from ZIP/JSON
-  - **Zero Dependencies**: No external database required (PostgreSQL only used for legacy features)
-- **File-based JSON database** (`backend/data/items.json`) serves as the persistent storage for all inventory items (legacy).
-- A custom `Database` class handles CRUD operations, using UUIDs for unique item identification.
+### **Frontend (React + TypeScript)**
+- React 18 + Vite + TailwindCSS
+- 10 pages complètes (Dashboard, Upload, Analytics, Automation, Accounts, Settings)
+- Mobile-first responsive design
+- Recharts pour graphiques analytics
+- JWT interceptor Axios
+- 228 packages installés avec Bun
 
-### AI & Image Processing
-- **Dual-mode AI service**: Integrates with OpenAI (GPT-4o Vision) for photo analysis and listing generation when an API key is available, and provides an intelligent mock mode otherwise.
-- **HEIC/HEIF→JPEG Auto-Conversion**: All HEIC/HEIF images are automatically converted to JPEG before OpenAI Vision API calls (via `encode_image_to_base64()`)
-- **Auto-Batching Intelligence (October 2025)**: Handles UNLIMITED photos via automatic batching
-  - ≤25 photos → Single GPT-4 Vision analysis (all photos together)
-  - >25 photos → Auto-splits into batches of 25, analyzes each separately, merges results
-  - Example: 144 photos → 6 batches → ~20-28 articles detected with ALL their photos
-  - Fallback mode: 7 photos minimum per article for complete visualization
-- **Multi-Item Detection via GPT-4 Vision**: `smart_analyze_and_group_photos()` analyzes ALL photos intelligently to detect multiple distinct items (e.g., 5 items detected from 38 photos)
-- **Smart AI Grouping**: Analyzes and groups multiple photos by visual similarity to create single listings, identifying unique characteristics and providing confidence scores.
-- **Strict AI Prompt System (November 2025)**:
-  - **ZERO emojis, ZERO marketing phrases** ("parfait pour", "style tendance", "casual chic", "look", "découvrez", "idéal")
-  - **ZERO superlatifs** ("magnifique", "prestigieuse", "haute qualité", "parfait", "tendance")
-  - **Hashtag Rules**: EXACTLY 3-5 hashtags, ALWAYS at end of description
-  - **Title Format SIMPLIFIÉ**: ≤70 chars, format "Catégorie Couleur Marque Taille – État" (NO parentheses, NO measurements)
-    - Example: "Jogging noir Burberry XS – bon état" (NOT "Jogging Burberry 16Y / 165 cm (≈ XS)")
-  - **Description Structure**: 5-8 factual lines (what it is, condition, material, size info, measurements needed, shipping)
-  - **Size Normalization (SIMPLIFIÉ - Nov 2025)**: 
-    - AI returns ONLY adult size in 'size' field (XS/S/M/L/XL)
-    - Child/teen sizes (16Y, 165cm) automatically converted to adult equivalent WITHOUT details
-    - Backend post-processing: `_normalize_size_field()` extracts final size from complex formats
-    - Example AI output: `"size": "XS"` (NOT "16Y / 165 cm (≈ XS)")
-  - **MANDATORY Fields (November 2025)**: 
-    - **condition**: ALWAYS filled, auto-normalized to French via `_normalize_condition_field()`
-    - **size**: ALWAYS filled, auto-simplified to adult size via `_normalize_size_field()`
-    - AI is instructed to NEVER leave these fields null/empty/undefined
-  - **Auto-Polish Function (Nov 2025)**: `_auto_polish_draft()` guarantees 100% publish-ready drafts
-    - Strips ALL emojis from title + description
-    - Removes ALL marketing phrases ("parfait pour", "idéal", "magnifique", etc.)
-    - Normalizes condition to French standard values
-    - Simplifies size to adult equivalent only (XS not "16Y/165cm (≈XS)")
-    - Adjusts hashtags to 3-5 (adds missing or removes extras)
-    - Truncates title to ≤70 chars if needed
-    - Auto-adjusts prices with brand multipliers
-- **Hashtag Generation**: GPT-4 Vision automatically generates 3-5 relevant hashtags at END of description for better visibility
-- **Robust Fallback**: If GPT-4 fails (JSON error, API timeout), `batch_analyze_photos()` ensures photos are preserved in fallback results
-- **Image hash-based duplicate detection** (pHash) and **text similarity matching** (rapidfuzz) are used to prevent redundant listings.
-- **AI Chat Endpoint**: `/ai/chat` provides a conversational assistant for resale advice.
+## ✨ Fonctionnalités Premium Uniques
 
-### Pricing Strategy
-- Implements a **three-tier pricing model** (minimum, maximum, target) with AI-driven suggestions.
-- **Automated daily price drops** (5% default) are managed by APScheduler, with price floor protection.
-- **Price history tracking** records all adjustments.
+### 1. 📊 **Analytics Dashboard** (UNIQUE - absent des concurrents)
+- Performance heatmap jour/heure
+- Top/bottom performers
+- Analyse par catégorie
+- Métriques temps réel : vues, likes, messages, conversion rate
 
-### Background Jobs
-- **APScheduler** manages recurring tasks, such as daily automated price drops.
-- Scheduler lifecycle is integrated with the FastAPI application lifespan.
+### 2. 🔄 **Auto-Bump Intelligent**
+- Delete + recreate pour remonter en tête (économise vs bumps payants 0.95€)
+- Rotation intelligente + skip recent bumps
+- Scheduler automatique toutes les 5 min
+- Tracking analytics de chaque bump
 
-### Data Models (Pydantic Schemas)
-- Core models include `Item`, `ItemStatus` (draft, listed, sold, archived), `Condition`, `PriceSuggestion`, and `PriceHistory`.
-- Additional models for bulk operations, drafts, and job management.
-- **DraftItem Frontend Compatibility (October 2025)**: Added default values for `condition="Bon état"` and `confidence=0.8` to prevent validation errors when legacy drafts are missing these fields. Ensures seamless Lovable.dev frontend integration.
+### 3. 👥 **Auto-Follow/Unfollow**
+- Follow automatique d'utilisateurs ciblés
+- Auto-unfollow après X jours si pas de follow-back
+- Prévention duplicates
+- Tracking complet dans table `follows`
 
-### Export System
-- Supports **multi-format exports**: CSV, JSON, PDF (using ReportLab), and Vinted-specific CSV with custom field mapping.
-- Provides streaming responses with appropriate content-type headers.
+### 4. 💬 **Auto-Messages**
+- Templates avec variables (`{{username}}`, `{{item_title}}`, `{{price}}`)
+- Typing caractère par caractère (50-150ms delays)
+- Déclencheurs configurables
+- Limites quotidiennes
 
-### API Routes Structure
-- Dedicated routers for:
-    - `/ingest`: Photo upload and AI listing generation.
-    - `/listings`: CRUD operations for inventory items.
-    - `/pricing`: Price simulation and management.
-    - `/export`: Inventory exports.
-    - `/import`: CSV import functionality.
-    - `/stats`: Analytics and health monitoring.
-    - `/bulk`: Multi-photo analysis and draft creation.
-        - `/bulk/photos/analyze`: Frontend-compatible photo analysis (returns job_id, plan_id, estimated_items)
-            - `auto_grouping=false`: Force single-item (all photos = 1 article)
-            - `auto_grouping=true` AND ≤80 photos: Single-item by default
-            - `auto_grouping=true` AND >80 photos: Multi-item (GPT-4 Vision clustering)
-        - `/bulk/jobs/{job_id}`: Job status polling (reads from PostgreSQL photo_plans)
-        - `/bulk/plan`: Create grouping plan with anti-saucisson rules (AI Vision clustering)
-        - `/bulk/generate`: Generate validated drafts from plan (strict validation: title≤70, hashtags 3-5)
-            - GPT-4 automatically generates 3-5 hashtags in description
-        - `/bulk/ingest`: Smart single/multi-item detection and processing
-        - `/bulk/drafts/{draft_id}/photos` (NEW Nov 2025): Upload additional photos to existing draft
-        - `/bulk/drafts/{draft_id}/publish` (FIXED Nov 2025): Robust photo path resolution prevents "Not Found" errors
-    - `/vinted`: Vinted-specific automation (session management, photo upload, listing prepare/publish).
+### 5. 🤖 **Analyse IA Photos (GPT-4 Vision)**
+- Upload multiple jusqu'à 500 photos
+- Génération automatique : titre, description, prix, catégorie, taille, couleur, marque, état
+- Auto-batching pour >25 photos
+- Hashtags automatiques (3-5 en fin de description)
 
-### UI/UX and Design
-- **Style Customization**: AI-generated descriptions can be customized (minimal, streetwear, classique).
-- **Lovable.dev Integration**: CORS configured for seamless frontend integration, with an OpenAPI client generator available.
-- **Mobile-Friendly**: Multi-photo upload endpoints accept various image formats and handle HEIC conversion.
+## 🗄️ Base de Données (17 Tables SQLite)
 
-### Vinted Automation
-- **Playwright-based automation** for Vinted listing creation and publication.
-- Utilizes **encrypted session vault** for secure storage of cookies/user-agents.
-- Implements a **two-phase workflow** (prepare and publish) with captcha detection and dry-run capabilities.
-- Supports **idempotency** to prevent duplicate publications.
+### Tables Principales
+- `users` - Comptes utilisateurs avec JWT
+- `listings` - Annonces Vinted publiées
+- `drafts` - Brouillons en attente
+- `bulk_jobs` - Jobs d'analyse IA
+- `photo_plans` - Plans de grouping photos
 
-### Production Safeguards & Optimizations (October 2025)
-- **Smart Estimation Algorithm**: Frontend shows realistic counts via `max(1, photo_count // 5)` instead of hardcoded "1 article" (18 photos → "3-4 articles estimés")
-- **Smart Single-Item Detection**: `/bulk/ingest` and `/bulk/plan` auto-detect when ≤80 photos represent a single item (configurable via `SINGLE_ITEM_DEFAULT_MAX_PHOTOS=80`)
-- **Anti-Saucisson Grouping** (`/bulk/plan`): AI Vision clustering with label detection (care labels, brand tags, size labels). Clusters ≤2 photos auto-merge to largest cluster. Never creates label-only articles.
-- **Strict Draft Validation** (`/bulk/generate`): 
-  - Validates title≤70 chars, hashtags 3-5, NO emojis, NO marketing phrases, all required fields present
-  - Sets `flags.publish_ready=true` only after ALL validations pass
-  - `DraftItem` schema includes `flags: PublishFlags` and `missing_fields: List[str]` for validation tracking
-  - Skips invalid items with clear error messages (zero failed drafts)
-- **Realistic Pricing System (October 2025)**:
-  - Premium brands (Ralph Lauren, **Karl Lagerfeld**, Diesel, Tommy Hilfiger, Lacoste, Hugo Boss): ×2.0 to ×2.5 multiplier
-  - Luxury brands (Burberry, Dior, Gucci, LV, Prada): ×3.0 to ×5.0 multiplier
-  - Streetwear (Fear of God Essentials, Supreme, Off-White): ×2.5 to ×3.5 multiplier
-  - Example: Short Ralph Lauren bon état = 39€ (not 19€), Hoodie Karl Lagerfeld très bon = 69€
-- **Label Auto-Attachment**: AI Vision automatically detects care labels, brand tags, and size labels, then attaches them to the main clothing item (never creates label-only articles)
-- **Size Normalization**: Child/teen sizes (16Y, 165cm) auto-converted to adult size equivalents (XS/S/M) with confidence tracking
-- **Publication Validation**: `/vinted/listings/prepare` enforces strict validations (title ≤70 chars, 3-5 hashtags, price_suggestion.min|target|max, flags.publish_ready=true) and returns `{ok:false, reason:"NOT_READY"}` on failure
-- **Idempotency Protection**: `/vinted/listings/publish` requires `Idempotency-Key` header to prevent duplicate publications
-- **Production Mode Enabled**: `dry_run=false` by default - all publications are REAL (not simulations)
-- **Secure Logging**: All logs redact sensitive data (cookies, user-agents) - only metadata (lengths, status, latency) is logged
-- **Safe Defaults**: All production features enabled via `SAFE_DEFAULTS=true` environment variable
+### Tables Premium (Nouvelles - Nov 2025)
+- `analytics_events` - Tracking vues/likes/messages
+- `aggregated_metrics` - Métriques pré-calculées
+- `automation_rules` - Configuration automation (bump/follow/messages)
+- `automation_jobs` - Historique exécutions
+- `vinted_accounts` - Multi-comptes Vinted
+- `message_templates` - Templates messages
+- `conversations` - Historique conversations
+- `follows` - Tracking follow/unfollow
 
-## External Dependencies
+## 📊 Scheduler Automatique (6 Jobs)
 
-### Core Framework & Data Validation
-- **FastAPI**: Web framework.
-- **Pydantic**: Data validation and settings management.
-- **Uvicorn**: ASGI server.
+1. **Inbox Sync** - Toutes les 15 min (sync conversations Vinted)
+2. **Publish Queue Poll** - Toutes les 30s (vérifie publications en attente)
+3. **Price Drop** - Quotidien 03:00 (réduction 5% avec floor protection)
+4. **Vacuum & Prune** - Quotidien 02:00 (nettoie anciens drafts/logs)
+5. **Clean Temp Photos** - Toutes les 6h (supprime dossiers >24h)
+6. **Automation Executor** - Toutes les 5 min ⭐ (exécute auto-bump/follow/messages)
 
-### AI & Image Processing
-- **OpenAI API**: GPT-based listing generation and smart grouping.
-- **Pillow (PIL)**: Image processing and manipulation.
-- **imagehash**: Perceptual hashing for duplicate image detection.
-- **rapidfuzz**: Fast fuzzy string matching for text similarity.
-- **pillow-heif**: HEIC/HEIF image format support.
+## 🔐 Authentification & Sécurité
 
-### Background Processing
-- **APScheduler**: For cron-based job scheduling.
+### JWT Authentication
+- Tokens avec expiration configurable
+- Refresh tokens pour sessions longues
+- AuthContext React pour état global
 
-### Data Export
-- **ReportLab**: PDF generation.
+### Quotas par Plan
+| Plan | AI Analyses | Drafts | Publications | Storage |
+|------|-------------|--------|--------------|---------|
+| Free | 20/mois | 50 | 10/mois | 500 MB |
+| Starter | 100/mois | 200 | 50/mois | 2 GB |
+| Pro | 500/mois | 1000 | 200/mois | 10 GB |
+| Scale | Illimité | Illimité | Illimité | 50 GB |
 
-### HTTP & File Handling
-- **requests**: HTTP client.
-- **python-multipart**: File upload handling.
-- **filetype**: File type detection.
-- **boto3**: (Potentially for S3 or cloud storage, though local storage is primary).
-- **tenacity**: Retry mechanism.
-- **slowapi**: Rate limiting.
+### Vinted Session Management
+- Chiffrement AES-256 pour cookies/user-agents
+- Session vault avec rotation automatique
+- Détection captcha intelligente
 
-### Vinted Automation
-- **playwright**: Browser automation.
-- **cryptography**: For encryption of session data.
+## 🛡️ Anti-Détection Vinted
+
+### Mesures Playwright
+- Délais aléatoires entre actions (1000-3000ms)
+- Typing caractère par caractère avec timing humain
+- Multiple selectors pour robustesse
+- User-agents réalistes
+- Gestion cookies avancée
+
+### Workflow Automation
+- Auto-bump : vérifie last bump, rotation, skip recent
+- Auto-follow : vérifie duplicates, respect daily limits
+- Auto-messages : délais variables, templates réalistes
+
+## 📡 API Structure (FastAPI)
+
+### Routes Authentification
+- `POST /auth/register` - Créer compte
+- `POST /auth/login` - Se connecter
+- `GET /auth/me` - Infos user + quotas
+
+### Routes Upload & IA
+- `POST /bulk/photos/analyze` - Upload + analyse GPT-4 Vision
+- `GET /bulk/jobs/{job_id}` - Suivi progression
+- `GET /bulk/drafts` - Liste brouillons
+- `PATCH /bulk/drafts/{id}` - Modifier
+- `POST /bulk/drafts/{id}/publish` - Publier (auto ou draft mode)
+
+### Routes Analytics (PREMIUM)
+- `GET /analytics/dashboard` - Dashboard complet
+- `POST /analytics/events/view` - Track vue
+- `POST /analytics/events/like` - Track like
+- `POST /analytics/events/message` - Track message
+
+### Routes Automation (PREMIUM)
+- `GET /automation/rules` - Liste règles
+- `POST /automation/bump/configure` - Config auto-bump
+- `POST /automation/follow/configure` - Config auto-follow
+- `POST /automation/messages/configure` - Config auto-messages
+- `POST /automation/bump/execute` - Exécuter bump manuel
+- `POST /automation/follow/execute` - Exécuter follow manuel
+
+### Routes Multi-Account
+- `GET /accounts/list` - Liste comptes Vinted
+- `POST /accounts/add` - Ajouter compte
+- `POST /accounts/{id}/switch` - Switch compte actif
+- `DELETE /accounts/{id}` - Supprimer compte
+
+## 🎨 Frontend React (10 Pages)
+
+### Pages Publiques
+1. `/login` - Connexion JWT
+2. `/register` - Inscription
+
+### Pages Protégées
+3. `/` - Dashboard (stats + recent drafts)
+4. `/upload` - Upload photos drag-drop
+5. `/drafts` - Liste brouillons avec filtres
+6. `/drafts/:id` - Édition draft individuel
+7. **`/analytics`** - Dashboard analytics (UNIQUE)
+8. **`/automation`** - Panel automation (auto-bump/follow/messages)
+9. `/accounts` - Multi-account management
+10. `/settings` - Profil + quotas + subscription
+
+### Composants Réutilisables
+- `Layout`, `Navbar`, `Sidebar` - Structure
+- `ProtectedRoute` - Auth guard
+- `LoadingSpinner`, `QuotaCard`, `DraftCard`, `StatsCard`
+- `HeatmapChart` - Graphique Recharts
+
+## 🚀 Workflows Replit
+
+### Backend Workflow
+```bash
+Name: VintedBot Backend
+Command: uvicorn backend.app:app --host 0.0.0.0 --port 8000
+Port: 8000
+Output: console
+```
+
+### Frontend Workflow
+```bash
+Name: VintedBot Frontend
+Command: cd frontend && bun run dev
+Port: 5000
+Output: webview
+```
+
+## 🔧 Configuration Variables
+
+### Obligatoires (Replit Secrets)
+- `OPENAI_API_KEY` - Clé OpenAI pour GPT-4 Vision
+
+### Optionnelles - Stripe
+- `STRIPE_SECRET_KEY` - Paiements
+- `STRIPE_WEBHOOK_SECRET` - Webhooks
+- `STRIPE_STARTER_PRICE_ID` - Plan Starter
+- `STRIPE_PRO_PRICE_ID` - Plan Pro
+- `STRIPE_SCALE_PRICE_ID` - Plan Scale
+
+### Optionnelles - CORS
+- `ALLOWED_ORIGINS` - Origins autorisées (défaut: localhost)
+
+## 🎯 Différenciateurs vs Concurrents
+
+| Fonctionnalité | VintedBot | Dotb | VatBot | Sales Bot |
+|----------------|-----------|------|--------|-----------|
+| Analyse IA Photos | ✅ | ❌ | ❌ | ❌ |
+| **Analytics Dashboard** | ✅ **UNIQUE** | ❌ | ❌ | ❌ |
+| Auto-Bump | ✅ | ✅ | ✅ | ❌ |
+| Auto-Follow | ✅ | ❌ | ✅ | ❌ |
+| Auto-Messages | ✅ | ✅ | ❌ | ✅ |
+| Multi-Comptes | ✅ | ✅ | ❌ | ❌ |
+| Mode Draft (évite captcha) | ✅ | ❌ | ❌ | ❌ |
+| API Complète | ✅ | ❌ | ❌ | ❌ |
+| Frontend React | ✅ | ❌ | ❌ | ❌ |
+
+## 📝 Règles Strictes AI
+
+### Titres (≤70 chars)
+- Format: "Catégorie Couleur Marque Taille – État"
+- Exemple: "Jogging noir Burberry XS – bon état"
+- NO emojis, NO parenthèses, NO mesures
+
+### Descriptions
+- 5-8 lignes factuelles
+- ZERO emojis, ZERO marketing phrases
+- Hashtags 3-5 TOUJOURS à la fin
+- Structure: quoi, état, matière, taille, mesures, shipping
+
+### Tailles Normalisées
+- Enfant/ado auto-converti vers adulte (16Y → XS)
+- Format simple: XS/S/M/L/XL
+- NO détails supplémentaires dans size field
+
+### Conditions Normalisées
+- Mapping français automatique
+- Valeurs standard: "neuf avec étiquette", "très bon état", "bon état", "satisfaisant"
+
+## 🐛 Debugging
+
+### Logs Backend
+```bash
+tail -f backend/data/app.log
+curl http://localhost:8000/health
+```
+
+### Logs Frontend
+```bash
+# Console navigateur F12
+# Ou logs Vite dans console Replit
+```
+
+### Problèmes Courants
+- Session expirée → Reconnect account in Settings
+- Quota exceeded → Check /auth/me
+- Captcha détecté → Use Draft mode
+
+## 📦 Structure Fichiers
+
+```
+vintedbot/
+├── backend/
+│   ├── api/v1/routers/          # Routes API
+│   │   ├── analytics.py         # Analytics dashboard
+│   │   ├── automation.py        # Auto-bump/follow/messages
+│   │   ├── accounts.py          # Multi-account
+│   │   └── ...
+│   ├── core/
+│   │   ├── storage.py           # SQLite database
+│   │   ├── vinted_client.py     # Playwright automation
+│   │   └── session.py           # Encrypted session vault
+│   ├── data/
+│   │   ├── vbs.db              # Main database
+│   │   └── uploads/            # User uploads
+│   ├── app.py                  # FastAPI app
+│   └── jobs.py                 # Scheduler (6 jobs)
+├── frontend/
+│   ├── src/
+│   │   ├── api/client.ts       # API client + JWT
+│   │   ├── pages/              # 10 pages React
+│   │   ├── components/         # 9 components
+│   │   └── contexts/           # AuthContext
+│   └── vite.config.ts
+└── README.md
+```
+
+## 🎓 Next Steps Development
+- ✅ Analytics dashboard operational
+- ✅ Automation executor scheduler running
+- ✅ Frontend React complet
+- 🔄 Mobile app (future)
+- 🔄 Chrome extension (future)

@@ -38,14 +38,24 @@ class DraftItem(BaseModel):
     confidence: float = 0.8  # Default value for legacy drafts
     created_at: datetime
     updated_at: datetime
-    
+
+    # Stock Management (Dotb feature)
+    sku: Optional[str] = None  # Stock Keeping Unit
+    location: Optional[str] = None  # Physical location/storage
+    stock_quantity: int = 1  # Quantity in stock
+
     # Analysis metadata
     analysis_result: Optional[Dict[str, Any]] = None
     error: Optional[str] = None
-    
+
     # Publication readiness
     flags: Optional[PublishFlags] = None
     missing_fields: List[str] = Field(default_factory=list)
+
+    # Vinted draft tracking
+    vinted_draft_url: Optional[str] = None
+    vinted_draft_id: Optional[str] = None
+    publish_mode: str = "auto"  # auto or draft
 
 
 class BulkUploadRequest(BaseModel):
@@ -92,6 +102,10 @@ class DraftUpdateRequest(BaseModel):
     brand: Optional[str] = None
     size: Optional[str] = None
     status: Optional[str] = None
+    # Stock Management (Dotb feature)
+    sku: Optional[str] = None
+    location: Optional[str] = None
+    stock_quantity: Optional[int] = None
 
 
 class DraftListResponse(BaseModel):

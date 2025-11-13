@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "VintedBot Cookie Extractor",
+  "version": "1.0",
+  "description": "Capture automatiquement ton cookie Vinted pour VintedBot",
+  "permissions": [
+    "cookies",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://www.vinted.fr/*",
+    "https://vinted.fr/*",
+    "https://vintedbot-backend.fly.dev/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
+}

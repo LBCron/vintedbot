@@ -71,6 +71,7 @@ class ListingPrepareRequest(BaseModel):
     price_suggestion: Optional[PriceSuggestion] = None
     flags: Optional[PublishFlags] = None
     
+    publish_mode: str = Field(default="auto", description="'auto' = publish directly, 'draft' = save as draft on Vinted")
     dry_run: bool = Field(default=False, description="If true, don't actually prepare")
 
 
@@ -82,6 +83,9 @@ class ListingPrepareResponse(BaseModel):
     preview_url: Optional[str] = None
     screenshot_b64: Optional[str] = None
     draft_context: Optional[Dict[str, Any]] = None
+    vinted_draft_url: Optional[str] = None
+    vinted_draft_id: Optional[str] = None
+    publish_mode: Optional[str] = None
     reason: Optional[str] = None
 
 

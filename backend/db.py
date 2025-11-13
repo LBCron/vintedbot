@@ -15,7 +15,7 @@ engine = create_engine(DATABASE_URL, echo=False)
 def create_tables():
     """Initialize database tables"""
     SQLModel.metadata.create_all(engine)
-    print("✅ Database tables created successfully")
+    print("Database tables created successfully")
 
 
 def get_db_session():

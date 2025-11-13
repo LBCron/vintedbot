@@ -20,7 +20,7 @@ openai_client = OpenAI(
     timeout=60.0,  # 60 second timeout for API calls
     max_retries=2  # Retry failed requests twice
 )
-print("✅ Using personal OpenAI API key with timeout=60s, retries=2")
+print("Using personal OpenAI API key with timeout=60s, retries=2")
 
 # Register HEIF opener with PIL
 pillow_heif.register_heif_opener()
@@ -73,10 +73,11 @@ def encode_image_to_base64(image_path: str) -> str:
 def analyze_clothing_photos(photo_paths: List[str]) -> Dict[str, Any]:
     """
     Analyze clothing photos using GPT-4 Vision
-    
+    WITH REDIS CACHING + IMAGE OPTIMIZATION
+
     Args:
         photo_paths: List of local file paths to analyze
-        
+
     Returns:
         Dictionary with:
         - title: Product title
@@ -89,15 +90,35 @@ def analyze_clothing_photos(photo_paths: List[str]) -> Dict[str, Any]:
         - size: Detected size (if visible)
         - confidence: Confidence score (0-1)
     """
-    
+
+    # Import caching and optimization services
     try:
-        # Prepare images for API call
+        from backend.services.redis_cache import get_cached_analysis, cache_analysis_result
+        from backend.services.image_optimizer import batch_optimize_images
+    except ImportError as e:
+        print(f"⚠️  Service import failed: {e}, running without optimization")
+        get_cached_analysis = lambda x: None
+        cache_analysis_result = lambda x, y: False
+        batch_optimize_images = lambda x: x
+
+    try:
+        # STEP 1: Check Redis cache first (huge cost savings!)
+        cached_result = get_cached_analysis(photo_paths[:6])
+        if cached_result:
+            print(f"[CACHE HIT] Returning cached analysis ✅")
+            return cached_result
+
+        # STEP 2: Optimize images before API call (75% cost reduction!)
+        print(f"[OPTIMIZE] Optimizing {len(photo_paths[:6])} images...")
+        optimized_paths = batch_optimize_images(photo_paths[:6])
+
+        # STEP 3: Prepare images for API call
         image_contents = []
-        for path in photo_paths[:6]:  # Limit to 6 photos max
+        for path in optimized_paths:
             if not Path(path).exists():
                 print(f"⚠️ Photo not found: {path}")
                 continue
-                
+
             # Encode image to base64
             base64_image = encode_image_to_base64(path)
             image_contents.append({
@@ -111,24 +132,29 @@ def analyze_clothing_photos(photo_paths: List[str]) -> Dict[str, Any]:
             raise ValueError("No valid images found")
         
         # Create prompt for single-item clothing analysis (USER MODEL - Nov 2025)
-        prompt = """Tu es un assistant e-commerce spécialisé Vinted. Style d'écriture : FR, simple, friendly, sans pavé, 5–7 lignes max.
+        # ENHANCED: Natural casual tone like a real person selling on Vinted
+        prompt = """Tu es quelqu'un qui vend ses vêtements sur Vinted. Écris comme une vraie personne, pas comme une boutique professionnelle. Ton naturel et décontracté, comme si tu parlais à un pote.
 
 RÈGLES STRICTES :
-- Pas d'emojis. Pas d'hyperbole. Pas de promesse de contrefaçon.
-- TITRE concis (60–90 caractères max).
-- Description en PUCES COURTES (•), 5–7 lignes, infos clés (état, matière, coupe, taille, mesures, envoi).
-- Ajouter 4–7 hashtags pertinents (tout en minuscules) À LA FIN de la description.
-- Si une donnée manque (ex: taille), écrire "à préciser" ou "mesures sur demande".
+- Pas d'emojis. Ton naturel et authentique.
+- TITRE simple et direct (60–70 caractères max). Ex: "Hoodie Karl Lagerfeld noir et blanc L"
+- Description COURTE et naturelle, 4–6 lignes max. Parle comme une vraie personne : "Je vends mon hoodie...", "Porté quelques fois", "Super état", "Nickel", "Impec".
+- Pas de détails techniques compliqués (composition exacte, etc.). Juste l'essentiel.
+- Évite les phrases commerciales type "qualité et style assurés", "pièce incontournable".
+- Ajouter 3–5 hashtags SIMPLES et naturels (minuscules) À LA FIN.
+- Mentionne les défauts simplement : "quelques traces d'usage", "léger boulochage", "bon état général".
+- Sois honnête et direct : "porté plusieurs fois", "comme neuf", "quelques marques".
+- Si une donnée manque, écrire "taille à vérifier" ou "mesure sur demande".
 - Sortie STRICTEMENT en JSON respectant le schéma ci-dessous. N'ajoute rien d'autre.
 
-🚨 VOCABULAIRE PAR CATÉGORIE :
+[ALERT] VOCABULAIRE PAR CATÉGORIE :
 - HAUTS (hoodie, sweat, pull, t-shirt, chemise) : poitrine, épaules, manches, dos, capuche
 - BAS (jogging, pantalon, jean, short) : taille, cuisses, jambes, entrejambe, chevilles
 
 SCHÉMA JSON DE SORTIE :
 {
-  "title": "string",                    // 60-90 chars
-  "description": "string",              // 5-7 puces •, séparées par \\n, hashtags à la fin
+  "title": "string",                    // 60-90 chars, hook unique si rare/vintage
+  "description": "string",              // 6-8 puces •, inclure défauts/style/saison, hashtags à la fin
   "brand": "string|null",               // ou "à préciser"
   "category": "string",                 // ex: "hoodie", "jogging", "jean"
   "size": "string|null",                // ex: "L", "M", "à préciser"
@@ -136,41 +162,64 @@ SCHÉMA JSON DE SORTIE :
   "color": "string",                    // ex: "noir", "bicolore"
   "materials": "string|null",           // ex: "59% coton, 32% rayonne, 9% spandex" ou "à préciser"
   "fit": "string|null",                 // ex: "coupe droite" ou null
-  "price": number,                      // en euros
+  "style": "string|null",               // ex: "streetwear", "vintage Y2K", "casual", "sportswear" (NOUVEAU)
+  "seasonality": "string|null",         // ex: "automne-hiver", "été", "toutes saisons" (NOUVEAU)
+  "defects": "string|null",             // Défauts visuels précis ou "aucun défaut visible" (NOUVEAU)
+  "rarity": "string|null",              // ex: "collab rare", "édition limitée", "vintage", null (NOUVEAU)
+  "price": number,                      // en euros, justifié par marque/rareté/condition
+  "price_justification": "string|null", // Courte explication du prix (ex: "marque premium + bon état") (NOUVEAU)
   "confidence": number                  // 0.0 à 1.0
 }
 
-EXEMPLES :
+EXEMPLES TON NATUREL :
 
-HAUT (Hoodie bicolore Karl Lagerfeld) :
+HAUT (Hoodie Karl Lagerfeld) :
 {
-  "title": "Hoodie bicolore Karl Lagerfeld L – très bon état",
-  "description": "• Hoodie Karl Lagerfeld noir et gris, broderie poitrine\\n• Très bon état général\\n• Matières : 59% coton, 32% rayonne, 9% spandex\\n• Coupe droite, capuche réglable, poignets élastiqués\\n• Taille L\\n• Envoi rapide soigné\\n#karllagerfeld #hoodie #bicolore #streetwear #L",
+  "title": "Hoodie Karl Lagerfeld noir et blanc L",
+  "description": "Je vends mon hoodie Karl Lagerfeld noir et blanc. Porté quelques fois, super état, juste un léger boulochage aux coudes mais rien de méchant. Style streetwear cool. Taille L, nickel pour l'automne-hiver. Dispo de suite ! #karllagerfeld #hoodie #streetwear #noir",
   "brand": "Karl Lagerfeld",
   "category": "hoodie",
   "size": "L",
   "condition": "Très bon état",
   "color": "bicolore",
-  "materials": "59% coton, 32% rayonne, 9% spandex",
+  "materials": "coton et synthétique",
   "fit": "coupe droite",
+  "style": "streetwear",
+  "seasonality": "automne-hiver",
+  "defects": "léger boulochage aux coudes",
+  "rarity": null,
   "price": 69,
+  "price_justification": "marque premium + très bon état",
   "confidence": 0.95
 }
 
 BAS (Jogging Burberry) :
 {
-  "title": "Jogging noir Burberry L – très bon état",
-  "description": "• Jogging Burberry noir, logo discret\\n• Très bon état général\\n• Matières : à préciser\\n• Coupe droite, cordon de serrage, bas élastiqué\\n• Taille L\\n• Envoi rapide soigné\\n#burberry #jogging #noir #streetwear #L",
+  "title": "Jogging Burberry noir L vintage",
+  "description": "Jogging Burberry noir des années 2000, logo brodé sur la cuisse. Bon état général, le cordon a un peu décoloré mais rien de grave. Style Y2K, vraiment sympa. Taille L. Envoi rapide. #burberry #jogging #vintage #y2k #noir",
   "brand": "Burberry",
   "category": "jogging",
   "size": "L",
-  "condition": "Très bon état",
+  "condition": "Bon état",
   "color": "noir",
   "materials": "à préciser",
   "fit": "coupe droite",
-  "price": 89,
+  "style": "Y2K streetwear",
+  "seasonality": "toutes saisons",
+  "defects": "légère décoloration cordon",
+  "rarity": "vintage années 2000",
+  "price": 119,
+  "price_justification": "marque luxe + vintage rare",
   "confidence": 0.90
 }
+
+ANALYSE VISUELLE CRITIQUE :
+1. **Défauts** : Scrute CHAQUE détail – coutures effilochées? taches? bouloches? décoloration? élasticité perdue? trous? Si AUCUN défaut visible, note "aucun défaut visible".
+2. **Style** : Identifie l'esthétique (streetwear, Y2K, vintage, casual, sportswear, minimaliste, grunge, preppy).
+3. **Saison** : Détermine usage optimal (automne-hiver, printemps-été, toutes saisons, mi-saison).
+4. **Rareté** : Détecte collaborations (Nike x Off-White, Adidas x Yeezy), éditions limitées, vintage authentique, pièces uniques.
+5. **Hashtags** : Utilise mots-clés TENDANCE Vinted (#oversized, #vintage, #y2k, #rare, #streetwear, #grunge, #preppy, #90s, #2000s, #collector).
+6. **Prix** : Justifie TOUJOURS le prix (marque + rareté + condition + demande marché).
 
 Analyse les photos et génère le JSON avec ce format EXACT :"""
 
@@ -185,13 +234,13 @@ Analyse les photos et génère le JSON avec ce format EXACT :"""
             }
         ]
         
-        print(f"🔍 Analyzing {len(image_contents)} photos with GPT-4 Vision...")
+        print(f"[SEARCH] Analyzing {len(image_contents)} photos with GPT-4 Vision...")
         
         # Call OpenAI API
         response = openai_client.chat.completions.create(
             model="gpt-4o",  # Use GPT-4 with vision capabilities
             messages=messages,  # type: ignore
-            max_completion_tokens=1000,
+            max_tokens=1000,
             temperature=0.7,
             response_format={"type": "json_object"}
         )
@@ -199,21 +248,50 @@ Analyse les photos et génère le JSON avec ce format EXACT :"""
         # Parse JSON response
         content = response.choices[0].message.content or "{}"
         result = json.loads(content)
-        
-        print(f"✅ Analysis complete: {result.get('title', 'Unknown')}")
+
+        print(f"[SUCCESS] Analysis complete: {result.get('title', 'Unknown')}")
         print(f"   Category: {result.get('category')}, Price: {result.get('price')}€")
-        
+
+        # STEP 4: Cache the result for future use (30 day TTL)
+        cache_analysis_result(photo_paths[:6], result)
+
+        # STEP 5: Track quality metrics
+        try:
+            from backend.services.redis_cache import track_ai_quality_metrics
+            is_valid, errors = validate_ai_result(result)
+            track_ai_quality_metrics(result, is_valid)
+        except Exception as e:
+            print(f"⚠️  Metrics tracking failed: {e}")
+
         return result
-        
+
     except json.JSONDecodeError as e:
         print(f"❌ JSON parse error: {e}")
         # Return fallback result
-        return generate_fallback_analysis(photo_paths)
-        
+        fallback = generate_fallback_analysis(photo_paths)
+
+        # Track fallback usage
+        try:
+            from backend.services.redis_cache import track_ai_quality_metrics
+            track_ai_quality_metrics(fallback, False)
+        except:
+            pass
+
+        return fallback
+
     except Exception as e:
         print(f"❌ AI analysis error: {e}")
         # Return fallback result
-        return generate_fallback_analysis(photo_paths)
+        fallback = generate_fallback_analysis(photo_paths)
+
+        # Track fallback usage
+        try:
+            from backend.services.redis_cache import track_ai_quality_metrics
+            track_ai_quality_metrics(fallback, False)
+        except:
+            pass
+
+        return fallback
 
 
 def validate_ai_result(result: Dict[str, Any]) -> tuple[bool, List[str]]:
@@ -302,7 +380,7 @@ def batch_analyze_photos(photo_groups: List[List[str]]) -> List[Dict[str, Any]]:
     results = []
     
     for i, group in enumerate(photo_groups):
-        print(f"\n📸 Analyzing group {i+1}/{len(photo_groups)} ({len(group)} photos)...")
+        print(f"\n[PHOTO] Analyzing group {i+1}/{len(photo_groups)} ({len(group)} photos)...")
         try:
             result = analyze_clothing_photos(group)
             result['group_index'] = i
@@ -401,7 +479,7 @@ def smart_group_photos(photo_paths: List[str], max_per_group: int = 7) -> List[L
         
         groups.append(current_group)
     
-    print(f"📦 Smart grouped {len(photo_paths)} photos into {len(groups)} items (similarity-based)")
+    print(f"[PACKAGE] Smart grouped {len(photo_paths)} photos into {len(groups)} items (similarity-based)")
     return groups
 
 
@@ -430,7 +508,7 @@ def smart_analyze_and_group_photos(
         return _analyze_single_batch(photo_paths, style)
     
     # If >25 photos, split into batches and analyze each
-    print(f"📦 Auto-batching: {total_photos} photos → splitting into batches of {BATCH_SIZE}")
+    print(f"[PACKAGE] Auto-batching: {total_photos} photos → splitting into batches of {BATCH_SIZE}")
     
     all_items = []
     offset = 0
@@ -439,7 +517,7 @@ def smart_analyze_and_group_photos(
     
     while offset < total_photos:
         batch_photos = photo_paths[offset:offset + BATCH_SIZE]
-        print(f"\n🔄 Batch {batch_num}/{total_batches}: Analyzing photos {offset+1}-{offset+len(batch_photos)}...")
+        print(f"\n[BATCH] Batch {batch_num}/{total_batches}: Analyzing photos {offset+1}-{offset+len(batch_photos)}...")
         
         try:
             batch_items = _analyze_single_batch(batch_photos, style, offset)
@@ -461,7 +539,7 @@ def smart_analyze_and_group_photos(
 
 def _normalize_size_field(size: str) -> str:
     """
-    🔧 NORMALISATION TAILLE - Extrait UNIQUEMENT la taille adulte finale
+    [FIX] NORMALISATION TAILLE - Extrait UNIQUEMENT la taille adulte finale
     
     Exemples:
     - "16Y / 165 cm (≈ XS)" → "XS"
@@ -506,7 +584,7 @@ def _normalize_size_field(size: str) -> str:
 
 def _normalize_condition_field(condition: str) -> str:
     """
-    🔧 NORMALISATION CONDITION - Convertit en français standardisé
+    [FIX] NORMALISATION CONDITION - Convertit en français standardisé
     
     Returns:
         Condition en français (Vinted-compatible)
@@ -534,7 +612,7 @@ def _normalize_condition_field(condition: str) -> str:
 
 def _auto_polish_draft(draft: Dict[str, Any]) -> Dict[str, Any]:
     """
-    🔧 POLISSAGE AUTOMATIQUE 100% - Garantit que le brouillon est PARFAIT
+    [FIX] POLISSAGE AUTOMATIQUE 100% - Garantit que le brouillon est PARFAIT
     
     Corrections automatiques :
     - Supprime TOUS les emojis
@@ -571,7 +649,7 @@ def _auto_polish_draft(draft: Dict[str, Any]) -> Dict[str, Any]:
     description = emoji_pattern.sub("", description).strip()
     
     if title != original_title or description != original_description:
-        print(f"🧹 Emojis supprimés automatiquement")
+        print(f"[CLEAN] Emojis supprimés automatiquement")
     
     # 2. NETTOYER PHRASES MARKETING
     forbidden_phrases = [
@@ -586,7 +664,7 @@ def _auto_polish_draft(draft: Dict[str, Any]) -> Dict[str, Any]:
             # Supprimer la phrase (simple remplacement)
             description = re.sub(rf'\b{re.escape(phrase)}\b', '', description, flags=re.IGNORECASE)
             description = re.sub(r'\s+', ' ', description).strip()  # Nettoyer espaces
-            print(f"🧹 Phrase marketing supprimée : '{phrase}'")
+            print(f"[CLEAN] Phrase marketing supprimée : '{phrase}'")
     
     # 2.5 VALIDER VOCABULAIRE PAR CATÉGORIE (CRITIQUE - MATCHING FLEXIBLE)
     category = draft.get("category", "").lower()
@@ -625,7 +703,7 @@ def _auto_polish_draft(draft: Dict[str, Any]) -> Dict[str, Any]:
             if re.search(pattern, description_lower):
                 match_text = re.search(pattern, description_lower)
                 if match_text:
-                    print(f"🚨 VOCABULAIRE INCORRECT '{match_text.group()}' dans {category} (BAS) → '{replacement or 'supprimé'}'")
+                    print(f"[ALERT] VOCABULAIRE INCORRECT '{match_text.group()}' dans {category} (BAS) → '{replacement or 'supprimé'}'")
                 if replacement:
                     description = re.sub(pattern, replacement, description, flags=re.IGNORECASE)
                 else:
@@ -662,7 +740,7 @@ def _auto_polish_draft(draft: Dict[str, Any]) -> Dict[str, Any]:
             if re.search(pattern, description_lower):
                 match_text = re.search(pattern, description_lower)
                 if match_text:
-                    print(f"🚨 VOCABULAIRE INCORRECT '{match_text.group()}' dans {category} (HAUT) → '{replacement or 'supprimé'}'")
+                    print(f"[ALERT] VOCABULAIRE INCORRECT '{match_text.group()}' dans {category} (HAUT) → '{replacement or 'supprimé'}'")
                 if replacement:
                     description = re.sub(pattern, replacement, description, flags=re.IGNORECASE)
                 else:
@@ -717,14 +795,14 @@ def _auto_polish_draft(draft: Dict[str, Any]) -> Dict[str, Any]:
     original_condition = draft.get("condition", "").strip()
     condition = _normalize_condition_field(original_condition)
     if condition != original_condition:
-        print(f"🔧 Condition normalisée : '{original_condition}' → '{condition}'")
+        print(f"[FIX] Condition normalisée : '{original_condition}' → '{condition}'")
     draft["condition"] = condition
     
     # size (JAMAIS vide + extraction taille adulte simple)
     original_size = draft.get("size", "").strip()
     size = _normalize_size_field(original_size)
     if size != original_size:
-        print(f"🔧 Taille simplifiée : '{original_size}' → '{size}'")
+        print(f"[FIX] Taille simplifiée : '{original_size}' → '{size}'")
     draft["size"] = size
     
     # brand (fallback si vide)
@@ -789,7 +867,7 @@ def _auto_polish_draft(draft: Dict[str, Any]) -> Dict[str, Any]:
     original_price = draft.get("price", 20)
     adjusted_price = _adjust_price_if_needed(draft)
     if adjusted_price != original_price:
-        print(f"💰 Prix ajusté : {original_price}€ → {adjusted_price}€")
+        print(f"[PRICE] Prix ajusté : {original_price}€ → {adjusted_price}€")
         draft["price"] = adjusted_price
     
     # 7. METTRE À JOUR LE DRAFT
@@ -934,8 +1012,8 @@ def _analyze_single_batch(
         if not image_contents:
             raise ValueError("No valid images found")
         
-        # Create intelligent grouping prompt with REINFORCED quality rules (condition & size MANDATORY)
-        prompt = f"""Tu es l'assistant "Photo → Listing" de VintedBot Studio. Tu reçois {len(image_contents)} photos et tu dois les GROUPER intelligemment par pièce/vêtement, puis générer un listing pour chaque groupe.
+        # Create intelligent grouping prompt with natural casual tone
+        prompt = f"""Tu vends tes vêtements sur Vinted. Tu reçois {len(image_contents)} photos et tu dois les GROUPER intelligemment par pièce/vêtement, puis écrire des descriptions naturelles pour chaque groupe. Écris comme une vraie personne, pas comme une boutique pro.
 
 RÈGLES DE GROUPEMENT CRITIQUES (anti-saucisson ET anti-mélange):
 1. **UNE PIÈCE = UN ARTICLE** : Regrouper TOUTES les photos d'une même pièce/vêtement dans un seul article pour maximiser la visualisation acheteur.
@@ -948,7 +1026,7 @@ RÈGLES DE GROUPEMENT CRITIQUES (anti-saucisson ET anti-mélange):
    • Logos/motifs DIFFÉRENTS (ex: logo Lacoste ≠ logo Polo → 2 groupes)
    • Tailles adultes DIFFÉRENTES (ex: XS ≠ M → 2 groupes)
    
-   🔴 INTERDIT ABSOLU : Mélanger des vêtements différents dans le même groupe (ex: t-shirt noir + t-shirt blanc = ERREUR GRAVE)
+   [RULE] INTERDIT ABSOLU : Mélanger des vêtements différents dans le même groupe (ex: t-shirt noir + t-shirt blanc = ERREUR GRAVE)
 
 3. **JAMAIS de listing multi-pièces** : Interdiction absolue de créer "lot de 2 t-shirts" ou combiner plusieurs vêtements dans un article.
 
@@ -970,14 +1048,14 @@ CHAMPS OBLIGATOIRES (NE JAMAIS LAISSER VIDE):
   • "Bon état" : usure visible mais bon état général
   • "Satisfaisant" : défauts visibles (tâches, trous, décoloration)
   
-  🔴 RÈGLE ABSOLUE : Si tu ne vois pas assez de détails pour déterminer l'état précis, tu DOIS choisir "Bon état" par défaut.
-  🔴 INTERDIT ABSOLU : Retourner null, undefined, "", ou omettre ce champ. Le JSON sera REJETÉ.
+  [RULE] RÈGLE ABSOLUE : Si tu ne vois pas assez de détails pour déterminer l'état précis, tu DOIS choisir "Bon état" par défaut.
+  [RULE] INTERDIT ABSOLU : Retourner null, undefined, "", ou omettre ce champ. Le JSON sera REJETÉ.
 
 **size** (OBLIGATOIRE - JAMAIS NULL/VIDE):
   ⚠️ CE CHAMP NE DOIT JAMAIS ÊTRE null, undefined, ou vide ⚠️
   ⚠️ RETOURNER UNIQUEMENT LA TAILLE ADULTE NORMALISÉE (XS/S/M/L/XL/XXL) ⚠️
   
-  🔴 RÈGLES CRITIQUES - LIS EXACTEMENT L'ÉTIQUETTE (PRIORITÉ ABSOLUE):
+  [RULE] RÈGLES CRITIQUES - LIS EXACTEMENT L'ÉTIQUETTE (PRIORITÉ ABSOLUE):
   
   1️⃣ Si l'étiquette montre UNE TAILLE ADULTE (XS, S, M, L, XL, XXL) :
      → Retourne CETTE taille directement : "L", "M", "XS", etc.
@@ -1010,8 +1088,8 @@ CHAMPS OBLIGATOIRES (NE JAMAIS LAISSER VIDE):
   ❌ MAUVAIS : "XS (≈ 16Y)" (PAS de parenthèses ni équivalences)
   ❌ MAUVAIS : "XS" si l'étiquette montre "L" (ERREUR GRAVE !)
   
-  🔴 RÈGLE ABSOLUE : Si aucune taille n'est visible → retourner "Taille non visible" (texte exact)
-  🔴 INTERDIT ABSOLU : Retourner null, undefined, "", ou omettre ce champ. Le JSON sera REJETÉ.
+  [RULE] RÈGLE ABSOLUE : Si aucune taille n'est visible → retourner "Taille non visible" (texte exact)
+  [RULE] INTERDIT ABSOLU : Retourner null, undefined, "", ou omettre ce champ. Le JSON sera REJETÉ.
 
 LISTING POUR CHAQUE GROUPE:
 
@@ -1029,21 +1107,28 @@ title (≤70 chars, format SIMPLE « {{Catégorie}} {{Couleur}} {{Marque?}} {{Ta
   
   INTERDITS: emojis, superlatifs ("magnifique", "parfait"), marketing ("découvrez", "idéal pour"), parenthèses avec équivalences
 
-description (4–7 lignes, FR, style humain minimal, ZÉRO emoji, ZÉRO marketing)
-  Structure: 
-  1) ce que c'est (catégorie/coupe/logo)
-  2) état factuel + défauts précis
-  3) matière/fit/saison/extras
-  4) taille d'origine + équivalence adulte si calculée
-  5) logistique + remise lot
-  
-  Exemple: "T-shirt Burberry noir, logo imprimé devant, coupe classique. Très bon état : matière propre, couleur uniforme, pas de trou ou tâche visibles. Coton confortable, col rond. Taille d'origine : 16Y / 165 cm — équiv. XS adulte selon le guide générique. Envoi rapide ; remise possible si achat de plusieurs pièces."
-  
-  INTERDITS ABSOLUS: emojis, phrases marketing ("parfait pour", "style tendance", "casual chic", "look", "découvrez", "idéal"), superlatifs
+description (4–6 lignes max, ton naturel et décontracté, ZÉRO emoji, ZÉRO phrases commerciales)
+  Parle comme une vraie personne qui vend ses vêtements :
+  - "Je vends mon...", "Porté quelques fois", "Super état", "Nickel", "Impec"
+  - Mentionne l'essentiel : ce que c'est, état honnête, taille, style
+  - Défauts simplement : "quelques traces", "léger boulochage", "rien de grave"
+  - Pas de détails techniques compliqués (composition exacte, etc.)
+  - Évite les phrases commerciales : "qualité assurée", "pièce incontournable", "style tendance"
 
-hashtags (3–5 pertinents, OBLIGATOIRE, À LA FIN de la description)
-  Format: #marque #catégorie #couleur #taille #style
-  Exemple: #burberry #tshirt #noir #xs #streetwear
+  Exemple TON NATUREL: "Je vends mon hoodie Karl Lagerfeld noir et blanc. Porté quelques fois, super état, juste un léger boulochage aux coudes mais rien de méchant. Style streetwear cool. Taille L, nickel pour l'automne-hiver. Dispo de suite !"
+
+  MENTIONNE HONNÊTEMENT:
+  • Défauts de façon simple et directe (pas de langue de bois)
+  • État général sans exagérer
+  • Taille et style basique
+  • Si vintage/rare, dis-le simplement
+
+  INTERDITS: emojis, marketing ("parfait pour", "style tendance", "pièce magnifique", "qualité assurée"), superlatifs excessifs, détails techniques inutiles
+
+hashtags (3–5 SIMPLES et naturels, À LA FIN de la description)
+  Hashtags basiques et directs, pas trop compliqués
+  Exemple: #karllagerfeld #hoodie #streetwear #noir
+  Ou: #burberry #jogging #vintage #y2k
 
 price (suggéré en euros, bases réalistes Vinted 2025)
   BASES CATÉGORIES:
@@ -1093,20 +1178,25 @@ QUALITY GATE (CRITÈRES SANS-ÉCHEC):
 
 INTERDITS ABSOLUS: emojis, marketing creux ("découvrez", "parfait pour", "style tendance", slogans), liens/contacts, promesses hors plateforme, "authentique/original" sans preuve.
 
-STYLE HUMAIN MINIMAL : aucune phrase creuse ni slogan. Si emoji/superlatif détecté, régénère la même sortie en les supprimant. La description doit tenir en 4–7 lignes factuelles : 1) quoi + couleur/coupe, 2) état concret, 3) matière/détails (col, bords-côtes, poches), 4) taille + repère morpho approximatif, 5) logistique/remise lot.
+TON NATUREL OBLIGATOIRE : Écris comme une vraie personne qui vend ses vêtements, pas comme une boutique. Utilise "Je vends mon...", "Porté quelques fois", "Super état", "Nickel". Description 4-6 lignes max : 1) ce que c'est, 2) état honnête avec défauts si besoin, 3) taille et style, 4) envoi. Pas de marketing, pas de phrases creuses.
 
-SORTIE JSON OBLIGATOIRE:
+SORTIE JSON OBLIGATOIRE (TON NATUREL):
 {{
   "groups": [
     {{
-      "title": "T-shirt noir Burberry XS – très bon état",
-      "description": "T-shirt Burberry noir, logo imprimé devant, coupe classique. Très bon état : matière propre, couleur uniforme, pas de trou ou tâche visibles. Coton confortable, col rond. Taille d'origine : 16Y / 165 cm — équiv. XS adulte. Envoi rapide. #burberry #tshirt #noir #xs #streetwear",
-      "price": 50.0,
+      "title": "T-shirt Burberry noir XS vintage",
+      "description": "Je vends mon t-shirt Burberry noir des années 2000. Porté plusieurs fois, bon état général. Le col a très légèrement décoloré mais rien de grave. Style Y2K sympa. Taille XS. Envoi rapide. #burberry #tshirt #vintage #y2k #noir",
+      "price": 59,
       "brand": "Burberry",
-      "size": "16Y / 165 cm (≈ XS)",
-      "condition": "Très bon état",
+      "size": "XS",
+      "condition": "Bon état",
       "color": "Noir",
       "category": "t-shirt",
+      "style": "vintage Y2K",
+      "seasonality": "toutes saisons",
+      "defects": "très légère décoloration col",
+      "rarity": "vintage années 2000",
+      "price_justification": "marque luxe + vintage",
       "confidence": 0.90,
       "photo_indices": [0, 1]
     }}
@@ -1126,13 +1216,13 @@ Analyse les photos et génère le JSON:"""
             }
         ]
         
-        print(f"🧠 Analyzing {len(image_contents)} photos with GPT-4 Vision...")
+        print(f"[AI] Analyzing {len(image_contents)} photos with GPT-4 Vision...")
         
         # Call OpenAI API with intelligent grouping
         response = openai_client.chat.completions.create(
             model="gpt-4o",
             messages=messages,  # type: ignore
-            max_completion_tokens=3000,  # More tokens for multiple items
+            max_tokens=3000,  # More tokens for multiple items
             temperature=0.7,
             response_format={"type": "json_object"}
         )
@@ -1149,7 +1239,7 @@ Analyse les photos et génère le JSON:"""
             indices = group.pop("photo_indices", [])
             group["photos"] = [valid_paths[i] for i in indices if i < len(valid_paths)]
             
-            # 🔧 POLISSAGE AUTOMATIQUE 100% (Garantit brouillons parfaits)
+            # [FIX] POLISSAGE AUTOMATIQUE 100% (Garantit brouillons parfaits)
             group = _auto_polish_draft(group)
             
             # ✅ VALIDATION FINALE (après polissage)
@@ -1192,8 +1282,8 @@ Analyse les photos et génère le JSON:"""
             size = group.get('size', 'N/A')
             
             print(f"[{i}] {title}")
-            print(f"    📸 Photos: {photo_count} | 💰 Prix: {price}€ | 🏷️  Marque: {brand}")
-            print(f"    ✨ État: {condition} | 📏 Taille: {size}")
+            print(f"    [PHOTO] Photos: {photo_count} | [PRICE] Prix: {price}€ | [LABEL]  Marque: {brand}")
+            print(f"    [EMOJI] État: {condition} | [SIZE] Taille: {size}")
         
         return validated_groups
         

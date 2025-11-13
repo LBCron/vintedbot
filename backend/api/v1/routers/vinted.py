@@ -249,7 +249,7 @@ async def upload_photos(
         
         # Generate job_id for this upload batch
         job_id = secrets.token_urlsafe(8)
-        temp_dir = f"backend/data/temp_photos/{job_id}"
+        temp_dir = f"{settings.DATA_DIR}/temp_photos/{job_id}"
         import os
         os.makedirs(temp_dir, exist_ok=True)
         
@@ -509,16 +509,19 @@ async def prepare_listing(
                     # ✅ SMART PATH RESOLUTION - handles all formats
                     # Case 1: Absolute path (starts with /)
                     if photo_ref.startswith('/'):
-                        photo_path = f"backend/data{photo_ref}"
-                    # Case 2: Already has backend/data prefix
-                    elif photo_ref.startswith('backend/data/'):
+                        photo_path = f"{settings.DATA_DIR}{photo_ref}"
+                    # Case 2: Already has DATA_DIR prefix
+                    elif photo_ref.startswith(f'{settings.DATA_DIR}/'):
                         photo_path = photo_ref
                     # Case 3: Relative path with temp_photos
                     elif photo_ref.startswith('temp_photos/'):
-                        photo_path = f"backend/data/{photo_ref}"
-                    # Case 4: Just filename (legacy)
+                        photo_path = f"{settings.DATA_DIR}/{photo_ref}"
+                    # Case 4: Legacy backend/data paths
+                    elif photo_ref.startswith('backend/data/'):
+                        photo_path = photo_ref.replace('backend/data/', f'{settings.DATA_DIR}/')
+                    # Case 5: Just filename (legacy)
                     else:
-                        photo_path = f"backend/data/temp_photos/{photo_ref}"
+                        photo_path = f"{settings.DATA_DIR}/temp_photos/{photo_ref}"
                     
                     # Verify file exists before upload
                     if not os.path.exists(photo_path):
@@ -770,6 +773,206 @@ async def publish_listing(
     except Exception as e:
         print(f"❌ Publish error: {e}")
         raise HTTPException(status_code=500, detail=f"Publish failed: {str(e)}")
+
+
+@router.post("/listings/draft", response_model=ListingPrepareResponse)
+async def create_draft(
+    request: ListingPrepareRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Create a Vinted draft listing
+    
+    **Requires:** Authentication (user ownership validation)
+    
+    - Opens /items/new
+    - Uploads photos
+    - Fills form fields
+    - Clicks "Save as draft" button
+    - Returns draft URL and ID
+    
+    Default: dry_run=true (simulation only)
+    
+    Returns:
+        - ok: true/false
+        - vinted_draft_url: URL of the draft (e.g., https://www.vinted.fr/items/drafts/123)
+        - vinted_draft_id: ID of the draft
+        - dry_run: whether this was a simulation
+    """
+    try:
+        print(f"\n{'='*60}")
+        print(f"📝 CRÉATION BROUILLON VINTED")
+        print(f"{'='*60}")
+        print(f"📋 Title: {request.title[:50]}...")
+        print(f"💰 Price: {request.price}€")
+        print(f"📸 Photos: {len(request.photos)} fichiers")
+        print(f"🏷️  Category: {request.category_hint}")
+        print(f"👕 Size: {request.size}")
+        print(f"✨ Condition: {request.condition}")
+        print(f"🎨 Brand: {request.brand}")
+        
+        # In dry_run mode, skip session check (simulation only)
+        if not request.dry_run and not settings.MOCK_MODE:
+            # Check authentication (ONLY for real execution)
+            session = vault.load_session()
+            if not session:
+                print(f"❌ ERREUR: Aucune session Vinted trouvée")
+                print(f"   → Va dans Settings pour coller ton cookie Vinted")
+                raise HTTPException(status_code=401, detail="Not authenticated. Call /auth/session first.")
+            
+            print(f"✅ Session Vinted active: user={session.username or 'unknown'}")
+        else:
+            print(f"🧪 [DRY-RUN MODE] Skipping Vinted session check")
+            session = None
+        
+        # Dry run simulation
+        if request.dry_run or settings.MOCK_MODE:
+            print(f"🔄 [DRY-RUN] Creating draft: {request.title}")
+            
+            # Simulate draft creation
+            mock_draft_id = "123456789"
+            mock_draft_url = f"https://www.vinted.fr/items/drafts/{mock_draft_id}"
+            
+            return ListingPrepareResponse(
+                ok=True,
+                dry_run=True,
+                vinted_draft_url=mock_draft_url,
+                vinted_draft_id=mock_draft_id,
+                publish_mode="draft",
+                preview_url=mock_draft_url,
+                screenshot_b64=None
+            )
+        
+        # Real execution
+        print(f"🚀 [REAL] Creating draft: {request.title}")
+        
+        # session is guaranteed to exist here (checked above)
+        if not session:
+            raise HTTPException(status_code=500, detail="Internal error: session not found")
+        
+        async with VintedClient(headless=settings.PLAYWRIGHT_HEADLESS) as client:
+            # Create context with session
+            await client.create_context(session)
+            page = await client.new_page()
+            
+            # Navigate to new item page
+            await page.goto("https://www.vinted.fr/items/new", wait_until="networkidle")
+            
+            # Check for challenges
+            if await client.detect_challenge(page):
+                raise HTTPException(
+                    status_code=403,
+                    detail="Verification/Captcha detected. Please complete manually."
+                )
+            
+            # Upload photos
+            if request.photos:
+                from pathlib import Path
+                import os
+                
+                for idx, photo_ref in enumerate(request.photos):
+                    # Smart path resolution
+                    if photo_ref.startswith('/'):
+                        photo_path = f"backend/data{photo_ref}"
+                    elif photo_ref.startswith('backend/data/'):
+                        photo_path = photo_ref
+                    elif photo_ref.startswith('temp_photos/'):
+                        photo_path = f"backend/data/{photo_ref}"
+                    else:
+                        photo_path = f"backend/data/temp_photos/{photo_ref}"
+                    
+                    # Verify file exists
+                    if not os.path.exists(photo_path):
+                        print(f"❌ Photo [{idx}] NOT FOUND: {photo_ref}")
+                        raise HTTPException(
+                            status_code=404,
+                            detail=f"Photo not found: {photo_ref}"
+                        )
+                    
+                    print(f"📸 Uploading photo [{idx+1}/{len(request.photos)}]: {os.path.basename(photo_path)}")
+                    upload_success = await client.upload_photo(page, photo_path)
+                    
+                    if not upload_success:
+                        # Check if redirected to login
+                        current_url = page.url
+                        if 'session-refresh' in current_url or 'session/new' in current_url or 'member/login' in current_url:
+                            print(f"❌ Session Vinted expirée (redirigé vers {current_url})")
+                            raise HTTPException(
+                                status_code=401,
+                                detail=f"SESSION_EXPIRED: Votre session Vinted a expiré."
+                            )
+                        
+                        print(f"⚠️ Photo upload failed: {photo_ref}")
+                        raise HTTPException(
+                            status_code=500,
+                            detail=f"Failed to upload photo: {photo_ref}"
+                        )
+            
+            # Fill form
+            fill_result = await client.fill_listing_form(
+                page=page,
+                title=request.title,
+                price=request.price,
+                description=request.description,
+                brand=request.brand,
+                size=request.size,
+                condition=request.condition,
+                color=request.color,
+                category_hint=request.category_hint
+            )
+            
+            print(f"✅ Formulaire rempli: {fill_result['filled']}")
+            if fill_result['errors']:
+                print(f"⚠️ Erreurs: {fill_result['errors']}")
+            
+            # Click "Save as draft" button
+            success, error = await client.click_save_as_draft(page)
+            
+            if not success:
+                error_lower = (error or "").lower()
+                if "captcha" in error_lower or "challenge" in error_lower:
+                    raise HTTPException(
+                        status_code=403,
+                        detail="Captcha/Verification detected. Please complete manually."
+                    )
+                raise HTTPException(
+                    status_code=500,
+                    detail=error or "Failed to save as draft"
+                )
+            
+            # Wait for navigation
+            await asyncio.sleep(2)
+            
+            # Extract draft ID from URL
+            draft_id = await client.extract_draft_id(page)
+            draft_url = page.url if draft_id else None
+            
+            # Take screenshot
+            screenshot_b64 = await client.take_screenshot(page)
+            
+            print(f"✅ Brouillon créé: ID={draft_id}, URL={draft_url}")
+            
+            return ListingPrepareResponse(
+                ok=True,
+                dry_run=False,
+                vinted_draft_url=draft_url,
+                vinted_draft_id=draft_id,
+                publish_mode="draft",
+                preview_url=draft_url,
+                screenshot_b64=screenshot_b64
+            )
+            
+    except HTTPException:
+        raise
+    except CaptchaDetected as e:
+        print(f"⚠️ Captcha detected: {e}")
+        raise HTTPException(
+            status_code=403,
+            detail="Captcha/Verification detected. Please complete manually."
+        )
+    except Exception as e:
+        print(f"❌ Create draft error: {e}")
+        raise HTTPException(status_code=500, detail=f"Create draft failed: {str(e)}")
 
 
 @router.post("/session/test")

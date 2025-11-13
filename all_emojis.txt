@@ -1,0 +1,32 @@
+backend/app.py:
+  Line 116:     # 🔍 DEBUG: Log multipart upload details for /bulk/photos/analyze
+  Line 118:         logger.info(f"🔍 [DEBUG] Multipart upload detected:")
+
+backend/core/ai_analyzer.py:
+  Line 124: 🚨 VOCABULAIRE PAR CATÉGORIE :
+  Line 188:         print(f"🔍 Analyzing {len(image_contents)} photos with GPT-4 Vision...")
+  Line 305:         print(f"\n📸 Analyzing group {i+1}/{len(photo_groups)} ({len(group)} photos)...")
+  Line 404:     print(f"📦 Smart grouped {len(photo_paths)} photos into {len(groups)} items (similarity-based)")
+  Line 433:     print(f"📦 Auto-batching: {total_photos} photos → splitting into batches of {BATCH_SIZE}")
+  Line 442:         print(f"\n🔄 Batch {batch_num}/{total_batches}: Analyzing photos {offset+1}-{offset+len(batch
+  Line 464:     🔧 NORMALISATION TAILLE - Extrait UNIQUEMENT la taille adulte finale
+  Line 509:     🔧 NORMALISATION CONDITION - Convertit en français standardisé
+  Line 537:     🔧 POLISSAGE AUTOMATIQUE 100% - Garantit que le brouillon est PARFAIT
+  Line 574:         print(f"🧹 Emojis supprimés automatiquement")
+  Line 589:             print(f"🧹 Phrase marketing supprimée : '{phrase}'")
+  Line 628:                     print(f"🚨 VOCABULAIRE INCORRECT '{match_text.group()}' dans {category} (BAS) → '
+  Line 665:                     print(f"🚨 VOCABULAIRE INCORRECT '{match_text.group()}' dans {category} (HAUT) → 
+  Line 720:         print(f"🔧 Condition normalisée : '{original_condition}' → '{condition}'")
+  Line 727:         print(f"🔧 Taille simplifiée : '{original_size}' → '{size}'")
+  Line 792:         print(f"💰 Prix ajusté : {original_price}€ → {adjusted_price}€")
+  Line 951:    🔴 INTERDIT ABSOLU : Mélanger des vêtements différents dans le même groupe (ex: t-shirt noir + t-s
+  Line 973:   🔴 RÈGLE ABSOLUE : Si tu ne vois pas assez de détails pour déterminer l'état précis, tu DOIS choisi
+  Line 974:   🔴 INTERDIT ABSOLU : Retourner null, undefined, "", ou omettre ce champ. Le JSON sera REJETÉ.
+  Line 980:   🔴 RÈGLES CRITIQUES - LIS EXACTEMENT L'ÉTIQUETTE (PRIORITÉ ABSOLUE):
+  Line 1013:   🔴 RÈGLE ABSOLUE : Si aucune taille n'est visible → retourner "Taille non visible" (texte exact)
+  Line 1014:   🔴 INTERDIT ABSOLU : Retourner null, undefined, "", ou omettre ce champ. Le JSON sera REJETÉ.
+  Line 1129:         print(f"🧠 Analyzing {len(image_contents)} photos with GPT-4 Vision...")
+  Line 1152:             # 🔧 POLISSAGE AUTOMATIQUE 100% (Garantit brouillons parfaits)
+  Line 1195:             print(f"    📸 Photos: {photo_count} | 💰 Prix: {price}€ | 🏷️  Marque: {brand}")
+  Line 1196:             print(f"    ✨ État: {condition} | 📏 Taille: {size}")
+

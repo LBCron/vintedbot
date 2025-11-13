@@ -1,116 +1,244 @@
 """
-Prometheus Metrics for VintedBot API
-
-Tracks:
-- Publications (success/fail/captcha/timeout)
-- AI analysis (duration, total)
-- Queue size
-- Captcha detection/resolution
-- User activity
+Prometheus Metrics for Performance Monitoring
+Exposes comprehensive metrics for Grafana dashboards
 """
-
-from prometheus_client import Counter, Histogram, Gauge, Info
-
-# ========== Publication Metrics ==========
-publish_total = Counter(
-    "vintedbot_publish_total",
-    "Total publications attempts",
-    ["status"]  # success, fail, captcha, timeout, retry_exhausted
+import os
+import time
+from typing import Optional
+from prometheus_client import (
+    Counter,
+    Histogram,
+    Gauge,
+    Info,
+    generate_latest,
+    CollectorRegistry,
+    CONTENT_TYPE_LATEST
 )
+from fastapi import Response
+from backend.utils.logger import logger
 
-publish_duration_seconds = Histogram(
-    "vintedbot_publish_duration_seconds",
-    "Duration of publication process",
-    buckets=[1, 5, 10, 30, 60, 120, 300]
-)
+# Create registry
+registry = CollectorRegistry()
 
-publish_retry_count = Counter(
-    "vintedbot_publish_retry_count",
-    "Number of retries attempted",
-    ["attempt"]  # 1, 2, 3
-)
+# ============================================================================
+# APPLICATION METRICS
+# ============================================================================
 
-# ========== AI Analysis Metrics ==========
-photo_analyze_total = Counter(
-    "vintedbot_photo_analyze_total",
-    "Total photo analysis jobs",
-    ["status"]  # completed, failed, processing
-)
-
-photo_analyze_duration_seconds = Histogram(
-    "vintedbot_photo_analyze_duration_seconds",
-    "Duration of AI photo analysis",
-    buckets=[5, 10, 30, 60, 120, 300, 600]
-)
-
-gpt4_vision_calls_total = Counter(
-    "vintedbot_gpt4_vision_calls_total",
-    "Total GPT-4 Vision API calls",
-    ["status"]  # success, error, timeout
-)
-
-# ========== Queue Metrics ==========
-publish_queue_size = Gauge(
-    "vintedbot_publish_queue_size",
-    "Current size of publish queue"
-)
-
-bulk_job_active_total = Gauge(
-    "vintedbot_bulk_job_active_total",
-    "Number of active bulk jobs"
-)
-
-# ========== Captcha Metrics ==========
-captcha_detected_total = Counter(
-    "vintedbot_captcha_detected_total",
-    "Total captchas detected",
-    ["type"]  # hcaptcha, recaptcha, unknown
-)
-
-captcha_solved_total = Counter(
-    "vintedbot_captcha_solved_total",
-    "Total captchas solved successfully"
-)
-
-captcha_failure_total = Counter(
-    "vintedbot_captcha_failure_total",
-    "Total captcha resolution failures",
-    ["reason"]  # timeout, invalid_solution, quota_exceeded
-)
-
-# ========== User Metrics ==========
-active_users = Gauge(
-    "vintedbot_active_users",
-    "Number of active users (sessions)"
-)
-
-# REMOVED: publish_per_user_total (cardinality explosion risk)
-# DO NOT use raw user_id in labels - creates one time-series per user
-# Alternative: Use histogram or aggregate by user tier/segment
-# Example: publish_per_tier_total = Counter(..., ["tier"])  # free, premium, enterprise
-
-# ========== Draft Quality Metrics ==========
-draft_created_total = Counter(
-    "vintedbot_draft_created_total",
-    "Total drafts created",
-    ["publish_ready"]  # true, false
-)
-
-draft_validation_failures = Counter(
-    "vintedbot_draft_validation_failures",
-    "Draft validation failures",
-    ["reason"]  # title_too_long, hashtags_invalid, emoji_detected, etc.
-)
-
-# ========== System Info ==========
+# Info
 app_info = Info(
-    "vintedbot_app_info",
-    "Application information"
+    'vintedbots_app',
+    'Application information',
+    registry=registry
+)
+app_info.info({
+    'version': os.getenv('APP_VERSION', '1.0.0'),
+    'environment': os.getenv('ENVIRONMENT', 'production')
+})
+
+# ============================================================================
+# HTTP METRICS
+# ============================================================================
+
+http_requests_total = Counter(
+    'http_requests_total',
+    'Total HTTP requests',
+    ['method', 'endpoint', 'status'],
+    registry=registry
 )
 
-# Set app info (called once at startup)
-app_info.info({
-    "version": "1.0.0",
-    "name": "VintedBot API",
-    "environment": "production"
-})
+http_request_duration_seconds = Histogram(
+    'http_request_duration_seconds',
+    'HTTP request duration in seconds',
+    ['method', 'endpoint'],
+    buckets=[0.01, 0.05, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0],
+    registry=registry
+)
+
+# ============================================================================
+# AI METRICS
+# ============================================================================
+
+ai_requests_total = Counter(
+    'ai_requests_total',
+    'Total AI API requests',
+    ['model', 'status'],
+    registry=registry
+)
+
+ai_cost_total = Counter(
+    'ai_cost_total_cents',
+    'Total AI cost in cents',
+    ['model'],
+    registry=registry
+)
+
+ai_tokens_total = Counter(
+    'ai_tokens_total',
+    'Total AI tokens consumed',
+    ['model', 'type'],  # type: input/output
+    registry=registry
+)
+
+# ============================================================================
+# VINTED API METRICS
+# ============================================================================
+
+vinted_requests_total = Counter(
+    'vinted_requests_total',
+    'Total Vinted API requests',
+    ['endpoint', 'status'],
+    registry=registry
+)
+
+vinted_automation_runs_total = Counter(
+    'vinted_automation_runs_total',
+    'Total automation runs',
+    ['type', 'status'],  # type: bump/follow/message
+    registry=registry
+)
+
+captcha_detected_total = Counter(
+    'vinted_captcha_detected_total',
+    'Total captcha detections',
+    registry=registry
+)
+
+# ============================================================================
+# DATABASE METRICS
+# ============================================================================
+
+db_queries_total = Counter(
+    'db_queries_total',
+    'Total database queries',
+    ['operation'],  # operation: select/insert/update/delete
+    registry=registry
+)
+
+db_query_duration_seconds = Histogram(
+    'db_query_duration_seconds',
+    'Database query duration in seconds',
+    ['operation'],
+    buckets=[0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0],
+    registry=registry
+)
+
+# ============================================================================
+# REDIS METRICS
+# ============================================================================
+
+redis_operations_total = Counter(
+    'redis_operations_total',
+    'Total Redis operations',
+    ['operation', 'status'],  # operation: get/set/delete
+    registry=registry
+)
+
+# ============================================================================
+# STORAGE METRICS
+# ============================================================================
+
+storage_uploads_total = Counter(
+    'storage_uploads_total',
+    'Total file uploads',
+    ['backend'],  # backend: s3/local
+    registry=registry
+)
+
+# ============================================================================
+# BUSINESS METRICS
+# ============================================================================
+
+users_registered_total = Counter(
+    'users_registered_total',
+    'Total registered users',
+    registry=registry
+)
+
+listings_published_total = Counter(
+    'listings_published_total',
+    'Total listings published',
+    ['status'],  # status: success/failed
+    registry=registry
+)
+
+drafts_created_total = Counter(
+    'drafts_created_total',
+    'Total drafts created',
+    registry=registry
+)
+
+# ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+
+def track_http_request(method: str, endpoint: str, status: int, duration: float):
+    """Track HTTP request metrics"""
+    http_requests_total.labels(method=method, endpoint=endpoint, status=status).inc()
+    http_request_duration_seconds.labels(method=method, endpoint=endpoint).observe(duration)
+
+
+def track_ai_request(model: str, status: str, cost: float, input_tokens: int, output_tokens: int):
+    """Track AI request metrics"""
+    ai_requests_total.labels(model=model, status=status).inc()
+    ai_cost_total.labels(model=model).inc(int(cost * 100))  # Convert to cents
+    ai_tokens_total.labels(model=model, type="input").inc(input_tokens)
+    ai_tokens_total.labels(model=model, type="output").inc(output_tokens)
+
+
+def track_vinted_request(endpoint: str, status: str):
+    """Track Vinted API request"""
+    vinted_requests_total.labels(endpoint=endpoint, status=status).inc()
+
+
+def track_automation_run(automation_type: str, status: str):
+    """Track automation run"""
+    vinted_automation_runs_total.labels(type=automation_type, status=status).inc()
+
+
+def track_captcha_detection():
+    """Track captcha detection"""
+    captcha_detected_total.inc()
+
+
+def track_db_query(operation: str, duration: float):
+    """Track database query"""
+    db_queries_total.labels(operation=operation).inc()
+    db_query_duration_seconds.labels(operation=operation).observe(duration)
+
+
+def track_redis_operation(operation: str, status: str):
+    """Track Redis operation"""
+    redis_operations_total.labels(operation=operation, status=status).inc()
+
+
+def track_storage_upload(backend: str):
+    """Track file upload"""
+    storage_uploads_total.labels(backend=backend).inc()
+
+
+def track_user_registration():
+    """Track user registration"""
+    users_registered_total.inc()
+
+
+def track_listing_published(status: str):
+    """Track listing publication"""
+    listings_published_total.labels(status=status).inc()
+
+
+def track_draft_created():
+    """Track draft creation"""
+    drafts_created_total.inc()
+
+
+def metrics_endpoint() -> Response:
+    """
+    Prometheus metrics endpoint
+
+    Usage:
+        @app.get("/metrics")
+        async def metrics():
+            return metrics_endpoint()
+    """
+    metrics = generate_latest(registry)
+    return Response(content=metrics, media_type=CONTENT_TYPE_LATEST)

@@ -9,6 +9,12 @@ from sqlalchemy import create_engine, Column, String, Integer, DateTime, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from contextlib import contextmanager
+from dotenv import load_dotenv
+from pathlib import Path
+
+# Load environment variables from root .env file
+env_path = Path(__file__).parent.parent / ".env"
+load_dotenv(dotenv_path=env_path)
 
 # Database URL from environment
 DATABASE_URL = os.environ.get("DATABASE_URL")
@@ -97,7 +103,7 @@ class BulkJob(Base):
 def init_db():
     """Initialize database tables"""
     Base.metadata.create_all(bind=engine)
-    print("✅ Database tables created successfully")
+    print("Database tables created successfully")
 
 
 # Dependency for FastAPI routes

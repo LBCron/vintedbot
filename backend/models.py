@@ -83,6 +83,7 @@ class Listing(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str
     description: str = Field(sa_column=Column(Text))
+    category: Optional[str] = None # e.g. "Femme/Vêtements/Robes"
     brand: Optional[str] = None
     price: float
     status: ListingStatus = Field(default=ListingStatus.draft)
