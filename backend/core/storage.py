@@ -2392,6 +2392,191 @@ class SQLiteStore:
             cursor.execute("DELETE FROM orders WHERE id = ?", (order_id,))
             conn.commit()
 
+    # ============================================================================
+    # SPRINT 1 FEATURE 1B: SYNC SUPPORT METHODS
+    # ============================================================================
+
+    def get_published_listings(self, user_id: int) -> List[Dict[str, Any]]:
+        """
+        Get all published listings for a user
+
+        Returns:
+            List of published listing dicts with draft_id, vinted_id, and updated_at
+        """
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT
+                    id as draft_id,
+                    title,
+                    description,
+                    price,
+                    category,
+                    brand,
+                    size,
+                    color,
+                    item_json,
+                    updated_at,
+                    created_at
+                FROM drafts
+                WHERE user_id = ?
+                  AND status = 'published'
+                  AND item_json LIKE '%vinted_id%'
+            """, (str(user_id),))
+
+            rows = cursor.fetchall()
+            listings = []
+
+            for row in rows:
+                # Parse item_json to get vinted_id
+                item_json = json.loads(row['item_json']) if row['item_json'] else {}
+                vinted_id = item_json.get('vinted_id')
+
+                if vinted_id:
+                    listings.append({
+                        'draft_id': row['draft_id'],
+                        'vinted_id': vinted_id,
+                        'title': row['title'],
+                        'description': row['description'],
+                        'price': row['price'],
+                        'category': row['category'],
+                        'brand': row['brand'],
+                        'size': row['size'],
+                        'color': row['color'],
+                        'condition': item_json.get('condition', 'Bon état'),
+                        'updated_at': datetime.fromisoformat(row['updated_at']) if row['updated_at'] else None,
+                        'created_at': datetime.fromisoformat(row['created_at']) if row['created_at'] else None
+                    })
+
+            return listings
+
+    def get_modified_listings(self, user_id: int) -> List[Dict[str, Any]]:
+        """
+        Get all modified listings that need to be synced to Vinted
+
+        A listing is considered modified if:
+        - It's published (has vinted_id)
+        - It was updated after last sync (needs_sync flag or recent updated_at)
+
+        Returns:
+            List of modified listing dicts
+        """
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT
+                    id as draft_id,
+                    title,
+                    description,
+                    price,
+                    category,
+                    brand,
+                    size,
+                    color,
+                    item_json,
+                    updated_at,
+                    created_at
+                FROM drafts
+                WHERE user_id = ?
+                  AND status = 'published'
+                  AND item_json LIKE '%vinted_id%'
+                  AND item_json LIKE '%needs_sync":true%'
+            """, (str(user_id),))
+
+            rows = cursor.fetchall()
+            listings = []
+
+            for row in rows:
+                # Parse item_json to get vinted_id
+                item_json = json.loads(row['item_json']) if row['item_json'] else {}
+                vinted_id = item_json.get('vinted_id')
+                needs_sync = item_json.get('needs_sync', False)
+
+                if vinted_id and needs_sync:
+                    listings.append({
+                        'draft_id': row['draft_id'],
+                        'vinted_id': vinted_id,
+                        'title': row['title'],
+                        'description': row['description'],
+                        'price': row['price'],
+                        'category': row['category'],
+                        'brand': row['brand'],
+                        'size': row['size'],
+                        'color': row['color'],
+                        'condition': item_json.get('condition', 'Bon état'),
+                        'updated_at': datetime.fromisoformat(row['updated_at']) if row['updated_at'] else None
+                    })
+
+            return listings
+
+    def mark_listing_synced(self, draft_id: str):
+        """
+        Mark a listing as synced (clear needs_sync flag)
+
+        Args:
+            draft_id: Draft ID to mark as synced
+        """
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+
+            # Get current item_json
+            cursor.execute("SELECT item_json FROM drafts WHERE id = ?", (draft_id,))
+            row = cursor.fetchone()
+
+            if row:
+                item_json = json.loads(row['item_json']) if row['item_json'] else {}
+                item_json['needs_sync'] = False
+                item_json['last_synced_at'] = datetime.utcnow().isoformat()
+
+                # Update with modified item_json
+                cursor.execute("""
+                    UPDATE drafts
+                    SET item_json = ?
+                    WHERE id = ?
+                """, (json.dumps(item_json), draft_id))
+
+                conn.commit()
+
+    def update_draft_vinted_info(
+        self,
+        draft_id: str,
+        vinted_draft_url: Optional[str],
+        vinted_draft_id: Optional[str],
+        publish_mode: str
+    ):
+        """
+        Update draft with Vinted draft information
+
+        Args:
+            draft_id: Draft ID
+            vinted_draft_url: Vinted draft URL
+            vinted_draft_id: Vinted draft ID
+            publish_mode: 'auto' or 'draft'
+        """
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+
+            # Get current item_json
+            cursor.execute("SELECT item_json FROM drafts WHERE id = ?", (draft_id,))
+            row = cursor.fetchone()
+
+            if row:
+                item_json = json.loads(row['item_json']) if row['item_json'] else {}
+                item_json['vinted_draft_url'] = vinted_draft_url
+                item_json['vinted_draft_id'] = vinted_draft_id
+                item_json['publish_mode'] = publish_mode
+                item_json['last_synced_at'] = datetime.utcnow().isoformat()
+
+                # Update with modified item_json
+                cursor.execute("""
+                    UPDATE drafts
+                    SET item_json = ?,
+                        updated_at = ?
+                    WHERE id = ?
+                """, (json.dumps(item_json), datetime.utcnow().isoformat(), draft_id))
+
+                conn.commit()
+
 
 # Global instance
 _store: Optional[SQLiteStore] = None

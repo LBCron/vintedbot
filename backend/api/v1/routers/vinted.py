@@ -1051,3 +1051,199 @@ async def test_session(current_user: User = Depends(get_current_user)):
             "action": "retry",
             "error": str(e)
         }, status_code=500)
+
+
+# ============================================================================
+# SPRINT 1 FEATURE 1B: BIDIRECTIONAL SYNC
+# ============================================================================
+
+@router.post("/sync/pull")
+async def sync_pull_from_vinted(
+    listing_ids: Optional[List[str]] = Body(default=None),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Pull changes from Vinted and update local database
+
+    Fetches latest data from Vinted for published listings and detects changes.
+    Automatically applies updates based on conflict resolution strategy.
+
+    Args:
+        listing_ids: Optional list of specific Vinted listing IDs to sync
+                    (None = sync all published listings)
+
+    Returns:
+        {
+            "ok": bool,
+            "status": "success" | "conflict" | "error",
+            "pulled_changes": int,
+            "conflicts": [SyncChange],
+            "errors": [str],
+            "synced_at": datetime
+        }
+    """
+    try:
+        from backend.core.vinted_sync_service import get_sync_service
+
+        # Get sync service for user
+        sync_service = get_sync_service(current_user.id)
+
+        # Pull changes from Vinted
+        result = await sync_service.pull_changes(listing_ids=listing_ids)
+
+        return {
+            "ok": result.status in ["success", "conflict"],
+            "status": result.status.value,
+            "pulled_changes": result.pulled_changes,
+            "conflicts": [
+                {
+                    "listing_id": c.listing_id,
+                    "field": c.field,
+                    "local_value": c.local_value,
+                    "vinted_value": c.vinted_value,
+                    "conflict": c.conflict
+                }
+                for c in result.conflicts
+            ],
+            "errors": result.errors,
+            "synced_at": result.synced_at.isoformat() if result.synced_at else None
+        }
+
+    except Exception as e:
+        logger.error(f"[SYNC-PULL] Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Sync pull failed: {str(e)}")
+
+
+@router.post("/sync/push")
+async def sync_push_to_vinted(
+    draft_ids: Optional[List[str]] = Body(default=None),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Push local changes to Vinted
+
+    Uploads local modifications to Vinted for published listings.
+    Only pushes listings that have been modified since last sync.
+
+    Args:
+        draft_ids: Optional list of specific draft IDs to push
+                  (None = push all modified drafts)
+
+    Returns:
+        {
+            "ok": bool,
+            "status": "success" | "error",
+            "pushed_changes": int,
+            "errors": [str],
+            "synced_at": datetime
+        }
+    """
+    try:
+        from backend.core.vinted_sync_service import get_sync_service
+
+        # Get sync service for user
+        sync_service = get_sync_service(current_user.id)
+
+        # Push changes to Vinted
+        result = await sync_service.push_changes(draft_ids=draft_ids)
+
+        return {
+            "ok": result.status == "success",
+            "status": result.status.value,
+            "pushed_changes": result.pushed_changes,
+            "errors": result.errors,
+            "synced_at": result.synced_at.isoformat() if result.synced_at else None
+        }
+
+    except Exception as e:
+        logger.error(f"[SYNC-PUSH] Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Sync push failed: {str(e)}")
+
+
+@router.post("/sync/full")
+async def sync_full_bidirectional(
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Perform full bidirectional sync (pull + push)
+
+    First pulls changes from Vinted, then pushes local modifications.
+    This ensures both systems are in sync.
+
+    Returns:
+        {
+            "ok": bool,
+            "status": "success" | "conflict" | "error",
+            "pulled_changes": int,
+            "pushed_changes": int,
+            "conflicts": [SyncChange],
+            "errors": [str],
+            "synced_at": datetime
+        }
+    """
+    try:
+        from backend.core.vinted_sync_service import get_sync_service
+
+        # Get sync service for user
+        sync_service = get_sync_service(current_user.id)
+
+        # Full sync (pull + push)
+        result = await sync_service.full_sync()
+
+        return {
+            "ok": result.status in ["success", "conflict"],
+            "status": result.status.value,
+            "pulled_changes": result.pulled_changes,
+            "pushed_changes": result.pushed_changes,
+            "conflicts": [
+                {
+                    "listing_id": c.listing_id,
+                    "field": c.field,
+                    "local_value": c.local_value,
+                    "vinted_value": c.vinted_value,
+                    "conflict": c.conflict
+                }
+                for c in result.conflicts
+            ],
+            "errors": result.errors,
+            "synced_at": result.synced_at.isoformat() if result.synced_at else None
+        }
+
+    except Exception as e:
+        logger.error(f"[SYNC-FULL] Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Full sync failed: {str(e)}")
+
+
+@router.get("/sync/status")
+async def get_sync_status(
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get current sync status for user
+
+    Returns information about the last sync and current sync state.
+
+    Returns:
+        {
+            "status": "idle" | "syncing" | "success" | "error" | "conflict",
+            "last_sync": datetime | null,
+            "poll_interval": int (seconds),
+            "conflict_strategy": str
+        }
+    """
+    try:
+        from backend.core.vinted_sync_service import get_sync_service
+
+        # Get sync service for user
+        sync_service = get_sync_service(current_user.id)
+
+        return {
+            "status": sync_service.status.value,
+            "last_sync": sync_service.last_sync.isoformat() if sync_service.last_sync else None,
+            "poll_interval": sync_service.poll_interval,
+            "conflict_strategy": sync_service.conflict_strategy.value
+        }
+
+    except Exception as e:
+        logger.error(f"[SYNC-STATUS] Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get sync status: {str(e)}")

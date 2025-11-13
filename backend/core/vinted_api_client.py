@@ -536,3 +536,145 @@ class VintedAPIClient:
 
         except Exception as e:
             return (False, f"Unlike error: {str(e)}")
+
+    # ======================
+    # LISTING MANAGEMENT (Sprint 1 Feature 1B)
+    # ======================
+
+    async def get_listing(self, item_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get detailed information about a specific listing
+
+        Args:
+            item_id: Vinted item ID
+
+        Returns:
+            Listing data dict or None if not found
+        """
+        try:
+            logger.info(f"[API] Fetching listing {item_id}...")
+
+            url = f"{self.API_BASE}/items/{item_id}"
+
+            response = await self.client.get(url)
+
+            if response.status_code == 200:
+                data = response.json()
+                item = data.get('item', {})
+                logger.info(f"✅ Successfully fetched listing {item_id}")
+                return item
+            elif response.status_code == 404:
+                logger.warning(f"Listing {item_id} not found (404)")
+                return None
+            else:
+                logger.error(f"Failed to fetch listing {item_id}: HTTP {response.status_code}")
+                return None
+
+        except Exception as e:
+            logger.error(f"Error fetching listing {item_id}: {e}")
+            return None
+
+    async def update_listing(
+        self,
+        item_id: str,
+        update_data: Dict[str, Any]
+    ) -> bool:
+        """
+        Update a listing on Vinted
+
+        Args:
+            item_id: Vinted item ID
+            update_data: Dict with fields to update (title, description, price, etc.)
+
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            logger.info(f"[API] Updating listing {item_id}...")
+
+            url = f"{self.API_BASE}/items/{item_id}"
+
+            # Build update payload
+            payload = {}
+
+            if 'title' in update_data:
+                payload['title'] = update_data['title']
+            if 'description' in update_data:
+                payload['description'] = update_data['description']
+            if 'price' in update_data:
+                payload['price'] = update_data['price']
+            if 'brand' in update_data:
+                payload['brand_title'] = update_data['brand']
+            if 'size' in update_data:
+                payload['size_title'] = update_data['size']
+            if 'condition' in update_data:
+                payload['status'] = update_data['condition']
+            if 'color' in update_data:
+                payload['color'] = update_data['color']
+
+            # Human delay before update
+            await self.human_delay(500, 1500)
+
+            response = await self.client.put(url, json=payload)
+
+            if response.status_code == 200:
+                logger.info(f"✅ Successfully updated listing {item_id}")
+                return True
+            elif response.status_code == 403:
+                logger.error(f"Forbidden to update listing {item_id} (not owner?)")
+                return False
+            elif response.status_code == 404:
+                logger.error(f"Listing {item_id} not found")
+                return False
+            else:
+                logger.error(f"Failed to update listing {item_id}: HTTP {response.status_code}")
+                return False
+
+        except Exception as e:
+            logger.error(f"Error updating listing {item_id}: {e}")
+            return False
+
+    async def get_user_listings(
+        self,
+        user_id: Optional[str] = None,
+        status: Optional[str] = None,
+        per_page: int = 100
+    ) -> Tuple[bool, Optional[List[Dict]], Optional[str]]:
+        """
+        Get all listings for a user (authenticated user or specific user_id)
+
+        Args:
+            user_id: User ID (None = authenticated user)
+            status: Filter by status ('active', 'sold', 'inactive')
+            per_page: Results per page
+
+        Returns:
+            (success, items_list, error_message)
+        """
+        try:
+            if user_id:
+                url = f"{self.API_BASE}/users/{user_id}/items"
+            else:
+                url = f"{self.API_BASE}/items"  # Authenticated user's items
+
+            params = {
+                "per_page": per_page
+            }
+
+            if status:
+                params["status"] = status
+
+            response = await self.client.get(url, params=params)
+
+            if response.status_code == 200:
+                data = response.json()
+                items = data.get('items', [])
+                logger.info(f"✅ Fetched {len(items)} listings")
+                return (True, items, None)
+            else:
+                return (False, None, f"Failed to fetch listings: HTTP {response.status_code}")
+
+        except Exception as e:
+            logger.error(f"Error fetching user listings: {e}")
+            return (False, None, f"Error: {str(e)}")
+
