@@ -407,6 +407,30 @@ class SQLiteStore:
                 )
             """)
 
+            # 18. Photo Metadata (Multi-tier storage tracking)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS photo_metadata (
+                    photo_id TEXT PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    draft_id TEXT,
+                    tier TEXT NOT NULL CHECK(tier IN ('temp','hot','cold')),
+                    file_size_bytes INTEGER NOT NULL,
+                    compressed_size_bytes INTEGER NOT NULL,
+                    upload_date TEXT DEFAULT CURRENT_TIMESTAMP,
+                    last_access_date TEXT DEFAULT CURRENT_TIMESTAMP,
+                    scheduled_deletion TEXT,
+                    published_to_vinted INTEGER DEFAULT 0,
+                    published_date TEXT,
+                    access_count INTEGER DEFAULT 0,
+                    storage_path TEXT,
+                    cdn_url TEXT,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                    FOREIGN KEY (draft_id) REFERENCES drafts(id) ON DELETE SET NULL
+                )
+            """)
+
             # Create indexes for performance
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_drafts_user ON drafts(user_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_drafts_status ON drafts(status)")
@@ -436,6 +460,13 @@ class SQLiteStore:
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_orders_vinted_id ON orders(vinted_order_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_orders_date ON orders(order_date)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_photos_user ON photo_metadata(user_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_photos_tier ON photo_metadata(tier)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_photos_draft ON photo_metadata(draft_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_photos_scheduled_deletion ON photo_metadata(scheduled_deletion)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_photos_published ON photo_metadata(published_to_vinted)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_photos_upload_date ON photo_metadata(upload_date)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_photos_last_access ON photo_metadata(last_access_date)")
 
             conn.commit()
     

@@ -28,7 +28,7 @@ from backend.utils.logger import logger, log_request
 from backend.routes import auth, messages, publish, listings, offers, orders, health, ws, feedback
 from backend.api.v1.routers import (
     ingest, health as health_v1, vinted, bulk, ai, auth as auth_v1, billing,
-    analytics, automation, accounts, admin, orders as orders_v1, images
+    analytics, automation, accounts, admin, orders as orders_v1, images, storage
 )
 from backend.settings import settings
 
@@ -181,6 +181,7 @@ app.include_router(automation.router, tags=["automation"])  # Auto-bump, auto-fo
 app.include_router(accounts.router, tags=["accounts"])  # Multi-account management
 app.include_router(orders_v1.router, tags=["orders"])  # Order management & CSV export (Dotb feature)
 app.include_router(images.router, tags=["images"])  # Bulk image editing (Dotb feature)
+app.include_router(storage.router, prefix="/api", tags=["storage"])  # Multi-tier photo storage (TEMP/HOT/COLD)
 
 # SUPER-ADMIN FEATURES - Full platform control for ronanchenlopes@gmail.com
 app.include_router(admin.router, tags=["admin"])  # Super-admin panel with complete system access

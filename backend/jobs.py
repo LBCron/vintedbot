@@ -174,32 +174,32 @@ async def automation_executor_job():
     - Respects daily limits and scheduling
     """
     logger.info("[AUTOMATION] Running automation executor...")
-    
+
     try:
         import json
         import uuid
         import random
-        
+
         store = get_store()
-        
+
         rules = store.get_automation_rules_to_execute()
-        
+
         if not rules:
             logger.info("   No automation rules to execute")
             return
-        
+
         logger.info(f"   Found {len(rules)} automation rules to execute")
-        
+
         for rule in rules:
             try:
                 jobs_today = store.count_automation_jobs_today(rule['id'])
                 config = json.loads(rule['config']) if isinstance(rule['config'], str) else rule['config']
                 daily_limit = config.get('daily_limit', 100)
-                
+
                 if jobs_today >= daily_limit:
                     logger.info(f"   Rule {rule['id'][:8]}... hit daily limit ({daily_limit})")
                     continue
-                
+
                 if rule['type'] == 'bump':
                     await execute_auto_bump(rule, store)
                 elif rule['type'] == 'follow':
@@ -208,18 +208,60 @@ async def automation_executor_job():
                     await execute_auto_unfollow(rule, store)
                 elif rule['type'] == 'message':
                     await execute_auto_message(rule, store)
-                
+
                 interval_hours = config.get('interval_hours', 24)
                 next_run = datetime.utcnow() + timedelta(hours=interval_hours)
                 store.update_automation_rule_schedule(rule['id'], datetime.utcnow(), next_run)
-            
+
             except Exception as e:
                 logger.error(f"   Error executing rule {rule['id'][:8]}...: {e}")
-        
+
         logger.info("✅ Automation executor completed")
-    
+
     except Exception as e:
         logger.error(f"Automation executor job error: {e}")
+
+
+async def storage_lifecycle_job():
+    """
+    Multi-tier storage lifecycle job
+    - Runs daily at 3 AM
+    - Manages photo lifecycle across TEMP/HOT/COLD tiers
+    - Deletes expired photos, promotes/archives based on usage
+
+    Actions:
+    1. Delete expired TEMP photos (>48h)
+    2. Delete published photos (>7 days after publishing)
+    3. Promote TEMP → HOT (non-published drafts >48h)
+    4. Archive HOT → COLD (>90 days without access)
+    5. Delete COLD photos (>365 days)
+    """
+    logger.info("[STORAGE] Running storage lifecycle job")
+
+    try:
+        from backend.storage.storage_manager import StorageManager
+        from backend.storage.lifecycle_manager import StorageLifecycleManager
+
+        # Initialize storage manager and lifecycle manager
+        storage_manager = StorageManager()
+        lifecycle_manager = StorageLifecycleManager(storage_manager)
+
+        # Run lifecycle job
+        stats = await lifecycle_manager.run_daily_lifecycle()
+
+        logger.info(
+            f"✅ Storage lifecycle completed:\n"
+            f"   - TEMP deleted: {stats.get('temp_deleted', 0)}\n"
+            f"   - Published deleted: {stats.get('published_deleted', 0)}\n"
+            f"   - Promoted to HOT: {stats.get('promoted_to_hot', 0)}\n"
+            f"   - Archived to COLD: {stats.get('archived_to_cold', 0)}\n"
+            f"   - Old photos deleted: {stats.get('old_deleted', 0)}"
+        )
+
+    except Exception as e:
+        logger.error(f"Storage lifecycle job error: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 async def execute_auto_bump(rule, store):
@@ -496,7 +538,16 @@ def start_scheduler():
         name="Automation Executor",
         replace_existing=True
     )
-    
+
+    # Storage lifecycle - daily at 3 AM
+    scheduler.add_job(
+        storage_lifecycle_job,
+        trigger=CronTrigger(hour=3, minute=0),
+        id="storage_lifecycle",
+        name="Storage Lifecycle Manager",
+        replace_existing=True
+    )
+
     scheduler.start()
     logger.info(f"Scheduler started with {len(scheduler.get_jobs())} jobs")
     logger.info(f"   - Inbox sync: every {SYNC_INTERVAL_MIN} minutes")
@@ -505,6 +556,7 @@ def start_scheduler():
     logger.info(f"   - Vacuum & Prune: 0 2 * * * (daily at 02:00)")
     logger.info(f"   - Clean temp photos: every 6 hours")
     logger.info(f"   - Automation Executor: every 5 minutes")
+    logger.info(f"   - Storage Lifecycle: 0 3 * * * (daily at 03:00)")
 
 
 def stop_scheduler():
