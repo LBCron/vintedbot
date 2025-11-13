@@ -26,6 +26,7 @@ const Messages = lazy(() => import('./pages/Messages'));
 const History = lazy(() => import('./pages/History'));
 const Orders = lazy(() => import('./pages/Orders'));
 const ImageEditor = lazy(() => import('./pages/ImageEditor'));
+const StorageStats = lazy(() => import('./pages/StorageStatsPage'));
 
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
@@ -88,6 +89,7 @@ function AppContent() {
           <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
           <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
           <Route path="/image-editor" element={<ProtectedRoute><ImageEditor /></ProtectedRoute>} />
+          <Route path="/storage" element={<ProtectedRoute><StorageStats /></ProtectedRoute>} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

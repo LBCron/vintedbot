@@ -20,6 +20,7 @@ import {
   Image as ImageIcon,
   Zap,
   Users,
+  HardDrive,
 } from 'lucide-react';
 import { Badge } from '../common/Badge';
 
@@ -42,6 +43,7 @@ const mainNavItems: NavItem[] = [
   { label: 'Drafts', path: '/drafts', icon: FileText, badge: 12 },
   { label: 'Publish', path: '/publish', icon: Calendar },
   { label: 'Analytics', path: '/analytics', icon: BarChart3 },
+  { label: 'Storage', path: '/storage', icon: HardDrive },
   { label: 'Automation', path: '/automation', icon: Zap },
   { label: 'Messages', path: '/messages', icon: MessageCircle, badge: 3, badgeVariant: 'error' },
   { label: 'Orders', path: '/orders', icon: Package },
