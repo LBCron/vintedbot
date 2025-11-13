@@ -1,5 +1,6 @@
 import { useState, FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { Mail, Lock, LogIn, ArrowRight, Loader2, Shield, Sparkles } from 'lucide-react';
 import InputField from '../components/auth/InputField';
@@ -69,23 +70,54 @@ export default function Login() {
       </div>
 
       {/* Main card */}
-      <div className="w-full max-w-md relative">
-        <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl shadow-primary-500/10 p-8 border border-white/20">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="w-full max-w-md relative"
+      >
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2, duration: 0.5 }}
+          className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl shadow-primary-500/10 p-8 border border-white/20"
+        >
           {/* Header with logo */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl mb-4 shadow-lg shadow-primary-500/30">
+            <motion.div
+              initial={{ scale: 0, rotate: -180 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.3 }}
+              className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl mb-4 shadow-lg shadow-primary-500/30"
+            >
               <Sparkles className="w-8 h-8 text-white" />
-            </div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent mb-2">
+            </motion.div>
+            <motion.h1
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4, duration: 0.5 }}
+              className="text-3xl font-bold bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent mb-2"
+            >
               VintedBot
-            </h1>
-            <p className="text-gray-600 font-medium">
+            </motion.h1>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5, duration: 0.5 }}
+              className="text-gray-600 font-medium"
+            >
               Automatisez vos ventes Vinted avec l'IA
-            </p>
+            </motion.p>
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <motion.form
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6, duration: 0.5 }}
+            onSubmit={handleSubmit}
+            className="space-y-5"
+          >
             {/* Email */}
             <InputField
               label="Email"
@@ -168,7 +200,7 @@ export default function Login() {
                 </>
               )}
             </button>
-          </form>
+          </motion.form>
 
           {/* Divider */}
           <div className="relative my-6">
@@ -195,21 +227,31 @@ export default function Login() {
           </div>
 
           {/* Security badge */}
-          <div className="mt-6 pt-6 border-t border-gray-100">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.9, duration: 0.5 }}
+            className="mt-6 pt-6 border-t border-gray-100"
+          >
             <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
               <Shield className="w-4 h-4 text-green-600" />
               <span>Connexion sécurisée SSL • Vos données sont chiffrées</span>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
         {/* Footer links */}
-        <div className="mt-6 text-center text-xs text-gray-500 space-x-4">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1, duration: 0.5 }}
+          className="mt-6 text-center text-xs text-gray-500 space-x-4"
+        >
           <a href="#" className="hover:text-gray-700 transition-colors">Politique de confidentialité</a>
           <span>•</span>
           <a href="#" className="hover:text-gray-700 transition-colors">Conditions d'utilisation</a>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
     </div>
   );
 }

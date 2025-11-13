@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckSquare, Square, Trash2, Send } from 'lucide-react';
+import { CheckSquare, Square, Trash2, Send, Search, Filter, X, SlidersHorizontal } from 'lucide-react';
 import { bulkAPI } from '../api/client';
 import DraftCard from '../components/common/DraftCard';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -12,6 +12,11 @@ export default function Drafts() {
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [priceRange, setPriceRange] = useState<{ min: string; max: string }>({ min: '', max: '' });
+  const [sortBy, setSortBy] = useState<'date' | 'price' | 'confidence'>('date');
   const [publishingId, setPublishingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -61,6 +66,71 @@ export default function Drafts() {
     } finally {
       setDeletingId(null);
     }
+  };
+
+  // Get unique categories from drafts
+  const categories = useMemo(() => {
+    const cats = new Set(drafts.map(d => d.category).filter(Boolean));
+    return Array.from(cats).sort();
+  }, [drafts]);
+
+  // Advanced filtering and sorting
+  const filteredDrafts = useMemo(() => {
+    let result = [...drafts];
+
+    // Status filter
+    if (filter !== 'all') {
+      result = result.filter(d => d.status === filter);
+    }
+
+    // Search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(d =>
+        d.title?.toLowerCase().includes(query) ||
+        d.description?.toLowerCase().includes(query) ||
+        d.brand?.toLowerCase().includes(query) ||
+        d.category?.toLowerCase().includes(query)
+      );
+    }
+
+    // Category filter
+    if (categoryFilter !== 'all') {
+      result = result.filter(d => d.category === categoryFilter);
+    }
+
+    // Price range filter
+    if (priceRange.min) {
+      const minPrice = parseFloat(priceRange.min);
+      result = result.filter(d => d.price >= minPrice);
+    }
+    if (priceRange.max) {
+      const maxPrice = parseFloat(priceRange.max);
+      result = result.filter(d => d.price <= maxPrice);
+    }
+
+    // Sorting
+    result.sort((a, b) => {
+      switch (sortBy) {
+        case 'price':
+          return (b.price || 0) - (a.price || 0);
+        case 'confidence':
+          return (b.confidence || 0) - (a.confidence || 0);
+        case 'date':
+        default:
+          return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+      }
+    });
+
+    return result;
+  }, [drafts, filter, searchQuery, categoryFilter, priceRange, sortBy]);
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setCategoryFilter('all');
+    setPriceRange({ min: '', max: '' });
+    setFilter('all');
+    setSortBy('date');
   };
 
   const toggleSelection = (id: string) => {
@@ -145,67 +215,179 @@ export default function Drafts() {
     loadDrafts();
   };
 
-  const filteredDrafts = drafts;
-
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">📋 Drafts</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">
-            {drafts.length} draft{drafts.length !== 1 ? 's' : ''} total
-            {selectedIds.size > 0 && (
-              <span className="ml-2 text-primary-600 dark:text-primary-400 font-medium">
-                • {selectedIds.size} selected
-              </span>
+      {/* Header */}
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">📋 Drafts</h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">
+              {filteredDrafts.length} of {drafts.length} draft{drafts.length !== 1 ? 's' : ''}
+              {selectedIds.size > 0 && (
+                <span className="ml-2 text-primary-600 dark:text-primary-400 font-medium">
+                  • {selectedIds.size} selected
+                </span>
+              )}
+            </p>
+          </div>
+
+          <div className="flex gap-2 flex-wrap">
+            {filteredDrafts.length > 0 && (
+              <button
+                onClick={toggleSelectAll}
+                className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 font-medium flex items-center gap-2 transition-colors"
+              >
+                {selectedIds.size === filteredDrafts.length ? (
+                  <CheckSquare className="w-4 h-4" />
+                ) : (
+                  <Square className="w-4 h-4" />
+                )}
+                Select All
+              </button>
             )}
-          </p>
+          </div>
         </div>
 
-        <div className="flex gap-2 flex-wrap">
-          {filteredDrafts.length > 0 && (
-            <button
-              onClick={toggleSelectAll}
-              className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 font-medium flex items-center gap-2"
-            >
-              {selectedIds.size === filteredDrafts.length ? (
-                <CheckSquare className="w-4 h-4" />
-              ) : (
-                <Square className="w-4 h-4" />
+        {/* Search and Filters */}
+        <div className="card p-4 space-y-4">
+          <div className="flex flex-col lg:flex-row gap-3">
+            {/* Search Bar */}
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search by title, description, brand..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-10 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               )}
-              Select All
+            </div>
+
+            {/* Status Filters */}
+            <div className="flex gap-2">
+              {['all', 'ready', 'published', 'draft'].map((status) => (
+                <button
+                  key={status}
+                  onClick={() => setFilter(status)}
+                  className={`px-4 py-2.5 rounded-lg font-medium transition-all ${
+                    filter === status
+                      ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-md'
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  {status.charAt(0).toUpperCase() + status.slice(1)}
+                </button>
+              ))}
+            </div>
+
+            {/* Advanced Filters Toggle */}
+            <button
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              className={`px-4 py-2.5 rounded-lg font-medium flex items-center gap-2 transition-all ${
+                showAdvancedFilters
+                  ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+              }`}
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+              Filters
             </button>
-          )}
-          <button
-            onClick={() => setFilter('all')}
-            className={`px-4 py-2 rounded-lg font-medium ${
-              filter === 'all'
-                ? 'bg-primary-600 text-white'
-                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-            }`}
-          >
-            All
-          </button>
-          <button
-            onClick={() => setFilter('ready')}
-            className={`px-4 py-2 rounded-lg font-medium ${
-              filter === 'ready'
-                ? 'bg-primary-600 text-white'
-                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-            }`}
-          >
-            Ready
-          </button>
-          <button
-            onClick={() => setFilter('published')}
-            className={`px-4 py-2 rounded-lg font-medium ${
-              filter === 'published'
-                ? 'bg-primary-600 text-white'
-                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-            }`}
-          >
-            Published
-          </button>
+          </div>
+
+          {/* Advanced Filters */}
+          <AnimatePresence>
+            {showAdvancedFilters && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="pt-4 border-t border-gray-200 dark:border-gray-700 space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Category Filter */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Category
+                      </label>
+                      <select
+                        value={categoryFilter}
+                        onChange={(e) => setCategoryFilter(e.target.value)}
+                        className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      >
+                        <option value="all">All Categories</option>
+                        {categories.map((cat) => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Price Range */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Price Range (€)
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="number"
+                          placeholder="Min"
+                          value={priceRange.min}
+                          onChange={(e) => setPriceRange({ ...priceRange, min: e.target.value })}
+                          className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        />
+                        <input
+                          type="number"
+                          placeholder="Max"
+                          value={priceRange.max}
+                          onChange={(e) => setPriceRange({ ...priceRange, max: e.target.value })}
+                          className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Sort By */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Sort By
+                      </label>
+                      <select
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value as any)}
+                        className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      >
+                        <option value="date">Date (Newest)</option>
+                        <option value="price">Price (Highest)</option>
+                        <option value="confidence">AI Confidence</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Clear Filters */}
+                  {(searchQuery || categoryFilter !== 'all' || priceRange.min || priceRange.max || filter !== 'all' || sortBy !== 'date') && (
+                    <div className="flex justify-end">
+                      <button
+                        onClick={clearFilters}
+                        className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white flex items-center gap-2 transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                        Clear All Filters
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 

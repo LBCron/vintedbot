@@ -27,9 +27,9 @@ export default function DraftCard({ draft, onPublish, onDelete, isSelected, onTo
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      whileHover={{ scale: 1.01, y: -2 }}
-      transition={{ duration: 0.2 }}
-      className={`card overflow-hidden hover:shadow-premium transition-all relative ${isSelected ? 'ring-2 ring-primary-500 dark:ring-primary-400' : ''}`}
+      whileHover={{ scale: 1.02, y: -4 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+      className={`card overflow-hidden hover:shadow-2xl hover:shadow-primary-500/10 transition-all relative group ${isSelected ? 'ring-2 ring-primary-500 dark:ring-primary-400 shadow-xl' : ''}`}
     >
       {/* Selection Checkbox */}
       {onToggleSelect && (
@@ -72,12 +72,17 @@ export default function DraftCard({ draft, onPublish, onDelete, isSelected, onTo
         </div>
       )}
 
-      <div className="p-4 space-y-3">
+      <div className="p-5 space-y-4">
         {/* AI Confidence Badge */}
         {draft.confidence && (
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-primary-500" />
-            <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2 }}
+            className="flex items-center gap-2 bg-gradient-to-r from-primary-50 to-purple-50 dark:from-primary-900/20 dark:to-purple-900/20 p-2.5 rounded-lg"
+          >
+            <Sparkles className="w-4 h-4 text-primary-600 dark:text-primary-400" />
+            <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
               AI Confidence:
             </span>
             <Badge variant={getConfidenceColor(confidenceScore)} size="sm">
@@ -86,83 +91,91 @@ export default function DraftCard({ draft, onPublish, onDelete, isSelected, onTo
             <Tooltip content="AI confidence score based on photo quality, title, description completeness, and pricing accuracy">
               <HelpCircle className="w-3.5 h-3.5 text-gray-400 cursor-help" />
             </Tooltip>
-          </div>
+          </motion.div>
         )}
 
         {/* Title */}
         <div>
-          <h3 className="font-semibold text-lg text-gray-900 dark:text-white line-clamp-2 mb-1">
+          <h3 className="font-bold text-xl text-gray-900 dark:text-white line-clamp-2 mb-2 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
             {draft.title}
           </h3>
 
           {/* Metadata */}
-          <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-            <span className="font-semibold text-primary-600 dark:text-primary-400">
+          <div className="flex flex-wrap items-center gap-2.5 text-sm">
+            <div className="px-3 py-1.5 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-lg font-bold shadow-sm">
               {draft.price}€
-            </span>
-            <span>•</span>
-            <Badge variant="default" size="sm">{draft.category}</Badge>
-            <span>•</span>
-            <span>{draft.condition}</span>
+            </div>
+            <Badge variant="default" size="sm" className="font-medium">{draft.category}</Badge>
+            <Badge variant="outline" size="sm" className="font-medium">{draft.condition}</Badge>
           </div>
         </div>
 
         {/* Description */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+            <span className="text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
               Description
             </span>
-            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
+            <div className="flex-1 h-px bg-gradient-to-r from-gray-300 to-transparent dark:from-gray-600"></div>
           </div>
-          <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
+          <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-3 leading-relaxed">
             {draft.description}
           </p>
         </div>
 
         {/* Tags/Metadata */}
         {(draft.brand || draft.size || draft.color) && (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2">
             {draft.brand && (
-              <Badge variant="outline" size="sm">{draft.brand}</Badge>
+              <Badge variant="outline" size="sm" className="font-medium">
+                🏷️ {draft.brand}
+              </Badge>
             )}
             {draft.size && (
-              <Badge variant="outline" size="sm">{draft.size}</Badge>
+              <Badge variant="outline" size="sm" className="font-medium">
+                📏 {draft.size}
+              </Badge>
             )}
             {draft.color && (
-              <Badge variant="outline" size="sm">{draft.color}</Badge>
+              <Badge variant="outline" size="sm" className="font-medium">
+                🎨 {draft.color}
+              </Badge>
             )}
           </div>
         )}
       </div>
       
-      <div className="p-4 pt-0 flex gap-2">
+      <div className="p-5 pt-0 flex gap-2.5">
         <Link
           to={`/drafts/${draft.id}`}
-          className="flex-1 px-4 py-2.5 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-900/40 flex items-center justify-center gap-2 text-sm font-medium transition-colors"
+          className="flex-1 px-4 py-3 bg-gradient-to-r from-primary-50 to-primary-100 dark:from-primary-900/20 dark:to-primary-800/20 text-primary-700 dark:text-primary-400 rounded-xl hover:from-primary-100 hover:to-primary-200 dark:hover:from-primary-900/40 dark:hover:to-primary-800/40 flex items-center justify-center gap-2 text-sm font-semibold transition-all hover:shadow-md transform hover:scale-105"
         >
           <Edit className="w-4 h-4" />
           Edit
         </Link>
 
         {onPublish && (
-          <button
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => onPublish(draft.id)}
-            className="flex-1 px-4 py-2.5 bg-success-50 dark:bg-success-900/20 text-success-700 dark:text-success-400 rounded-lg hover:bg-success-100 dark:hover:bg-success-900/40 flex items-center justify-center gap-2 text-sm font-medium transition-colors"
+            className="flex-1 px-4 py-3 bg-gradient-to-r from-success-50 to-green-100 dark:from-success-900/20 dark:to-green-800/20 text-success-700 dark:text-success-400 rounded-xl hover:from-success-100 hover:to-green-200 dark:hover:from-success-900/40 dark:hover:to-green-800/40 flex items-center justify-center gap-2 text-sm font-semibold transition-all hover:shadow-md"
           >
             <Send className="w-4 h-4" />
             Publish
-          </button>
+          </motion.button>
         )}
 
         {onDelete && (
           <Tooltip content="Delete draft">
-            <button
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => onDelete(draft.id)}
-              className="px-4 py-2.5 bg-error-50 dark:bg-error-900/20 text-error-700 dark:text-error-400 rounded-lg hover:bg-error-100 dark:hover:bg-error-900/40 flex items-center justify-center gap-2 text-sm font-medium transition-colors"
+              className="px-4 py-3 bg-gradient-to-r from-error-50 to-red-100 dark:from-error-900/20 dark:to-red-800/20 text-error-700 dark:text-error-400 rounded-xl hover:from-error-100 hover:to-red-200 dark:hover:from-error-900/40 dark:hover:to-red-800/40 flex items-center justify-center gap-2 text-sm font-semibold transition-all hover:shadow-md"
             >
               <Trash2 className="w-4 h-4" />
-            </button>
+            </motion.button>
           </Tooltip>
         )}
       </div>
