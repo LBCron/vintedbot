@@ -81,10 +81,10 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS middleware - Allow frontend domain
 # CRITICAL: Cannot use "*" with credentials=True, must specify exact origin
-allowed_origins = os.getenv("ALLOWED_ORIGINS", "https://vintedbot-frontend.fly.dev")
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "https://vintedbot-frontend.fly.dev,https://vintedbot.app,https://www.vintedbot.app,http://localhost:3000,http://localhost:5173")
 if allowed_origins == "*":
     # Fallback to specific origin for credentials support
-    origins = ["https://vintedbot-frontend.fly.dev", "http://localhost:5173", "http://localhost:5000"]
+    origins = ["https://vintedbot-frontend.fly.dev", "https://vintedbot.app", "https://www.vintedbot.app", "http://localhost:3000", "http://localhost:5173"]
     allow_origin_regex = None
 else:
     origins = [origin.strip() for origin in allowed_origins.split(",")]
