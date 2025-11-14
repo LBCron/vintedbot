@@ -468,6 +468,214 @@ class SQLiteStore:
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_photos_upload_date ON photo_metadata(upload_date)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_photos_last_access ON photo_metadata(last_access_date)")
 
+            # ========== PROFESSIONAL FEATURES TABLES (Sprint 3-4) ==========
+
+            # 19. Inventory Items (Advanced Inventory Management)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS inventory_items (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    sku TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    category TEXT,
+                    brand TEXT,
+                    size TEXT,
+                    color TEXT,
+                    condition TEXT,
+                    cost_price REAL NOT NULL,
+                    quantity INTEGER DEFAULT 1,
+                    status TEXT DEFAULT 'in_stock' CHECK(status IN ('in_stock','low_stock','out_of_stock','reserved','sold')),
+                    location TEXT DEFAULT 'default',
+                    notes TEXT,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                )
+            """)
+
+            # 20. Inventory Movements (Stock movement history)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS inventory_movements (
+                    id TEXT PRIMARY KEY,
+                    inventory_id TEXT NOT NULL,
+                    user_id TEXT NOT NULL,
+                    movement_type TEXT NOT NULL CHECK(movement_type IN ('add','remove','adjust','transfer','return')),
+                    quantity INTEGER NOT NULL,
+                    from_location TEXT,
+                    to_location TEXT,
+                    from_platform TEXT,
+                    to_platform TEXT,
+                    notes TEXT,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (inventory_id) REFERENCES inventory_items(id) ON DELETE CASCADE,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                )
+            """)
+
+            # 21. Platform Listings (Multi-platform listing sync)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS platform_listings (
+                    id TEXT PRIMARY KEY,
+                    inventory_id TEXT NOT NULL,
+                    platform TEXT NOT NULL CHECK(platform IN ('vinted','leboncoin','depop','ebay','vestiaire','warehouse')),
+                    platform_listing_id TEXT NOT NULL,
+                    listing_price REAL NOT NULL,
+                    quantity_listed INTEGER NOT NULL,
+                    status TEXT DEFAULT 'active' CHECK(status IN ('draft','active','sold','removed')),
+                    published_at TEXT,
+                    sold_at TEXT,
+                    FOREIGN KEY (inventory_id) REFERENCES inventory_items(id) ON DELETE CASCADE
+                )
+            """)
+
+            # 22. Customers (CRM)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS customers (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    vinted_id TEXT NOT NULL,
+                    username TEXT NOT NULL,
+                    email TEXT,
+                    segment TEXT DEFAULT 'new' CHECK(segment IN ('vip','loyal','new','churned','blacklist')),
+                    total_purchases INTEGER DEFAULT 0,
+                    total_spent REAL DEFAULT 0,
+                    avg_order_value REAL DEFAULT 0,
+                    last_purchase_date TEXT,
+                    is_blacklisted INTEGER DEFAULT 0,
+                    blacklist_reason TEXT,
+                    notes TEXT,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                    UNIQUE(user_id, vinted_id)
+                )
+            """)
+
+            # 23. Customer Interactions (CRM history)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS customer_interactions (
+                    id TEXT PRIMARY KEY,
+                    customer_id TEXT NOT NULL,
+                    user_id TEXT NOT NULL,
+                    interaction_type TEXT NOT NULL CHECK(interaction_type IN ('message','purchase','offer','complaint','feedback','return')),
+                    summary TEXT NOT NULL,
+                    details TEXT,
+                    sentiment TEXT CHECK(sentiment IN ('positive','neutral','negative')),
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                )
+            """)
+
+            # 24. Customer Segments (Custom CRM segments)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS customer_segments (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    description TEXT,
+                    filters TEXT NOT NULL,
+                    customer_count INTEGER DEFAULT 0,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                )
+            """)
+
+            # 25. Transactions (Financial Dashboard)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS transactions (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    transaction_type TEXT NOT NULL CHECK(transaction_type IN ('sale','refund','expense','fee','shipping','tax')),
+                    amount REAL NOT NULL,
+                    description TEXT NOT NULL,
+                    category TEXT,
+                    listing_id TEXT,
+                    vinted_fee REAL DEFAULT 0,
+                    payment_fee REAL DEFAULT 0,
+                    shipping_cost REAL DEFAULT 0,
+                    net_amount REAL NOT NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                    FOREIGN KEY (listing_id) REFERENCES listings(id) ON DELETE SET NULL
+                )
+            """)
+
+            # 26. Financial Goals (Budget tracking)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS financial_goals (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    goal_type TEXT NOT NULL CHECK(goal_type IN ('revenue','profit','sales_count')),
+                    target_amount REAL NOT NULL,
+                    period TEXT NOT NULL CHECK(period IN ('monthly','quarterly','yearly')),
+                    start_date TEXT NOT NULL,
+                    end_date TEXT NOT NULL,
+                    current_progress REAL DEFAULT 0,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                )
+            """)
+
+            # 27. Negotiation Rules (Auto-Negotiation)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS negotiation_rules (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    condition TEXT NOT NULL CHECK(condition IN ('percentage_above','absolute_above','buyer_rating','item_age','views_count','offer_count')),
+                    threshold REAL NOT NULL,
+                    action TEXT NOT NULL CHECK(action IN ('accept','reject','counter','ignore')),
+                    counter_percentage REAL,
+                    priority INTEGER DEFAULT 5,
+                    description TEXT,
+                    enabled INTEGER DEFAULT 1,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                )
+            """)
+
+            # 28. Offer History (Negotiation tracking)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS offer_history (
+                    id TEXT PRIMARY KEY,
+                    offer_id TEXT NOT NULL,
+                    listing_id TEXT NOT NULL,
+                    user_id TEXT NOT NULL,
+                    offer_amount REAL NOT NULL,
+                    action TEXT NOT NULL CHECK(action IN ('accept','reject','counter','ignore')),
+                    counter_amount REAL,
+                    reasoning TEXT,
+                    buyer_score REAL,
+                    urgency_score REAL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                    FOREIGN KEY (listing_id) REFERENCES listings(id) ON DELETE SET NULL
+                )
+            """)
+
+            # Create indexes for new tables
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_inventory_user ON inventory_items(user_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_inventory_sku ON inventory_items(sku)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_inventory_status ON inventory_items(status)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_movements_inventory ON inventory_movements(inventory_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_platform_listings_inventory ON platform_listings(inventory_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_platform_listings_status ON platform_listings(status)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_customers_user ON customers(user_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_customers_vinted ON customers(vinted_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_customers_segment ON customers(segment)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_interactions_customer ON customer_interactions(customer_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_interactions_type ON customer_interactions(interaction_type)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_segments_user ON customer_segments(user_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_transactions_user ON transactions(user_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(transaction_type)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(created_at)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_goals_user ON financial_goals(user_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_negotiation_user ON negotiation_rules(user_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_negotiation_enabled ON negotiation_rules(enabled)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_offers_user ON offer_history(user_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_offers_listing ON offer_history(listing_id)")
+
             conn.commit()
     
     # ==================== DRAFTS ====================

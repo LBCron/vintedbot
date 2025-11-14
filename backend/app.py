@@ -28,7 +28,8 @@ from backend.utils.logger import logger, log_request
 from backend.routes import auth, messages, publish, listings, offers, orders, health, ws, feedback
 from backend.api.v1.routers import (
     ingest, health as health_v1, vinted, bulk, ai, auth as auth_v1, billing,
-    analytics, automation, accounts, admin, orders as orders_v1, images, storage
+    analytics, automation, accounts, admin, orders as orders_v1, images, storage,
+    pricing, recommendations, negotiation, inventory, crm, finance
 )
 from backend.settings import settings
 
@@ -182,6 +183,14 @@ app.include_router(accounts.router, tags=["accounts"])  # Multi-account manageme
 app.include_router(orders_v1.router, tags=["orders"])  # Order management & CSV export (Dotb feature)
 app.include_router(images.router, tags=["images"])  # Bulk image editing (Dotb feature)
 app.include_router(storage.router, prefix="/api", tags=["storage"])  # Multi-tier photo storage (TEMP/HOT/COLD)
+
+# PRO FEATURES (Sprint 3-4) - Market-leading competitive advantages!
+app.include_router(pricing.router, prefix="/api", tags=["pricing"])  # AI-powered dynamic pricing engine
+app.include_router(recommendations.router, prefix="/api", tags=["recommendations"])  # ML-based sale predictions & optimization
+app.include_router(negotiation.router, prefix="/api", tags=["negotiation"])  # Auto-negotiation with smart counter-offers
+app.include_router(inventory.router, prefix="/api", tags=["inventory"])  # Advanced inventory management (SKU, multi-platform)
+app.include_router(crm.router, prefix="/api", tags=["crm"])  # Customer relationship management
+app.include_router(finance.router, prefix="/api", tags=["finance"])  # Financial dashboard (P&L, taxes, forecasting)
 
 # SUPER-ADMIN FEATURES - Full platform control for ronanchenlopes@gmail.com
 app.include_router(admin.router, tags=["admin"])  # Super-admin panel with complete system access
