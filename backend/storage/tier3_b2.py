@@ -3,7 +3,7 @@ TIER 3: Backblaze B2 (COLD Storage)
 Stockage archive pour photos rarement accédées (> 90 jours)
 """
 from b2sdk.v2 import InMemoryAccountInfo, B2Api
-from b2sdk.exception import NonExistentBucket, FileNotPresent
+from b2sdk.v2.exception import NonExistentBucket, FileNotPresent
 import os
 from loguru import logger
 
