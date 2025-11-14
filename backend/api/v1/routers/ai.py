@@ -13,9 +13,16 @@ from backend.core.auth import get_current_user, User
 from backend.core.advanced_defect_detector import AdvancedDefectDetector
 from backend.core.market_pricing_engine import MarketPricingEngine
 from backend.core.description_generator import DescriptionGenerator, DescriptionStyle
-from backend.core.session import get_vinted_session
+from backend.core.session import SessionVault
+from backend.settings import settings
 
 router = APIRouter(prefix="/ai", tags=["ai"])
+
+# Initialize session vault
+vault = SessionVault(
+    key=settings.SECRET_KEY,
+    storage_path=settings.SESSION_STORE_PATH
+)
 
 # Initialize OpenAI client with user's API key
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -129,7 +136,7 @@ async def suggest_price(
 ):
     """Get intelligent price recommendation based on market data"""
     try:
-        session = get_vinted_session(current_user.id)
+        session = vault.load_session()
         if not session:
             raise HTTPException(400, "Vinted session not configured")
 
