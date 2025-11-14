@@ -64,6 +64,7 @@ pyjwt==2.8.0  # JWT tokens
 python-jose[cryptography]==3.3.0  # JWT utilities
 itsdangerous==2.2.0  # Secure signing and serialization
 slowapi==0.1.9  # Rate limiting
+pyotp==2.9.0  # TOTP 2FA authentication
 
 # ============================================================================
 # PAYMENTS
