@@ -1,0 +1,38 @@
+[bandit]
+# Target files
+targets: .
+
+# Exclude directories
+exclude_dirs:
+    /venv/,
+    /__pycache__/,
+    /migrations/,
+    /tests/,
+    /.mypy_cache/,
+    /.pytest_cache/
+
+# Test IDs to skip
+skips:
+    B101,  # assert_used (we use asserts in tests)
+    B601,  # paramiko_calls (we don't use paramiko)
+    B602,  # subprocess_popen_with_shell_equals_true (we don't use shell=True)
+    B603,  # subprocess_without_shell_equals_true
+    B607,  # start_process_with_partial_path
+
+# Security level (LOW, MEDIUM, HIGH)
+level: MEDIUM
+
+# Confidence level (LOW, MEDIUM, HIGH)
+confidence: MEDIUM
+
+# Output format
+format: txt
+
+# Show code snippets
+show_code_snippets: True
+
+# Aggregate output by issue type
+aggregate: file
+
+# Number of lines to display before and after issue
+context_lines: 3

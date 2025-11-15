@@ -1,0 +1,125 @@
+[MASTER]
+# Use multiple processes to speed up Pylint
+jobs=4
+
+# Pickle collected data for later comparisons
+persistent=yes
+
+# Allow loading of arbitrary C extensions
+unsafe-load-any-extension=no
+
+# Ignore generated files
+ignore=migrations,venv,__pycache__
+
+[MESSAGES CONTROL]
+# Disable specific warnings
+disable=
+    C0111,  # missing-docstring
+    C0103,  # invalid-name (snake_case vs camelCase)
+    R0903,  # too-few-public-methods (Pydantic models)
+    R0913,  # too-many-arguments (API functions)
+    W0212,  # protected-access (for _client, _db, etc.)
+    C0330,  # wrong-hanging-indentation
+    C0326,  # bad-whitespace
+    W0511,  # fixme (TODO comments)
+    R0801,  # duplicate-code (common patterns across services)
+
+[REPORTS]
+# Output format
+output-format=colorized
+
+# Include message ids in output
+msg-template={path}:{line}: [{msg_id}({symbol}), {obj}] {msg}
+
+# Reports
+reports=no
+score=yes
+
+[BASIC]
+# Good variable names
+good-names=i,j,k,ex,_,id,db,r,f,e
+
+# Regular expression matching correct constant names
+const-rgx=(([A-Z_][A-Z0-9_]*)|(__.*__))$
+
+# Regular expression matching correct function names
+function-rgx=[a-z_][a-z0-9_]{2,50}$
+
+# Regular expression matching correct method names
+method-rgx=[a-z_][a-z0-9_]{2,50}$
+
+# Regular expression matching correct attribute names
+attr-rgx=[a-z_][a-z0-9_]{2,30}$
+
+# Regular expression matching correct argument names
+argument-rgx=[a-z_][a-z0-9_]{2,30}$
+
+# Regular expression matching correct variable names
+variable-rgx=[a-z_][a-z0-9_]{2,30}$
+
+[FORMAT]
+# Maximum number of characters on a single line
+max-line-length=120
+
+# Maximum number of lines in a module
+max-module-lines=1000
+
+# String used as indentation unit (4 spaces)
+indent-string='    '
+
+[DESIGN]
+# Maximum number of arguments for function / method
+max-args=8
+
+# Maximum number of locals for function / method body
+max-locals=20
+
+# Maximum number of return / yield for function / method body
+max-returns=6
+
+# Maximum number of branch for function / method body
+max-branches=15
+
+# Maximum number of statements in function / method body
+max-statements=60
+
+# Maximum number of attributes for a class
+max-attributes=15
+
+[SIMILARITIES]
+# Minimum lines number of a similarity
+min-similarity-lines=6
+
+# Ignore comments when computing similarities
+ignore-comments=yes
+
+# Ignore docstrings when computing similarities
+ignore-docstrings=yes
+
+# Ignore imports when computing similarities
+ignore-imports=yes
+
+[TYPECHECK]
+# List of members which are set dynamically and missed by pylint inference
+generated-members=redis.*,asyncpg.*
+
+# List of decorators that produce context managers
+contextmanager-decorators=contextlib.contextmanager,asynccontextmanager
+
+[IMPORTS]
+# Deprecated modules
+deprecated-modules=optparse,tkinter.tix
+
+[CLASSES]
+# List of method names used to declare instance attributes
+defining-attr-methods=__init__,__new__,setUp
+
+# List of valid names for the first argument in a class method
+valid-classmethod-first-arg=cls
+
+# List of valid names for the first argument in a metaclass class method
+valid-metaclass-classmethod-first-arg=mcs
+
+[EXCEPTIONS]
+# Exceptions that will emit a warning when caught
+overgeneral-exceptions=builtins.Exception
