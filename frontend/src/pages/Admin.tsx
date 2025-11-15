@@ -579,240 +579,251 @@ export default function Admin() {
           </motion.div>
         )}
 
-      {/* System Tab */}
-      {activeTab === 'system' && systemStats && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="space-y-6"
-        >
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* PostgreSQL Details */}
-            <div className="card">
-              <div className="flex items-center gap-3 mb-4">
-                <Database className="w-6 h-6 text-blue-600" />
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">PostgreSQL</h3>
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Active Connections:</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">
-                    {systemStats.postgres.active_connections}
-                  </span>
+        {/* System Tab */}
+        {activeTab === 'system' && systemStats && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="space-y-6"
+          >
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* PostgreSQL Details */}
+              <GlassCard>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-blue-500/20 rounded-lg border border-blue-500/30">
+                    <Database className="w-6 h-6 text-blue-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-white">PostgreSQL</h3>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Total Connections:</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">
-                    {systemStats.postgres.total_connections}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Database Size:</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">
-                    {systemStats.postgres.database_size_mb.toFixed(2)} MB
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Redis Details */}
-            <div className="card">
-              <div className="flex items-center gap-3 mb-4">
-                <Activity className="w-6 h-6 text-red-600" />
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Redis Cache</h3>
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Cache Hit Rate:</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">
-                    {systemStats.redis.cache_hit_rate.toFixed(1)}%
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Connected Clients:</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">
-                    {systemStats.redis.connected_clients}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Memory Used:</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">
-                    {systemStats.redis.used_memory_mb.toFixed(2)} MB
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* S3 Details */}
-            <div className="card">
-              <div className="flex items-center gap-3 mb-4">
-                <HardDrive className="w-6 h-6 text-green-600" />
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">S3 Storage</h3>
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Total Files:</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">
-                    {systemStats.s3.total_files}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Total Size:</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">
-                    {systemStats.s3.total_size_mb.toFixed(2)} MB
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* AI Costs Details */}
-            <div className="card">
-              <div className="flex items-center gap-3 mb-4">
-                <DollarSign className="w-6 h-6 text-yellow-600" />
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">AI Costs</h3>
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Today:</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">
-                    ${systemStats.ai.total_cost_today.toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">This Month:</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">
-                    ${systemStats.ai.total_cost_month.toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Requests Today:</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">
-                    {systemStats.ai.requests_today}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      )}
-
-      {/* Logs Tab */}
-      {activeTab === 'logs' && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="space-y-4"
-        >
-          {/* Log Level Filter */}
-          <div className="card">
-            <select
-              value={logLevel}
-              onChange={(e) => setLogLevel(e.target.value)}
-              className="input"
-            >
-              <option value="all">All Levels</option>
-              <option value="error">Errors</option>
-              <option value="warning">Warnings</option>
-              <option value="info">Info</option>
-            </select>
-          </div>
-
-          {/* Logs */}
-          <div className="card space-y-2">
-            {logs.length === 0 ? (
-              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                No logs available
-              </div>
-            ) : (
-              logs.map((log, index) => (
-                <div
-                  key={index}
-                  className={`p-3 rounded border ${
-                    log.level === 'error' ? 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20' :
-                    log.level === 'warning' ? 'border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-900/20' :
-                    'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800'
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    {log.level === 'error' && <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5" />}
-                    {log.level === 'warning' && <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />}
-                    {log.level === 'info' && <CheckCircle className="w-5 h-5 text-blue-600 mt-0.5" />}
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {new Date(log.timestamp).toLocaleString()}
-                        </span>
-                        <span className={`text-xs font-semibold uppercase px-2 py-0.5 rounded ${
-                          log.level === 'error' ? 'bg-red-200 text-red-800 dark:bg-red-800 dark:text-red-200' :
-                          log.level === 'warning' ? 'bg-yellow-200 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-200' :
-                          'bg-blue-200 text-blue-800 dark:bg-blue-800 dark:text-blue-200'
-                        }`}>
-                          {log.level}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-900 dark:text-white">{log.message}</p>
-                      {log.details && (
-                        <pre className="mt-2 text-xs text-gray-600 dark:text-gray-400 overflow-x-auto">
-                          {JSON.stringify(log.details, null, 2)}
-                        </pre>
-                      )}
-                    </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Active Connections:</span>
+                    <span className="font-semibold text-white">
+                      {systemStats.postgres.active_connections}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Total Connections:</span>
+                    <span className="font-semibold text-white">
+                      {systemStats.postgres.total_connections}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Database Size:</span>
+                    <span className="font-semibold text-white">
+                      {systemStats.postgres.database_size_mb.toFixed(2)} MB
+                    </span>
                   </div>
                 </div>
-              ))
-            )}
-          </div>
-        </motion.div>
-      )}
+              </GlassCard>
 
-      {/* Backups Tab */}
-      {activeTab === 'backups' && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="space-y-4"
-        >
-          <div className="card">
-            <button
-              onClick={handleCreateBackup}
-              className="btn btn-primary w-full"
-            >
-              <Database className="w-4 h-4" />
-              Create New Backup
-            </button>
-          </div>
+              {/* Redis Details */}
+              <GlassCard>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-red-500/20 rounded-lg border border-red-500/30">
+                    <Activity className="w-6 h-6 text-red-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-white">Redis Cache</h3>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Cache Hit Rate:</span>
+                    <span className="font-semibold text-white">
+                      {systemStats.redis.cache_hit_rate.toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Connected Clients:</span>
+                    <span className="font-semibold text-white">
+                      {systemStats.redis.connected_clients}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Memory Used:</span>
+                    <span className="font-semibold text-white">
+                      {systemStats.redis.used_memory_mb.toFixed(2)} MB
+                    </span>
+                  </div>
+                </div>
+              </GlassCard>
 
-          <div className="card">
-            {backups.length === 0 ? (
-              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                No backups available
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {backups.map((backup, index) => (
+              {/* S3 Details */}
+              <GlassCard>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-green-500/20 rounded-lg border border-green-500/30">
+                    <HardDrive className="w-6 h-6 text-green-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-white">S3 Storage</h3>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Total Files:</span>
+                    <span className="font-semibold text-white">
+                      {systemStats.s3.total_files}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Total Size:</span>
+                    <span className="font-semibold text-white">
+                      {systemStats.s3.total_size_mb.toFixed(2)} MB
+                    </span>
+                  </div>
+                </div>
+              </GlassCard>
+
+              {/* AI Costs Details */}
+              <GlassCard>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-yellow-500/20 rounded-lg border border-yellow-500/30">
+                    <DollarSign className="w-6 h-6 text-yellow-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-white">AI Costs</h3>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Today:</span>
+                    <span className="font-semibold text-white">
+                      ${systemStats.ai.total_cost_today.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">This Month:</span>
+                    <span className="font-semibold text-white">
+                      ${systemStats.ai.total_cost_month.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Requests Today:</span>
+                    <span className="font-semibold text-white">
+                      {systemStats.ai.requests_today}
+                    </span>
+                  </div>
+                </div>
+              </GlassCard>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Logs Tab */}
+        {activeTab === 'logs' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="space-y-6"
+          >
+            {/* Log Level Filter */}
+            <GlassCard>
+              <select
+                value={logLevel}
+                onChange={(e) => setLogLevel(e.target.value)}
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-violet-500/50 focus:bg-white/10 transition-all"
+              >
+                <option value="all">All Levels</option>
+                <option value="error">Errors</option>
+                <option value="warning">Warnings</option>
+                <option value="info">Info</option>
+              </select>
+            </GlassCard>
+
+            {/* Logs */}
+            <GlassCard className="space-y-2">
+              {logs.length === 0 ? (
+                <div className="text-center py-8 text-slate-400">
+                  <FileText className="w-12 h-12 text-slate-500 mx-auto mb-3" />
+                  <p>No logs available</p>
+                </div>
+              ) : (
+                logs.map((log, index) => (
                   <div
                     key={index}
-                    className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-800"
+                    className={`p-3 rounded-xl border ${
+                      log.level === 'error' ? 'border-red-500/30 bg-red-500/10' :
+                      log.level === 'warning' ? 'border-yellow-500/30 bg-yellow-500/10' :
+                      'border-blue-500/30 bg-blue-500/10'
+                    }`}
                   >
-                    <div>
-                      <div className="font-medium text-gray-900 dark:text-white">{backup.name}</div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400">
-                        {new Date(backup.created_at).toLocaleString()} • {backup.size_mb.toFixed(2)} MB
+                    <div className="flex items-start gap-3">
+                      {log.level === 'error' && <AlertTriangle className="w-5 h-5 text-red-400 mt-0.5" />}
+                      {log.level === 'warning' && <AlertTriangle className="w-5 h-5 text-yellow-400 mt-0.5" />}
+                      {log.level === 'info' && <CheckCircle className="w-5 h-5 text-blue-400 mt-0.5" />}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs text-slate-400">
+                            {new Date(log.timestamp).toLocaleString()}
+                          </span>
+                          <Badge
+                            variant={log.level === 'error' ? 'error' : log.level === 'warning' ? 'warning' : 'info'}
+                            size="sm"
+                          >
+                            {log.level.toUpperCase()}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-white">{log.message}</p>
+                        {log.details && (
+                          <pre className="mt-2 text-xs text-slate-400 overflow-x-auto">
+                            {JSON.stringify(log.details, null, 2)}
+                          </pre>
+                        )}
                       </div>
                     </div>
-                    <button
-                      className="btn btn-sm btn-secondary"
-                      onClick={() => alert('Restore functionality coming soon')}
-                    >
-                      Restore
-                    </button>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </motion.div>
-      )}
+                ))
+              )}
+            </GlassCard>
+          </motion.div>
+        )}
+
+        {/* Backups Tab */}
+        {activeTab === 'backups' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="space-y-6"
+          >
+            <GlassCard>
+              <Button
+                onClick={handleCreateBackup}
+                icon={Database}
+                className="w-full"
+              >
+                Create New Backup
+              </Button>
+            </GlassCard>
+
+            <GlassCard>
+              {backups.length === 0 ? (
+                <div className="text-center py-12">
+                  <Database className="w-12 h-12 text-slate-500 mx-auto mb-3" />
+                  <p className="text-slate-400">No backups available</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {backups.map((backup, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-4 border border-white/10 rounded-xl hover:bg-white/5 transition-colors"
+                    >
+                      <div>
+                        <div className="font-medium text-white">{backup.name}</div>
+                        <div className="text-sm text-slate-400">
+                          {new Date(backup.created_at).toLocaleString()} • {backup.size_mb.toFixed(2)} MB
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => toast.info('Restore functionality coming soon')}
+                      >
+                        Restore
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </GlassCard>
+          </motion.div>
+        )}
+      </div>
     </div>
   );
 }
