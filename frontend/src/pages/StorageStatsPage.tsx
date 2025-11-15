@@ -148,8 +148,8 @@ export default function StorageStatsPage() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <GlassCard>
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-green-100 rounded-lg">
-                <DollarSign className="w-6 h-6 text-green-600" />
+              <div className="p-3 bg-green-500/20 rounded-lg border border-green-500/30">
+                <DollarSign className="w-6 h-6 text-green-400" />
               </div>
               <div>
                 <p className="text-sm text-slate-400">Coût Mensuel</p>
@@ -162,23 +162,23 @@ export default function StorageStatsPage() {
 
           <GlassCard>
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <TrendingDown className="w-6 h-6 text-blue-600" />
+              <div className="p-3 bg-blue-500/20 rounded-lg border border-blue-500/30">
+                <TrendingDown className="w-6 h-6 text-blue-400" />
               </div>
               <div>
                 <p className="text-sm text-slate-400">Économies</p>
-                <p className="text-2xl font-bold text-green-600">
+                <p className="text-2xl font-bold text-green-400">
                   {formatCost(stats.savings_vs_all_hot)}
                 </p>
-                <p className="text-xs text-gray-500">vs. tout en HOT</p>
+                <p className="text-xs text-slate-500">vs. tout en HOT</p>
               </div>
             </div>
           </GlassCard>
 
           <GlassCard>
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-purple-100 rounded-lg">
-                <Database className="w-6 h-6 text-purple-600" />
+              <div className="p-3 bg-purple-500/20 rounded-lg border border-purple-500/30">
+                <Database className="w-6 h-6 text-purple-400" />
               </div>
               <div>
                 <p className="text-sm text-slate-400">Total Photos</p>
@@ -191,8 +191,8 @@ export default function StorageStatsPage() {
 
           <GlassCard>
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-orange-100 rounded-lg">
-                <HardDrive className="w-6 h-6 text-orange-600" />
+              <div className="p-3 bg-orange-500/20 rounded-lg border border-orange-500/30">
+                <HardDrive className="w-6 h-6 text-orange-400" />
               </div>
               <div>
                 <p className="text-sm text-slate-400">Taille Totale</p>
@@ -348,40 +348,40 @@ export default function StorageStatsPage() {
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             <div className="text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-green-100 rounded-full mb-2">
-                <ArrowUp className="w-6 h-6 text-green-600" />
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-green-500/20 rounded-full mb-2 border border-green-500/30">
+                <ArrowUp className="w-6 h-6 text-green-400" />
               </div>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-2xl font-bold text-white">
                 {lifecycle.photos_uploaded.toLocaleString()}
               </p>
               <p className="text-sm text-slate-400">Photos uploadées</p>
             </div>
 
             <div className="text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full mb-2">
-                <TrendingDown className="w-6 h-6 text-blue-600 rotate-90" />
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-500/20 rounded-full mb-2 border border-blue-500/30">
+                <TrendingDown className="w-6 h-6 text-blue-400 rotate-90" />
               </div>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-2xl font-bold text-white">
                 {lifecycle.photos_promoted.toLocaleString()}
               </p>
               <p className="text-sm text-slate-400">Promues HOT</p>
             </div>
 
             <div className="text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-purple-100 rounded-full mb-2">
-                <Archive className="w-6 h-6 text-purple-600" />
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-purple-500/20 rounded-full mb-2 border border-purple-500/30">
+                <Archive className="w-6 h-6 text-purple-400" />
               </div>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-2xl font-bold text-white">
                 {lifecycle.photos_archived.toLocaleString()}
               </p>
               <p className="text-sm text-slate-400">Archivées COLD</p>
             </div>
 
             <div className="text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-red-100 rounded-full mb-2">
-                <Trash2 className="w-6 h-6 text-red-600" />
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-red-500/20 rounded-full mb-2 border border-red-500/30">
+                <Trash2 className="w-6 h-6 text-red-400" />
               </div>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-2xl font-bold text-white">
                 {lifecycle.photos_deleted.toLocaleString()}
               </p>
               <p className="text-sm text-slate-400">Supprimées</p>
@@ -393,7 +393,7 @@ export default function StorageStatsPage() {
         {recommendations.length > 0 && (
           <GlassCard>
             <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-blue-600" />
+              <AlertCircle className="w-5 h-5 text-blue-400" />
               Recommandations
             </h3>
 
@@ -401,12 +401,12 @@ export default function StorageStatsPage() {
               {recommendations.map((rec, index) => (
                 <div
                   key={index}
-                  className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg"
+                  className="flex items-start gap-3 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg"
                 >
                   {rec.includes('✅') ? (
-                    <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                    <CheckCircle className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
                   ) : (
-                    <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <AlertCircle className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
                   )}
                   <p className="text-sm text-slate-300">{rec}</p>
                 </div>
@@ -427,8 +427,8 @@ export default function StorageStatsPage() {
                 <span className="text-slate-400">TIER 1 - TEMP (Gratuit)</span>
                 <span className="font-medium text-white">0%</span>
               </div>
-              <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
-                <div className="h-full bg-green-500" style={{ width: '0%' }}></div>
+              <div className="h-3 bg-white/10 rounded-full overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-green-500 to-emerald-500 rounded-full transition-all duration-500" style={{ width: '0%' }}></div>
               </div>
             </div>
 
@@ -437,9 +437,9 @@ export default function StorageStatsPage() {
                 <span className="text-slate-400">TIER 2 - HOT (Cloudflare R2)</span>
                 <span className="font-medium text-white">{breakdown.hot.percentage.toFixed(1)}%</span>
               </div>
-              <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+              <div className="h-3 bg-white/10 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-orange-500"
+                  className="h-full bg-gradient-to-r from-orange-500 to-amber-500 rounded-full transition-all duration-500"
                   style={{ width: `${breakdown.hot.percentage}%` }}
                 ></div>
               </div>
@@ -450,23 +450,23 @@ export default function StorageStatsPage() {
                 <span className="text-slate-400">TIER 3 - COLD (Backblaze B2)</span>
                 <span className="font-medium text-white">{breakdown.cold.percentage.toFixed(1)}%</span>
               </div>
-              <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+              <div className="h-3 bg-white/10 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-blue-500"
+                  className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full transition-all duration-500"
                   style={{ width: `${breakdown.cold.percentage}%` }}
                 ></div>
               </div>
             </div>
           </div>
 
-          <div className="mt-6 pt-6 border-t border-gray-200">
+          <div className="mt-6 pt-6 border-t border-white/10">
             <div className="flex justify-between items-center">
-              <span className="text-gray-900 font-semibold">Total Mensuel</span>
-              <span className="text-2xl font-bold text-gray-900">
+              <span className="text-white font-semibold">Total Mensuel</span>
+              <span className="text-2xl font-bold text-white">
                 {formatCost(breakdown.total)}
               </span>
             </div>
-            <p className="text-sm text-green-600 mt-1">
+            <p className="text-sm text-green-400 mt-1">
               ✓ Économie de {formatCost(stats.savings_vs_all_hot)} vs. stockage HOT seul
             </p>
           </div>
