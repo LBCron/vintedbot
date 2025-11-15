@@ -38,6 +38,9 @@ b2sdk==2.1.0
 # ============================================================================
 openai==1.6.1  # OpenAI API (GPT-4, GPT-4o, GPT-4o-mini)
 anthropic==0.25.0  # Claude API (for monitoring auto-fix)
+scikit-learn==1.3.2  # ML models for predictions
+numpy==1.26.2  # Numerical computing
+pandas==2.1.4  # Data analysis
 pillow==11.1.0  # Image processing (updated for HEIC support)
 pillow-heif==1.1.1  # HEIC support (requires libheif 1.19+)
 imagehash==4.3.1  # Perceptual hashing for duplicate detection

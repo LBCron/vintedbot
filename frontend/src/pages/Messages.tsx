@@ -696,7 +696,9 @@ export default function Messages() {
                       disabled={!messageInput.trim()}
                       icon={Send}
                       size="lg"
-                    />
+                    >
+                      Send
+                    </Button>
                   </div>
                 </div>
               </div>

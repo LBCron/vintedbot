@@ -111,8 +111,9 @@ Réponds en JSON avec :
 
         try:
             # Base templates for common intents
+            default_size = "indiquée dans l'annonce"
             templates = {
-                "question_taille": f"La taille est {article_context.get('size', 'indiquée dans l\'annonce')}. C'est une taille {article_context.get('size_type', 'standard')}.",
+                "question_taille": f"La taille est {article_context.get('size', default_size)}. C'est une taille {article_context.get('size_type', 'standard')}.",
                 "disponibilite": "Oui, l'article est toujours disponible ! 😊",
                 "info_livraison": "J'expédie sous 2-3 jours ouvrés via Mondial Relay ou Colissimo selon ta préférence.",
                 "etat_article": f"L'article est en {article_context.get('condition', 'bon')} état comme indiqué sur les photos.",

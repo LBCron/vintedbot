@@ -30,6 +30,7 @@ import 'react-loading-skeleton/dist/skeleton.css';
 import { logger } from '../utils/logger';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
+import { Badge } from '../components/ui/Badge';
 
 interface ImageFile {
   id: string;
@@ -676,8 +677,9 @@ export default function ImageEditor() {
               Remove BG
             </motion.button>
           </div>
-        </motion.div>
-      )}
+            </GlassCard>
+          </motion.div>
+        )}
 
       {/* Edit Panel */}
       <AnimatePresence>
