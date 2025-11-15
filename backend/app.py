@@ -26,6 +26,7 @@ from backend.database import init_db
 from backend.jobs import start_scheduler, stop_scheduler
 from backend.utils.logger import logger, log_request
 from backend.routes import auth, messages, publish, listings, offers, orders, health, ws, feedback
+from backend.routes import ai_messages, scheduling, pricing, image_enhancement, advanced_analytics
 from backend.api.v1.routers import (
     ingest, health as health_v1, vinted, bulk, ai, auth as auth_v1, billing,
     analytics, automation, accounts, admin, orders as orders_v1, images, storage
@@ -185,6 +186,15 @@ app.include_router(storage.router, prefix="/api", tags=["storage"])  # Multi-tie
 
 # SUPER-ADMIN FEATURES - Full platform control for ronanchenlopes@gmail.com
 app.include_router(admin.router, tags=["admin"])  # Super-admin panel with complete system access
+
+# ============================================
+# NEW AI-POWERED FEATURES (Nov 2025) - Makes VintedBot #1 on market!
+# ============================================
+app.include_router(ai_messages.router, tags=["ai-messages"])  # GPT-4 powered auto-messages
+app.include_router(scheduling.router, tags=["scheduling"])  # ML-powered optimal scheduling
+app.include_router(pricing.router, tags=["pricing"])  # AI price optimization
+app.include_router(image_enhancement.router, tags=["image-enhancement"])  # AI image enhancement
+app.include_router(advanced_analytics.router, tags=["advanced-analytics"])  # ML revenue predictions
 
 # Alias for Lovable.dev compatibility (without /api/v1 prefix)
 app.include_router(ingest.router, tags=["ingest-alias"])
