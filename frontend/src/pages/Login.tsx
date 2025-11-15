@@ -2,8 +2,10 @@ import { useState, FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
-import { Mail, Lock, LogIn, ArrowRight, Loader2, Shield, Sparkles } from 'lucide-react';
-import InputField from '../components/auth/InputField';
+import { Mail, Lock, LogIn, ArrowRight, Shield, Sparkles, Zap } from 'lucide-react';
+import { Input } from '../components/ui/Input';
+import { Button } from '../components/ui/Button';
+import { GlassCard } from '../components/ui/GlassCard';
 import toast from 'react-hot-toast';
 
 export default function Login() {
@@ -14,7 +16,6 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  // Email validation
   const isEmailValid = email.length > 0 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const emailError = email.length > 0 && !isEmailValid ? 'Email invalide' : '';
 
@@ -36,7 +37,6 @@ export default function Login() {
     try {
       await login({ email, password });
 
-      // Save remember me preference
       if (rememberMe) {
         localStorage.setItem('remember_me', 'true');
       }
@@ -46,7 +46,6 @@ export default function Login() {
     } catch (err: any) {
       const errorMessage = err.response?.data?.detail;
 
-      // Better error messages
       if (errorMessage?.includes('Invalid email')) {
         toast.error('Email ou mot de passe incorrect');
       } else if (errorMessage?.includes('password')) {
@@ -62,49 +61,67 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-primary-50 via-white to-primary-100 flex items-center justify-center p-4">
-      {/* Animated background elements */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Animated background blobs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary-200/30 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-200/30 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+        <motion.div
+          animate={{
+            scale: [1, 1.2, 1],
+            opacity: [0.3, 0.5, 0.3],
+          }}
+          transition={{
+            duration: 8,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+          className="absolute -top-40 -right-40 w-80 h-80 bg-violet-500/30 rounded-full blur-3xl"
+        />
+        <motion.div
+          animate={{
+            scale: [1, 1.3, 1],
+            opacity: [0.3, 0.5, 0.3],
+          }}
+          transition={{
+            duration: 10,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: 1
+          }}
+          className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-500/30 rounded-full blur-3xl"
+        />
       </div>
 
       {/* Main card */}
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
-        className="w-full max-w-md relative"
+        transition={{ duration: 0.5, type: "spring" }}
+        className="w-full max-w-md relative z-10"
       >
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2, duration: 0.5 }}
-          className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl shadow-primary-500/10 p-8 border border-white/20"
-        >
-          {/* Header with logo */}
+        <GlassCard className="p-8">
+          {/* Header */}
           <div className="text-center mb-8">
             <motion.div
               initial={{ scale: 0, rotate: -180 }}
               animate={{ scale: 1, rotate: 0 }}
-              transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.3 }}
-              className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl mb-4 shadow-lg shadow-primary-500/30"
+              transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.2 }}
+              className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl mb-4 shadow-lg shadow-violet-500/50"
             >
-              <Sparkles className="w-8 h-8 text-white" />
+              <Sparkles className="w-10 h-10 text-white" />
             </motion.div>
             <motion.h1
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4, duration: 0.5 }}
-              className="text-3xl font-bold bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent mb-2"
+              transition={{ delay: 0.3 }}
+              className="text-4xl font-bold bg-gradient-to-r from-white via-violet-200 to-purple-200 bg-clip-text text-transparent mb-2"
             >
               VintedBot
             </motion.h1>
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.5, duration: 0.5 }}
-              className="text-gray-600 font-medium"
+              transition={{ delay: 0.4 }}
+              className="text-slate-400 font-medium"
             >
               Automatisez vos ventes Vinted avec l'IA
             </motion.p>
@@ -114,55 +131,51 @@ export default function Login() {
           <motion.form
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6, duration: 0.5 }}
+            transition={{ delay: 0.5 }}
             onSubmit={handleSubmit}
             className="space-y-5"
           >
             {/* Email */}
-            <InputField
+            <Input
               label="Email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="vous@exemple.com"
-              icon={<Mail className="w-5 h-5" />}
+              icon={Mail}
               error={emailError}
-              success={isEmailValid}
               required
-              autoComplete="email"
             />
 
             {/* Password */}
-            <div className="space-y-2">
-              <InputField
+            <div className="space-y-3">
+              <Input
                 label="Mot de passe"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                icon={<Lock className="w-5 h-5" />}
-                showPasswordToggle
+                icon={Lock}
                 required
-                autoComplete="current-password"
               />
 
               {/* Remember me + Forgot password */}
-              <div className="flex items-center justify-between pt-1">
+              <div className="flex items-center justify-between">
                 <label className="flex items-center gap-2 cursor-pointer group">
                   <input
                     type="checkbox"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
-                    className="w-4 h-4 rounded border-2 border-gray-300 text-primary-600 focus:ring-2 focus:ring-primary-500 focus:ring-offset-0 cursor-pointer transition-all"
+                    className="w-4 h-4 rounded border-2 border-violet-500/50 text-violet-600 focus:ring-2 focus:ring-violet-500 focus:ring-offset-0 cursor-pointer transition-all bg-white/5"
                   />
-                  <span className="text-sm text-gray-600 group-hover:text-gray-900 transition-colors">
+                  <span className="text-sm text-slate-400 group-hover:text-white transition-colors">
                     Se souvenir de moi
                   </span>
                 </label>
 
                 <Link
                   to="/forgot-password"
-                  className="text-sm text-primary-600 hover:text-primary-700 font-medium transition-colors"
+                  className="text-sm text-violet-400 hover:text-violet-300 font-medium transition-colors"
                 >
                   Mot de passe oublié ?
                 </Link>
@@ -170,55 +183,35 @@ export default function Login() {
             </div>
 
             {/* Submit button */}
-            <button
+            <Button
               type="submit"
               disabled={loading}
-              className="
-                w-full py-3.5 px-6
-                bg-gradient-to-r from-primary-600 to-primary-700
-                hover:from-primary-700 hover:to-primary-800
-                text-white font-semibold rounded-xl
-                flex items-center justify-center gap-2
-                transition-all duration-300
-                shadow-lg shadow-primary-500/30
-                hover:shadow-xl hover:shadow-primary-500/40
-                hover:-translate-y-0.5
-                disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0
-                group
-              "
+              loading={loading}
+              icon={loading ? undefined : LogIn}
+              className="w-full"
+              size="lg"
             >
-              {loading ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Connexion en cours...</span>
-                </>
-              ) : (
-                <>
-                  <LogIn className="w-5 h-5 transition-transform group-hover:scale-110" />
-                  <span>Se connecter</span>
-                  <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
-                </>
-              )}
-            </button>
+              {loading ? 'Connexion en cours...' : 'Se connecter'}
+            </Button>
           </motion.form>
 
           {/* Divider */}
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200" />
+              <div className="w-full border-t border-white/10" />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-white text-gray-500">ou</span>
+              <span className="px-4 bg-transparent text-slate-400">ou</span>
             </div>
           </div>
 
           {/* Register link */}
           <div className="text-center">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-slate-400">
               Pas encore de compte ?{' '}
               <Link
                 to="/register"
-                className="text-primary-600 hover:text-primary-700 font-semibold transition-colors inline-flex items-center gap-1 group"
+                className="text-violet-400 hover:text-violet-300 font-semibold transition-colors inline-flex items-center gap-1 group"
               >
                 Créer un compte
                 <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
@@ -230,26 +223,26 @@ export default function Login() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.9, duration: 0.5 }}
-            className="mt-6 pt-6 border-t border-gray-100"
+            transition={{ delay: 0.8 }}
+            className="mt-6 pt-6 border-t border-white/10"
           >
-            <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-              <Shield className="w-4 h-4 text-green-600" />
+            <div className="flex items-center justify-center gap-2 text-sm text-slate-400">
+              <Shield className="w-4 h-4 text-green-400" />
               <span>Connexion sécurisée SSL • Vos données sont chiffrées</span>
             </div>
           </motion.div>
-        </motion.div>
+        </GlassCard>
 
         {/* Footer links */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 1, duration: 0.5 }}
-          className="mt-6 text-center text-xs text-gray-500 space-x-4"
+          transition={{ delay: 0.9 }}
+          className="mt-6 text-center text-xs text-slate-500 space-x-4"
         >
-          <a href="#" className="hover:text-gray-700 transition-colors">Politique de confidentialité</a>
+          <a href="#" className="hover:text-slate-400 transition-colors">Politique de confidentialité</a>
           <span>•</span>
-          <a href="#" className="hover:text-gray-700 transition-colors">Conditions d'utilisation</a>
+          <a href="#" className="hover:text-slate-400 transition-colors">Conditions d'utilisation</a>
         </motion.div>
       </motion.div>
     </div>
