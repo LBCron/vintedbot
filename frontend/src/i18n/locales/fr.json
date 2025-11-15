@@ -1,0 +1,118 @@
+{
+  "common": {
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "success": "Succès",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "export": "Exporter",
+    "import": "Importer"
+  },
+  "nav": {
+    "dashboard": "Tableau de bord",
+    "upload": "Upload",
+    "drafts": "Brouillons",
+    "published": "Publiés",
+    "analytics": "Statistiques",
+    "automation": "Automatisation",
+    "messages": "Messages",
+    "accounts": "Comptes",
+    "settings": "Paramètres"
+  },
+  "auth": {
+    "login": "Connexion",
+    "logout": "Déconnexion",
+    "register": "Inscription",
+    "email": "Email",
+    "password": "Mot de passe",
+    "forgot_password": "Mot de passe oublié ?",
+    "welcome_back": "Bienvenue !",
+    "sign_in_to_continue": "Connectez-vous pour continuer"
+  },
+  "upload": {
+    "title": "Créer un brouillon",
+    "drop_photos": "Glissez-déposez vos photos ici",
+    "or_click": "ou cliquez pour sélectionner",
+    "max_photos": "Maximum {{max}} photos",
+    "ai_analysis": "Analyse IA",
+    "generating_draft": "Génération du brouillon...",
+    "draft_ready": "Brouillon prêt !",
+    "description_style": "Style de description",
+    "styles": {
+      "casual_friendly": "Décontracté & Amical",
+      "professional": "Professionnel",
+      "trendy": "Branché"
+    },
+    "language": "Langue",
+    "create_draft": "Créer le brouillon"
+  },
+  "draft": {
+    "title": "Titre",
+    "description": "Description",
+    "price": "Prix",
+    "category": "Catégorie",
+    "brand": "Marque",
+    "condition": "État",
+    "size": "Taille",
+    "color": "Couleur",
+    "material": "Matière",
+    "season": "Saison",
+    "status": "Statut",
+    "created": "Créé le",
+    "updated": "Modifié le"
+  },
+  "ai": {
+    "powered_by": "Propulsé par IA",
+    "vision_analysis": "Analyse Vision GPT-4o",
+    "brand_detection": "Détection de marque OCR",
+    "smart_pricing": "Prix intelligent",
+    "seo_optimized": "Optimisé SEO",
+    "ai_generated": "Généré par IA",
+    "confidence": "Confiance : {{percent}}%"
+  },
+  "pricing": {
+    "recommended": "Prix recommandé",
+    "min": "Min",
+    "max": "Max",
+    "quick_sale": "Vente rapide",
+    "balanced": "Équilibré",
+    "premium": "Premium",
+    "competitive": "Compétitif"
+  },
+  "stats": {
+    "total_drafts": "Brouillons",
+    "published_items": "Publiés",
+    "total_revenue": "Revenus",
+    "avg_price": "Prix moyen",
+    "ai_drafts": "Brouillons IA",
+    "success_rate": "Taux de succès"
+  },
+  "automation": {
+    "ai_messages": "Messages IA",
+    "auto_reply": "Réponse automatique",
+    "smart_scheduling": "Planification intelligente",
+    "price_optimizer": "Optimiseur de prix",
+    "auto_bump": "Boost automatique"
+  },
+  "messages": {
+    "inbox": "Boîte de réception",
+    "sent": "Envoyés",
+    "archived": "Archivés",
+    "reply": "Répondre",
+    "ai_suggest": "Suggestion IA",
+    "send": "Envoyer"
+  },
+  "settings": {
+    "profile": "Profil",
+    "preferences": "Préférences",
+    "notifications": "Notifications",
+    "language": "Langue",
+    "theme": "Thème",
+    "api_keys": "Clés API",
+    "billing": "Facturation"
+  }
+}

@@ -94,6 +94,7 @@ python-magic==0.4.27  # File type detection
 filetype==1.2.0  # File type detection
 rapidfuzz==3.5.2  # Fuzzy string matching
 pywebpush==1.14.1  # Web Push notifications for PWA
+easyocr==1.7.0  # OCR for brand detection
 
 # ============================================================================
 # DEVELOPMENT & TESTING

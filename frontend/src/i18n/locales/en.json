@@ -1,0 +1,118 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "search": "Search",
+    "filter": "Filter",
+    "export": "Export",
+    "import": "Import"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "upload": "Upload",
+    "drafts": "Drafts",
+    "published": "Published",
+    "analytics": "Analytics",
+    "automation": "Automation",
+    "messages": "Messages",
+    "accounts": "Accounts",
+    "settings": "Settings"
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "register": "Register",
+    "email": "Email",
+    "password": "Password",
+    "forgot_password": "Forgot password?",
+    "welcome_back": "Welcome back!",
+    "sign_in_to_continue": "Sign in to continue"
+  },
+  "upload": {
+    "title": "Create Draft",
+    "drop_photos": "Drop your photos here",
+    "or_click": "or click to select",
+    "max_photos": "Maximum {{max}} photos",
+    "ai_analysis": "AI Analysis",
+    "generating_draft": "Generating draft...",
+    "draft_ready": "Draft ready!",
+    "description_style": "Description style",
+    "styles": {
+      "casual_friendly": "Casual & Friendly",
+      "professional": "Professional",
+      "trendy": "Trendy"
+    },
+    "language": "Language",
+    "create_draft": "Create Draft"
+  },
+  "draft": {
+    "title": "Title",
+    "description": "Description",
+    "price": "Price",
+    "category": "Category",
+    "brand": "Brand",
+    "condition": "Condition",
+    "size": "Size",
+    "color": "Color",
+    "material": "Material",
+    "season": "Season",
+    "status": "Status",
+    "created": "Created",
+    "updated": "Updated"
+  },
+  "ai": {
+    "powered_by": "AI Powered",
+    "vision_analysis": "GPT-4o Vision Analysis",
+    "brand_detection": "OCR Brand Detection",
+    "smart_pricing": "Smart Pricing",
+    "seo_optimized": "SEO Optimized",
+    "ai_generated": "AI Generated",
+    "confidence": "Confidence: {{percent}}%"
+  },
+  "pricing": {
+    "recommended": "Recommended price",
+    "min": "Min",
+    "max": "Max",
+    "quick_sale": "Quick sale",
+    "balanced": "Balanced",
+    "premium": "Premium",
+    "competitive": "Competitive"
+  },
+  "stats": {
+    "total_drafts": "Drafts",
+    "published_items": "Published",
+    "total_revenue": "Revenue",
+    "avg_price": "Avg price",
+    "ai_drafts": "AI Drafts",
+    "success_rate": "Success rate"
+  },
+  "automation": {
+    "ai_messages": "AI Messages",
+    "auto_reply": "Auto-reply",
+    "smart_scheduling": "Smart scheduling",
+    "price_optimizer": "Price optimizer",
+    "auto_bump": "Auto bump"
+  },
+  "messages": {
+    "inbox": "Inbox",
+    "sent": "Sent",
+    "archived": "Archived",
+    "reply": "Reply",
+    "ai_suggest": "AI Suggestion",
+    "send": "Send"
+  },
+  "settings": {
+    "profile": "Profile",
+    "preferences": "Preferences",
+    "notifications": "Notifications",
+    "language": "Language",
+    "theme": "Theme",
+    "api_keys": "API Keys",
+    "billing": "Billing"
+  }
+}

@@ -26,7 +26,7 @@ from backend.database import init_db
 from backend.jobs import start_scheduler, stop_scheduler
 from backend.utils.logger import logger, log_request
 from backend.routes import auth, messages, publish, listings, offers, orders, health, ws, feedback
-from backend.routes import ai_messages, scheduling, pricing, image_enhancement, advanced_analytics, push_notifications
+from backend.routes import ai_messages, scheduling, pricing, image_enhancement, advanced_analytics, push_notifications, draft_creation
 from backend.api.v1.routers import (
     ingest, health as health_v1, vinted, bulk, ai, auth as auth_v1, billing,
     analytics, automation, accounts, admin, orders as orders_v1, images, storage
@@ -250,6 +250,7 @@ app.include_router(pricing.router, tags=["pricing"])  # AI price optimization
 app.include_router(image_enhancement.router, tags=["image-enhancement"])  # AI image enhancement
 app.include_router(advanced_analytics.router, tags=["advanced-analytics"])  # ML revenue predictions
 app.include_router(push_notifications.router, tags=["push-notifications"])  # PWA push notifications
+app.include_router(draft_creation.router, tags=["draft-creation"])  # AI-powered draft creation (GPT-4o + OCR)
 
 # Alias for Lovable.dev compatibility (without /api/v1 prefix)
 app.include_router(ingest.router, tags=["ingest-alias"])
