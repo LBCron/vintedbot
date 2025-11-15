@@ -26,6 +26,8 @@ import toast from 'react-hot-toast';
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
 import { logger } from '../utils/logger';
+import { GlassCard } from '../components/ui/GlassCard';
+import { Button } from '../components/ui/Button';
 
 interface ImageFile {
   id: string;
@@ -349,64 +351,64 @@ export default function ImageEditor() {
   };
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
-      >
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-            <ImageIcon className="w-8 h-8 text-primary-600" />
-            Bulk Image Editor
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Edit multiple images at once with powerful tools
-          </p>
-        </div>
-
-        <label className="cursor-pointer">
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="flex items-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-          >
-            <Upload className="w-5 h-5" />
-            Upload Images
-          </motion.div>
-          <input
-            type="file"
-            multiple
-            accept="image/*"
-            onChange={handleFileUpload}
-            className="hidden"
-          />
-        </label>
-      </motion.div>
-
-      {/* Action Toolbar */}
-      {images.length > 0 && (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      <div className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8 space-y-8">
+        {/* Header */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700"
+          className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
         >
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={selectAll}
-                className="text-sm text-primary-600 hover:text-primary-700 font-medium"
-              >
-                {selectedImages.size === images.length ? 'Deselect All' : 'Select All'}
-              </button>
-              {selectedImages.size > 0 && (
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  {selectedImages.size} image{selectedImages.size !== 1 ? 's' : ''} selected
-                </span>
-              )}
+          <div className="flex items-center gap-4">
+            <div className="p-4 bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl shadow-lg shadow-violet-500/50">
+              <ImageIcon className="w-8 h-8 text-white" />
+            </div>
+            <div>
+              <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-white via-violet-200 to-purple-200 bg-clip-text text-transparent">
+                Bulk Image Editor
+              </h1>
+              <p className="text-slate-400 mt-1">
+                Edit multiple images at once with powerful tools
+              </p>
             </div>
           </div>
+
+          <label className="cursor-pointer">
+            <Button icon={Upload}>
+              Upload Images
+            </Button>
+            <input
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+          </label>
+        </motion.div>
+
+        {/* Action Toolbar */}
+        {images.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <GlassCard>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={selectAll}
+                    className="text-sm text-violet-400 hover:text-violet-300 font-medium transition-colors"
+                  >
+                    {selectedImages.size === images.length ? 'Deselect All' : 'Select All'}
+                  </button>
+                  {selectedImages.size > 0 && (
+                    <span className="text-sm text-slate-400">
+                      {selectedImages.size} image{selectedImages.size !== 1 ? 's' : ''} selected
+                    </span>
+                  )}
+                </div>
+              </div>
 
           <div className="flex flex-wrap gap-3">
             <motion.button
@@ -832,6 +834,7 @@ export default function ImageEditor() {
           </label>
         </motion.div>
       )}
+      </div>
     </div>
   );
 }
