@@ -3,44 +3,73 @@ API routes for AI-powered messaging
 """
 import logging
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from pydantic import BaseModel
 from backend.services.ai_message_service import AIMessageService
 from backend.core.database import get_db_pool
 from backend.security.auth import get_current_user
+from backend.core.rate_limiter import limiter, AI_RATE_LIMIT, BATCH_RATE_LIMIT
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/ai-messages", tags=["ai-messages"])
 
 
-# Pydantic models
+# Pydantic models with input validation
+from pydantic import Field, field_validator
+
+
 class MessageAnalyzeRequest(BaseModel):
-    message: str
-    article_id: Optional[str] = None
+    message: str = Field(..., min_length=1, max_length=10000, description="Message to analyze (max 10,000 chars)")
+    article_id: Optional[str] = Field(None, max_length=100)
     article_context: Optional[dict] = None  # Fallback if article_id not found
+
+    @field_validator('message')
+    @classmethod
+    def validate_message(cls, v):
+        if not v or not v.strip():
+            raise ValueError('Message cannot be empty')
+        return v.strip()
 
 
 class MessageGenerateRequest(BaseModel):
-    message: str
-    article_id: Optional[str] = None
+    message: str = Field(..., min_length=1, max_length=10000, description="Message to respond to (max 10,000 chars)")
+    article_id: Optional[str] = Field(None, max_length=100)
     article_context: Optional[dict] = None
-    tone: str = "friendly"  # friendly, professional, casual
+    tone: str = Field("friendly", pattern="^(friendly|professional|casual)$")
+
+    @field_validator('message')
+    @classmethod
+    def validate_message(cls, v):
+        if not v or not v.strip():
+            raise ValueError('Message cannot be empty')
+        return v.strip()
 
 
 class MessageSettingsUpdate(BaseModel):
     auto_reply_enabled: bool
-    tone: str = "friendly"
-    mode: str = "draft"  # auto, draft, notify
+    tone: str = Field("friendly", pattern="^(friendly|professional|casual)$")
+    mode: str = Field("draft", pattern="^(auto|draft|notify)$")
 
 
 class BatchMessageRequest(BaseModel):
-    messages: List[dict]  # List of {message, article_context}
-    tone: str = "friendly"
+    messages: List[dict] = Field(..., max_length=50, description="Max 50 messages per batch")
+    tone: str = Field("friendly", pattern="^(friendly|professional|casual)$")
+
+    @field_validator('messages')
+    @classmethod
+    def validate_messages(cls, v):
+        if not v:
+            raise ValueError('Messages list cannot be empty')
+        if len(v) > 50:
+            raise ValueError('Cannot process more than 50 messages at once')
+        return v
 
 
 @router.post("/analyze")
+@limiter.limit(AI_RATE_LIMIT)
 async def analyze_message(
+    http_request: Request,
     request: MessageAnalyzeRequest,
     current_user: dict = Depends(get_current_user),
     db = Depends(get_db_pool)
@@ -95,7 +124,9 @@ async def analyze_message(
 
 
 @router.post("/generate-response")
+@limiter.limit(AI_RATE_LIMIT)
 async def generate_auto_response(
+    http_request: Request,
     request: MessageGenerateRequest,
     current_user: dict = Depends(get_current_user),
     db = Depends(get_db_pool)
@@ -153,7 +184,9 @@ async def generate_auto_response(
 
 
 @router.post("/batch-generate")
+@limiter.limit(BATCH_RATE_LIMIT)
 async def batch_generate_responses(
+    http_request: Request,
     request: BatchMessageRequest,
     current_user: dict = Depends(get_current_user)
 ):

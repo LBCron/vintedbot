@@ -1,29 +1,25 @@
 """
 AI-powered image enhancement service using GPT-4 Vision
+
+All OpenAI calls protected with 30s timeout to prevent server hangs.
 """
 import logging
 import base64
+import asyncio
 import os
 from typing import Dict, List
 from PIL import Image, ImageEnhance, ImageFilter
 import io
+from backend.core.openai_client import get_openai_client
 
 logger = logging.getLogger(__name__)
-
-try:
-    from openai import AsyncOpenAI
-    OPENAI_AVAILABLE = True
-except ImportError:
-    OPENAI_AVAILABLE = False
-    logger.warning("OpenAI not available - image analysis will be limited")
 
 
 class ImageEnhancerService:
     """Service for AI-powered image enhancement"""
 
     def __init__(self):
-        api_key = os.getenv("OPENAI_API_KEY")
-        self.client = AsyncOpenAI(api_key=api_key) if (api_key and OPENAI_AVAILABLE) else None
+        self.client = get_openai_client()
 
     async def analyze_image_quality(self, image_path: str) -> Dict:
         """
@@ -35,7 +31,7 @@ class ImageEnhancerService:
         Returns:
             Quality analysis with scores and recommendations
         """
-        if not self.client:
+        if not self.client.is_configured:
             logger.warning("OpenAI client not available - using fallback analysis")
             return self._fallback_analysis()
 
@@ -91,6 +87,9 @@ Respond in JSON:
             logger.info(f"Image analyzed: overall score {result.get('overall_score')}")
             return result
 
+        except asyncio.TimeoutError:
+            logger.error("OpenAI Vision API call timed out after 30s")
+            return self._fallback_analysis()
         except Exception as e:
             logger.error(f"Failed to analyze image with AI: {e}")
             return self._fallback_analysis()

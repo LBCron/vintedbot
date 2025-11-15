@@ -1,11 +1,12 @@
 """API routes for intelligent scheduling"""
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel, Field, field_validator
 from typing import List
-from datetime import datetime
+from datetime import datetime, timedelta
 from backend.services.scheduler_service import SchedulerService
 from backend.core.database import get_db_pool
 from backend.security.auth import get_current_user
+from backend.core.rate_limiter import limiter, AI_RATE_LIMIT, BATCH_RATE_LIMIT, ANALYTICS_RATE_LIMIT
 import logging
 
 logger = logging.getLogger(__name__)
@@ -13,13 +14,36 @@ router = APIRouter(prefix="/api/v1/scheduling", tags=["scheduling"])
 
 
 class ScheduleRequest(BaseModel):
-    draft_id: str
+    draft_id: str = Field(..., max_length=100)
     scheduled_time: datetime
+
+    @field_validator('scheduled_time')
+    @classmethod
+    def validate_scheduled_time(cls, v):
+        # Must be in the future
+        if v < datetime.now():
+            raise ValueError('Scheduled time must be in the future')
+        # Not more than 1 year ahead
+        if v > datetime.now() + timedelta(days=365):
+            raise ValueError('Cannot schedule more than 1 year ahead')
+        return v
 
 
 class BulkScheduleRequest(BaseModel):
-    draft_ids: List[str]
-    strategy: str  # 'optimal', 'spread', 'burst'
+    draft_ids: List[str] = Field(..., min_length=1, max_length=50, description="Max 50 items per batch")
+    strategy: str = Field(..., pattern="^(optimal|spread|burst)$")
+
+    @field_validator('draft_ids')
+    @classmethod
+    def validate_draft_ids(cls, v):
+        if not v:
+            raise ValueError('draft_ids cannot be empty')
+        if len(v) > 50:
+            raise ValueError('Cannot schedule more than 50 items at once')
+        for draft_id in v:
+            if not draft_id or len(draft_id) > 100:
+                raise ValueError('Invalid draft_id')
+        return v
 
 
 @router.post("/schedule")
@@ -39,7 +63,9 @@ async def schedule_draft(
 
 
 @router.get("/optimal-times")
+@limiter.limit(AI_RATE_LIMIT)
 async def get_optimal_times(
+    http_request: Request,
     current_user: dict = Depends(get_current_user),
     db = Depends(get_db_pool)
 ):
@@ -49,7 +75,9 @@ async def get_optimal_times(
 
 
 @router.post("/bulk-schedule")
+@limiter.limit(BATCH_RATE_LIMIT)
 async def bulk_schedule(
+    http_request: Request,
     request: BulkScheduleRequest,
     current_user: dict = Depends(get_current_user),
     db = Depends(get_db_pool)

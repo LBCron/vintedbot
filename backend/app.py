@@ -170,17 +170,7 @@ app.add_middleware(
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 
 # Handle OPTIONS requests globally (CORS preflight)
-@app.options("/{full_path:path}")
-async def options_handler(full_path: str):
-    return JSONResponse(
-        content={},
-        headers={
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "*",
-            "Access-Control-Allow-Headers": "*",
-            "Access-Control-Max-Age": "3600"
-        }
-    )
+# REMOVED: Do NOT use wildcard "*" - CORSMiddleware handles this properly with whitelist
 
 
 # Security: Block direct API access in production (force use of frontend)

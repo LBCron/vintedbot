@@ -1,9 +1,12 @@
 """
 Async PostgreSQL Database with Connection Pooling
 Replaces SQLite for production scalability
+
+All connections managed with proper context managers to prevent leaks.
 """
 import os
-from typing import AsyncGenerator
+import asyncpg
+from typing import AsyncGenerator, Optional
 from contextlib import asynccontextmanager
 from sqlalchemy.ext.asyncio import (
     create_async_engine,
@@ -118,6 +121,77 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
+# ============================================================================
+# ASYNCPG CONNECTION POOL (for direct PostgreSQL access)
+# ============================================================================
+_asyncpg_pool: Optional[asyncpg.Pool] = None
+
+
+async def init_asyncpg_pool():
+    """Initialize raw asyncpg connection pool for direct DB access"""
+    global _asyncpg_pool
+
+    if _asyncpg_pool is not None:
+        return _asyncpg_pool
+
+    # Extract asyncpg-compatible URL from SQLAlchemy URL
+    if "postgresql" not in DATABASE_URL:
+        logger.warning("asyncpg pool only supported for PostgreSQL")
+        return None
+
+    # Convert SQLAlchemy URL to asyncpg format
+    asyncpg_url = DATABASE_URL.replace("postgresql+asyncpg://", "postgresql://")
+
+    try:
+        _asyncpg_pool = await asyncpg.create_pool(
+            asyncpg_url,
+            min_size=int(os.getenv("DB_POOL_SIZE", "10")),
+            max_size=int(os.getenv("DB_POOL_SIZE", "10")) + int(os.getenv("DB_MAX_OVERFLOW", "20")),
+            timeout=int(os.getenv("DB_POOL_TIMEOUT", "30")),
+            command_timeout=60.0,  # 60s query timeout
+            max_inactive_connection_lifetime=int(os.getenv("DB_POOL_RECYCLE", "3600")),
+        )
+        logger.info(f"✅ asyncpg pool initialized (size={_asyncpg_pool.get_size()}/{_asyncpg_pool.get_max_size()})")
+        return _asyncpg_pool
+    except Exception as e:
+        logger.error(f"❌ Failed to create asyncpg pool: {e}")
+        return None
+
+
+async def get_db_pool():
+    """
+    FastAPI dependency for raw asyncpg connection pool
+
+    Usage:
+        @router.get("/users")
+        async def get_users(db = Depends(get_db_pool)):
+            async with db.acquire() as conn:
+                users = await conn.fetch("SELECT * FROM users")
+                return users
+
+    IMPORTANT: Always use `async with db.acquire()` context manager
+    to ensure connections are properly released back to the pool.
+    """
+    global _asyncpg_pool
+
+    if _asyncpg_pool is None:
+        _asyncpg_pool = await init_asyncpg_pool()
+
+    if _asyncpg_pool is None:
+        raise RuntimeError("Database pool not initialized")
+
+    return _asyncpg_pool
+
+
+async def close_asyncpg_pool():
+    """Close asyncpg connection pool"""
+    global _asyncpg_pool
+    if _asyncpg_pool:
+        await _asyncpg_pool.close()
+        _asyncpg_pool = None
+        logger.info("✅ asyncpg pool closed")
+
+
 # Health check query
 async def check_db_health() -> dict:
     """Check database connectivity and pool stats"""
@@ -140,6 +214,13 @@ async def check_db_health() -> dict:
                 "overflow": pool.overflow(),
                 "total_connections": pool.size() + pool.overflow(),
             })
+
+            # Add asyncpg pool stats if available
+            if _asyncpg_pool:
+                stats.update({
+                    "asyncpg_pool_size": _asyncpg_pool.get_size(),
+                    "asyncpg_pool_max": _asyncpg_pool.get_max_size(),
+                })
 
         return stats
     except Exception as e:

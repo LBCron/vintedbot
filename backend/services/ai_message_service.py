@@ -1,11 +1,13 @@
 """
 AI-powered message service using GPT-4 Mini for auto-replies
+
+All OpenAI calls protected with 30s timeout to prevent server hangs.
 """
 import json
 import logging
+import asyncio
 from typing import Dict, List, Optional
-from openai import AsyncOpenAI
-import os
+from backend.core.openai_client import get_openai_client
 
 logger = logging.getLogger(__name__)
 
@@ -14,10 +16,7 @@ class AIMessageService:
     """Service for AI-powered message analysis and generation"""
 
     def __init__(self):
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            logger.warning("OPENAI_API_KEY not set - AI features will not work")
-        self.client = AsyncOpenAI(api_key=api_key) if api_key else None
+        self.client = get_openai_client()
 
     async def analyze_message_intent(
         self,
@@ -34,7 +33,7 @@ class AIMessageService:
         Returns:
             Dictionary with intent, confidence, and extracted key info
         """
-        if not self.client:
+        if not self.client.is_configured:
             logger.error("OpenAI client not initialized")
             return {
                 "intention": "unknown",
@@ -77,6 +76,14 @@ Réponds en JSON avec :
             logger.info(f"Message intent analyzed: {result.get('intention')}")
             return result
 
+        except asyncio.TimeoutError:
+            logger.error("OpenAI API call timed out after 30s")
+            return {
+                "intention": "autre",
+                "confidence": 0.0,
+                "key_info": "Request timed out",
+                "error": "API timeout"
+            }
         except Exception as e:
             logger.error(f"Failed to analyze message intent: {e}")
             return {
@@ -105,7 +112,7 @@ Réponds en JSON avec :
         Returns:
             Generated response text
         """
-        if not self.client:
+        if not self.client.is_configured:
             logger.error("OpenAI client not initialized")
             return "Désolé, je ne peux pas générer de réponse automatique pour le moment."
 
@@ -160,6 +167,9 @@ Réponse :"""
             logger.info(f"Generated response for intent {intention}")
             return generated_text
 
+        except asyncio.TimeoutError:
+            logger.error("OpenAI API call timed out after 30s")
+            return f"Merci pour votre message ! Je vous réponds au plus vite. L'article {article_context.get('title', '')} est toujours disponible."
         except Exception as e:
             logger.error(f"Failed to generate response: {e}")
             return f"Merci pour votre message ! Je vous réponds au plus vite. L'article {article_context.get('title', '')} est toujours disponible."

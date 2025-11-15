@@ -1,9 +1,10 @@
 """API routes for AI image enhancement"""
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Request
+from pydantic import BaseModel, Field, field_validator
 from typing import List
 from backend.services.image_enhancer_service import ImageEnhancerService
 from backend.security.auth import get_current_user
+from backend.core.rate_limiter import limiter, AI_RATE_LIMIT, IMAGE_RATE_LIMIT, BATCH_RATE_LIMIT
 import logging
 import os
 import uuid
@@ -13,12 +14,30 @@ router = APIRouter(prefix="/api/v1/images", tags=["image-enhancement"])
 
 
 class BatchEnhanceRequest(BaseModel):
-    image_paths: List[str]
+    image_paths: List[str] = Field(..., min_length=1, max_length=20, description="Max 20 images per batch")
     auto_apply: bool = False
+
+    @field_validator('image_paths')
+    @classmethod
+    def validate_image_paths(cls, v):
+        if not v:
+            raise ValueError('image_paths cannot be empty')
+        if len(v) > 20:
+            raise ValueError('Cannot enhance more than 20 images at once')
+        # Validate each path
+        for path in v:
+            if not path or len(path) > 500:
+                raise ValueError('Invalid image path')
+            # Basic path traversal protection
+            if '..' in path or path.startswith('/etc') or path.startswith('/root'):
+                raise ValueError('Invalid image path')
+        return v
 
 
 @router.post("/analyze")
+@limiter.limit(AI_RATE_LIMIT)
 async def analyze_image(
+    http_request: Request,
     file: UploadFile = File(...),
     current_user: dict = Depends(get_current_user)
 ):
@@ -42,7 +61,9 @@ async def analyze_image(
 
 
 @router.post("/enhance")
+@limiter.limit(IMAGE_RATE_LIMIT)
 async def enhance_image(
+    http_request: Request,
     file: UploadFile = File(...),
     current_user: dict = Depends(get_current_user)
 ):
@@ -72,7 +93,9 @@ async def enhance_image(
 
 
 @router.post("/batch-enhance")
+@limiter.limit(BATCH_RATE_LIMIT)
 async def batch_enhance_images(
+    http_request: Request,
     request: BatchEnhanceRequest,
     current_user: dict = Depends(get_current_user)
 ):
