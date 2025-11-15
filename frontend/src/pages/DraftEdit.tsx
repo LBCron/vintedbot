@@ -9,6 +9,8 @@ import SmartPricing from '../components/common/SmartPricing';
 import ImageEditor from '../components/common/ImageEditor';
 import type { Draft } from '../types';
 import { motion } from 'framer-motion';
+import { GlassCard } from '../components/ui/GlassCard';
+import { Button } from '../components/ui/Button';
 
 export default function DraftEdit() {
   const { id } = useParams<{ id: string }>();
@@ -125,76 +127,90 @@ N'hésitez pas si vous avez des questions !`;
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <LoadingSpinner size="large" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-8">
+        <div className="max-w-7xl mx-auto">
+          <GlassCard className="p-12">
+            <div className="flex flex-col items-center justify-center space-y-4">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                className="w-12 h-12 border-4 border-violet-500/30 border-t-violet-500 rounded-full"
+              />
+              <p className="text-slate-400">Loading draft...</p>
+            </div>
+          </GlassCard>
+        </div>
       </div>
     );
   }
 
   if (error || !draft) {
     return (
-      <div className="card text-center py-12">
-        <p className="text-red-600 dark:text-red-400">{error || 'Draft not found'}</p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-8">
+        <div className="max-w-7xl mx-auto">
+          <GlassCard className="text-center py-12">
+            <p className="text-red-400">{error || 'Draft not found'}</p>
+          </GlassCard>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       {/* Header - Fixed */}
-      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-4">
+      <div className="bg-slate-900/50 backdrop-blur-xl border-b border-white/10 px-6 py-4 sticky top-0 z-10">
         <div className="flex items-center justify-between max-w-[1600px] mx-auto">
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate('/drafts')}
-              className="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-all"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">Edit Draft</h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <h1 className="text-xl font-bold text-white">Edit Draft</h1>
+              <p className="text-sm text-slate-400">
                 Make any changes before publishing
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <button
+            <Button
               onClick={handleSave}
               disabled={saving}
-              className="px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg transition-colors flex items-center gap-2"
+              variant="outline"
+              icon={Save}
             >
-              {saving ? <LoadingSpinner size="small" /> : <Save className="w-4 h-4" />}
-              Save
-            </button>
-            <button
+              {saving ? 'Saving...' : 'Save'}
+            </Button>
+            <Button
               onClick={handlePublish}
               disabled={saving}
-              className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors flex items-center gap-2"
+              icon={Send}
             >
-              {saving ? <LoadingSpinner size="small" /> : <Send className="w-4 h-4" />}
-              Publish
-            </button>
+              {saving ? 'Publishing...' : 'Publish'}
+            </Button>
           </div>
         </div>
       </div>
 
       {/* Split Screen Layout */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden max-w-[1600px] mx-auto w-full">
         {/* Left Panel - Photo Gallery (30%) */}
         <motion.div
           initial={{ x: -50, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
-          className="w-[30%] border-r border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 overflow-y-auto"
+          className="w-[30%] border-r border-white/10 bg-slate-900/30 overflow-y-auto"
         >
           <div className="p-6 space-y-4">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+              <h3 className="text-sm font-semibold text-white">
                 Photos ({draft.photos.length})
               </h3>
               <button
-                className="text-xs text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1"
+                className="text-xs text-violet-400 hover:text-violet-300 hover:underline flex items-center gap-1 transition-colors"
                 onClick={() => {
                   if (draft.photos.length > 0) {
                     setEditingImage(draft.photos[0]);
