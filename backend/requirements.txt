@@ -93,6 +93,7 @@ apscheduler==3.10.4  # Background jobs
 python-magic==0.4.27  # File type detection
 filetype==1.2.0  # File type detection
 rapidfuzz==3.5.2  # Fuzzy string matching
+pywebpush==1.14.1  # Web Push notifications for PWA
 
 # ============================================================================
 # DEVELOPMENT & TESTING

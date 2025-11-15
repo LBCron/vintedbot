@@ -26,7 +26,7 @@ from backend.database import init_db
 from backend.jobs import start_scheduler, stop_scheduler
 from backend.utils.logger import logger, log_request
 from backend.routes import auth, messages, publish, listings, offers, orders, health, ws, feedback
-from backend.routes import ai_messages, scheduling, pricing, image_enhancement, advanced_analytics
+from backend.routes import ai_messages, scheduling, pricing, image_enhancement, advanced_analytics, push_notifications
 from backend.api.v1.routers import (
     ingest, health as health_v1, vinted, bulk, ai, auth as auth_v1, billing,
     analytics, automation, accounts, admin, orders as orders_v1, images, storage
@@ -68,12 +68,76 @@ async def lifespan(app: FastAPI):
     stop_scheduler()
 
 
-# Create FastAPI app
+# Create FastAPI app with enhanced documentation
 app = FastAPI(
-    title="VintedBot Connector API",
-    description="Backend connector for Vinted automation with messaging, publishing, and session management",
-    version="1.0.0",
-    lifespan=lifespan
+    title="VintedBot API",
+    description="""
+    🤖 **VintedBot API** - AI-Powered Vinted Automation Platform
+
+    ## 🚀 Features
+
+    ### AI-Powered Features
+    - 🧠 **AI Auto-Messages**: GPT-4 Mini powered automatic message responses
+    - 📅 **Smart Scheduling**: ML-based optimal posting times
+    - 💰 **Price Optimizer**: Dynamic pricing strategies (Quick Sale, Balanced, Premium, Competitive)
+    - 🖼️ **Image Enhancer**: GPT-4 Vision quality analysis and enhancement
+    - 📊 **ML Analytics**: Revenue predictions with Linear Regression
+
+    ### Core Features
+    - 📸 **Bulk Upload**: Multi-photo upload with AI analysis
+    - 📝 **Draft Management**: Complete draft lifecycle management
+    - 💬 **Message Automation**: Auto-respond to buyer inquiries
+    - 🔄 **Multi-Account**: Manage multiple Vinted accounts
+    - 📈 **Analytics Dashboard**: Sales insights and performance metrics
+    - 🎨 **Image Editing**: Bulk photo editing and optimization
+
+    ### Premium Features
+    - ⚡ **PWA Support**: Installable app with offline capabilities
+    - 🔔 **Push Notifications**: Real-time notifications for sales and messages
+    - 🎯 **Command Palette**: Quick navigation with keyboard shortcuts
+    - 🛡️ **Error Tracking**: Sentry integration for production monitoring
+
+    ## 🔐 Authentication
+
+    All endpoints require JWT authentication via Bearer token.
+
+    Get your token from `/auth/login` and include it in the `Authorization` header:
+    ```
+    Authorization: Bearer <your_token>
+    ```
+
+    ## ⚡ Rate Limits
+
+    - **Standard endpoints**: 100 requests/minute
+    - **AI endpoints** (GPT-4): 10 requests/minute
+    - **Image upload**: 20 requests/minute
+
+    ## 📖 Documentation
+
+    - **Swagger UI**: [/docs](/docs) (interactive API testing)
+    - **ReDoc**: [/redoc](/redoc) (alternative documentation)
+    - **GitHub**: [github.com/LBCron/vintedbot](https://github.com/LBCron/vintedbot)
+
+    ## 🏷️ Version History
+
+    - **v2.0.0** (2025-11): AI Features + PWA + ML Analytics
+    - **v1.5.0** (2024): Multi-account + Advanced Analytics
+    - **v1.0.0** (2024): Initial release
+    """,
+    version="2.0.0",
+    lifespan=lifespan,
+    docs_url="/docs",
+    redoc_url="/redoc",
+    contact={
+        "name": "VintedBot Support",
+        "url": "https://github.com/LBCron/vintedbot/issues",
+        "email": "support@vintedbot.app"
+    },
+    license_info={
+        "name": "Proprietary",
+        "url": "https://vintedbot.app/license"
+    },
+    terms_of_service="https://vintedbot.app/terms"
 )
 
 # Add rate limiter
@@ -195,6 +259,7 @@ app.include_router(scheduling.router, tags=["scheduling"])  # ML-powered optimal
 app.include_router(pricing.router, tags=["pricing"])  # AI price optimization
 app.include_router(image_enhancement.router, tags=["image-enhancement"])  # AI image enhancement
 app.include_router(advanced_analytics.router, tags=["advanced-analytics"])  # ML revenue predictions
+app.include_router(push_notifications.router, tags=["push-notifications"])  # PWA push notifications
 
 # Alias for Lovable.dev compatibility (without /api/v1 prefix)
 app.include_router(ingest.router, tags=["ingest-alias"])

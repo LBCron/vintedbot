@@ -1,0 +1,101 @@
+{
+  "short_name": "VintedBot",
+  "name": "VintedBot - AI-Powered Vinted Automation",
+  "description": "Automatise tes ventes Vinted avec l'Intelligence Artificielle. Messages automatiques, scheduling ML, optimisation des prix, amélioration d'images et analytics prédictives.",
+  "icons": [
+    {
+      "src": "/logo72.png",
+      "type": "image/png",
+      "sizes": "72x72",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#8b5cf6",
+  "background_color": "#0f172a",
+  "orientation": "portrait-primary",
+  "categories": ["productivity", "business", "shopping"],
+  "lang": "fr-FR",
+  "dir": "ltr",
+  "screenshots": [
+    {
+      "src": "/screenshots/dashboard.png",
+      "type": "image/png",
+      "sizes": "1280x720",
+      "form_factor": "wide",
+      "label": "Dashboard with AI Analytics"
+    },
+    {
+      "src": "/screenshots/mobile-upload.png",
+      "type": "image/png",
+      "sizes": "750x1334",
+      "form_factor": "narrow",
+      "label": "Mobile Upload Interface"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Upload Photos",
+      "short_name": "Upload",
+      "description": "Upload new product photos",
+      "url": "/upload",
+      "icons": [{ "src": "/icons/upload.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "My Drafts",
+      "short_name": "Drafts",
+      "description": "View all drafts",
+      "url": "/drafts",
+      "icons": [{ "src": "/icons/drafts.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Messages",
+      "short_name": "Messages",
+      "description": "View messages",
+      "url": "/messages",
+      "icons": [{ "src": "/icons/messages.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Analytics",
+      "short_name": "Analytics",
+      "description": "View analytics dashboard",
+      "url": "/analytics",
+      "icons": [{ "src": "/icons/analytics.png", "sizes": "96x96" }]
+    }
+  ],
+  "share_target": {
+    "action": "/upload",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "files": [
+        {
+          "name": "photos",
+          "accept": ["image/*"]
+        }
+      ]
+    }
+  },
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "features": [
+    "offline-support",
+    "push-notifications",
+    "background-sync",
+    "ai-powered-automation"
+  ]
+}

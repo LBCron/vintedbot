@@ -6,6 +6,8 @@ import { CommandPaletteProvider, useCommandPalette } from './contexts/CommandPal
 import ProtectedRoute from './components/common/ProtectedRoute';
 import LoadingSpinner from './components/common/LoadingSpinner';
 import CommandPalette from './components/CommandPalette';
+import { PWAInstallPrompt } from './components/PWAInstallPrompt';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
@@ -39,9 +41,13 @@ const PageLoader = () => (
 function AppContent() {
   const { isOpen, close } = useCommandPalette();
 
+  // Enable keyboard shortcuts globally
+  useKeyboardShortcuts();
+
   return (
     <>
       <CommandPalette open={isOpen} onClose={close} />
+      <PWAInstallPrompt />
       <Toaster
         position="top-right"
         toastOptions={{
