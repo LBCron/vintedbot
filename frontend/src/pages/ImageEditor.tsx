@@ -20,6 +20,8 @@ import {
   ZoomOut,
   Move,
   Grid,
+  Eye,
+  Zap,
 } from 'lucide-react';
 import { imagesAPI } from '../api/client';
 import toast from 'react-hot-toast';
@@ -59,12 +61,22 @@ interface WatermarkSettings {
   fontSize: number;
 }
 
+interface ImageQuality {
+  brightness_score: number;
+  sharpness_score: number;
+  contrast_score: number;
+  overall_score: number;
+  suggestions: string[];
+}
+
 export default function ImageEditor() {
   const [images, setImages] = useState<ImageFile[]>([]);
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
   const [editMode, setEditMode] = useState<EditMode>(null);
   const [loading, setLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [imageQuality, setImageQuality] = useState<ImageQuality | null>(null);
+  const [analyzingAI, setAnalyzingAI] = useState(false);
 
   // Edit settings
   const [rotateAngle, setRotateAngle] = useState(90);
@@ -330,6 +342,87 @@ export default function ImageEditor() {
     }
   };
 
+  const analyzeWithAI = async () => {
+    if (selectedImages.size === 0) {
+      toast.error('Please select an image to analyze');
+      return;
+    }
+
+    if (selectedImages.size > 1) {
+      toast.error('Please select only one image for AI analysis');
+      return;
+    }
+
+    try {
+      setAnalyzingAI(true);
+      const loadingToast = toast.loading('Analyzing image with GPT-4 Vision...');
+
+      const selectedImage = images.find(img => selectedImages.has(img.id));
+      if (!selectedImage) return;
+
+      const response = await fetch('/api/v1/images/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          image_path: selectedImage.path
+        })
+      });
+
+      const data = await response.json();
+
+      setImageQuality({
+        brightness_score: data.brightness_score,
+        sharpness_score: data.sharpness_score,
+        contrast_score: data.contrast_score,
+        overall_score: data.overall_score,
+        suggestions: data.suggestions || []
+      });
+
+      toast.success('AI analysis complete!', { id: loadingToast });
+    } catch (error) {
+      toast.error('Failed to analyze image');
+      logger.error('AI analysis error', error);
+    } finally {
+      setAnalyzingAI(false);
+    }
+  };
+
+  const autoEnhanceWithAI = async () => {
+    if (selectedImages.size === 0) {
+      toast.error('Please select images');
+      return;
+    }
+
+    try {
+      setProcessing(true);
+      const loadingToast = toast.loading('Auto-enhancing with AI...');
+
+      const selectedPaths = images
+        .filter(img => selectedImages.has(img.id))
+        .map(img => img.path);
+
+      const response = await fetch('/api/v1/images/batch-enhance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          image_paths: selectedPaths
+        })
+      });
+
+      const data = await response.json();
+
+      toast.success(`Enhanced ${data.enhanced_count} images!`, { id: loadingToast });
+      setImageQuality(null);
+    } catch (error) {
+      toast.error('Failed to enhance images');
+      logger.error('Auto-enhance error', error);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   const executeEditAction = () => {
     switch (editMode) {
       case 'rotate':
@@ -373,19 +466,121 @@ export default function ImageEditor() {
             </div>
           </div>
 
-          <label className="cursor-pointer">
-            <Button icon={Upload}>
-              Upload Images
+          <div className="flex gap-3">
+            <Button
+              icon={Sparkles}
+              onClick={analyzeWithAI}
+              disabled={analyzingAI || selectedImages.size !== 1}
+              variant="outline"
+            >
+              AI Analyze
             </Button>
-            <input
-              type="file"
-              multiple
-              accept="image/*"
-              onChange={handleFileUpload}
-              className="hidden"
-            />
-          </label>
+            <label className="cursor-pointer">
+              <Button icon={Upload}>
+                Upload Images
+              </Button>
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+            </label>
+          </div>
         </motion.div>
+
+        {/* AI Quality Analysis Panel */}
+        <AnimatePresence>
+          {imageQuality && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+            >
+              <GlassCard className="p-6 bg-gradient-to-br from-violet-500/10 to-purple-500/10 border-violet-500/30">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <Eye className="w-5 h-5 text-violet-400" />
+                    <h3 className="text-xl font-bold text-white">AI Quality Analysis</h3>
+                    <Badge
+                      className={
+                        imageQuality.overall_score >= 8
+                          ? 'bg-green-500/20 text-green-300'
+                          : imageQuality.overall_score >= 6
+                          ? 'bg-yellow-500/20 text-yellow-300'
+                          : 'bg-red-500/20 text-red-300'
+                      }
+                    >
+                      {imageQuality.overall_score.toFixed(1)}/10 Overall
+                    </Badge>
+                  </div>
+                  <button
+                    onClick={() => setImageQuality(null)}
+                    className="text-slate-400 hover:text-white"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4 mb-4">
+                  <div className="p-4 bg-white/5 rounded-lg border border-white/10">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Sun className="w-4 h-4 text-yellow-400" />
+                      <span className="text-sm text-slate-400">Brightness</span>
+                    </div>
+                    <p className="text-2xl font-bold text-white">
+                      {imageQuality.brightness_score.toFixed(1)}/10
+                    </p>
+                  </div>
+
+                  <div className="p-4 bg-white/5 rounded-lg border border-white/10">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Sparkles className="w-4 h-4 text-blue-400" />
+                      <span className="text-sm text-slate-400">Sharpness</span>
+                    </div>
+                    <p className="text-2xl font-bold text-white">
+                      {imageQuality.sharpness_score.toFixed(1)}/10
+                    </p>
+                  </div>
+
+                  <div className="p-4 bg-white/5 rounded-lg border border-white/10">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Contrast className="w-4 h-4 text-purple-400" />
+                      <span className="text-sm text-slate-400">Contrast</span>
+                    </div>
+                    <p className="text-2xl font-bold text-white">
+                      {imageQuality.contrast_score.toFixed(1)}/10
+                    </p>
+                  </div>
+                </div>
+
+                {imageQuality.suggestions.length > 0 && (
+                  <div className="mb-4">
+                    <h4 className="text-sm font-semibold text-white mb-2">AI Suggestions:</h4>
+                    <ul className="space-y-1">
+                      {imageQuality.suggestions.map((suggestion, index) => (
+                        <li key={index} className="text-sm text-slate-300 flex items-start gap-2">
+                          <span className="text-violet-400">•</span>
+                          {suggestion}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <Button
+                  icon={Zap}
+                  onClick={autoEnhanceWithAI}
+                  disabled={processing}
+                  className="w-full"
+                >
+                  Auto-Enhance with AI
+                </Button>
+              </GlassCard>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Action Toolbar */}
         {images.length > 0 && (

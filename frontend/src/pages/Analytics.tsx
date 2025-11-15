@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Eye, Heart, MessageCircle, TrendingUp, Calendar, Award, TrendingDown, BarChart3 } from 'lucide-react';
+import { Eye, Heart, MessageCircle, TrendingUp, Calendar, Award, TrendingDown, BarChart3, Sparkles } from 'lucide-react';
 import { analyticsAPI } from '../api/client';
 import { StatCard } from '../components/ui/StatCard';
 import { GlassCard } from '../components/ui/GlassCard';
@@ -8,6 +8,7 @@ import { AnimatedNumber } from '../components/ui/AnimatedNumber';
 import { Badge } from '../components/ui/Badge';
 import { EmptyState } from '../components/ui/EmptyState';
 import HeatmapChart from '../components/common/HeatmapChart';
+import MLPredictions from '../components/analytics/MLPredictions';
 import type { AnalyticsResponse } from '../types';
 import { logger } from '../utils/logger';
 
@@ -87,6 +88,26 @@ export default function Analytics() {
 
         {data ? (
           <>
+            {/* ML Predictions Section */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+            >
+              <GlassCard className="p-6 mb-8">
+                <div className="flex items-center gap-3 mb-4">
+                  <Sparkles className="w-6 h-6 text-violet-400" />
+                  <h2 className="text-2xl font-bold text-white">
+                    AI-Powered Predictions
+                  </h2>
+                  <Badge variant="success" size="sm">
+                    ML
+                  </Badge>
+                </div>
+                <MLPredictions />
+              </GlassCard>
+            </motion.div>
+
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <StatCard

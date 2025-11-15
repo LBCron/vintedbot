@@ -18,8 +18,10 @@ import {
   Video,
   Info,
   ThumbsUp,
+  ThumbsDown,
   Smile,
   MessageSquare,
+  Settings,
 } from 'lucide-react';
 import { Badge } from '../components/ui/Badge';
 import { GlassCard } from '../components/ui/GlassCard';
@@ -27,6 +29,7 @@ import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
 import Avatar from '../components/common/Avatar';
 import { Tooltip } from '../components/common/Tooltip';
+import toast from 'react-hot-toast';
 
 interface Message {
   id: string;
@@ -55,11 +58,19 @@ interface Conversation {
   };
 }
 
+interface AISettings {
+  auto_reply_enabled: boolean;
+  tone: 'friendly' | 'professional' | 'casual';
+  mode: 'auto' | 'draft' | 'notify';
+}
+
 interface AISuggestion {
   id: string;
   text: string;
-  tone: 'friendly' | 'professional' | 'concise';
+  tone: 'friendly' | 'professional' | 'casual';
   context: string;
+  confidence?: number;
+  intention?: string;
 }
 
 const mockConversations: Conversation[] = [
@@ -143,6 +154,14 @@ export default function Messages() {
   const [messageInput, setMessageInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showAISuggestions, setShowAISuggestions] = useState(true);
+  const [showAISettings, setShowAISettings] = useState(false);
+  const [aiSettings, setAISettings] = useState<AISettings>({
+    auto_reply_enabled: false,
+    tone: 'friendly',
+    mode: 'draft'
+  });
+  const [aiSuggestion, setAISuggestion] = useState<AISuggestion | null>(null);
+  const [loadingAI, setLoadingAI] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -152,6 +171,85 @@ export default function Messages() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    loadAISettings();
+  }, []);
+
+  const loadAISettings = async () => {
+    try {
+      const response = await fetch('/api/v1/ai-messages/settings', {
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setAISettings(data);
+      }
+    } catch (error) {
+      console.error('Failed to load AI settings:', error);
+    }
+  };
+
+  const saveAISettings = async (newSettings: AISettings) => {
+    try {
+      await fetch('/api/v1/ai-messages/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(newSettings)
+      });
+      setAISettings(newSettings);
+      toast.success('AI settings saved!');
+    } catch (error) {
+      toast.error('Failed to save settings');
+    }
+  };
+
+  const generateAIResponse = async () => {
+    if (!selectedConversation || messages.length === 0) return;
+
+    const lastBuyerMessage = [...messages].reverse().find(m => !m.isOwn);
+    if (!lastBuyerMessage) return;
+
+    setLoadingAI(true);
+    const loadingToast = toast.loading('Generating AI response...');
+
+    try {
+      const response = await fetch('/api/v1/ai-messages/generate-response', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          message: lastBuyerMessage.text,
+          article_context: {
+            title: selectedConversation.item.name,
+            price: selectedConversation.item.price,
+            description: ''
+          },
+          tone: aiSettings.tone
+        })
+      });
+
+      const data = await response.json();
+
+      setAISuggestion({
+        id: '1',
+        text: data.response,
+        tone: aiSettings.tone,
+        context: data.intention || 'AI generated response',
+        confidence: data.confidence,
+        intention: data.intention
+      });
+
+      setMessageInput(data.response);
+      toast.success('AI response generated!', { id: loadingToast });
+      setShowAISuggestions(false);
+    } catch (error) {
+      toast.error('Failed to generate AI response', { id: loadingToast });
+    } finally {
+      setLoadingAI(false);
+    }
+  };
 
   const handleSendMessage = () => {
     if (!messageInput.trim()) return;
@@ -350,19 +448,25 @@ export default function Messages() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <Tooltip content="Call">
-                      <button className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
-                        <Phone className="w-5 h-5" />
+                    <Tooltip content="AI Settings">
+                      <button
+                        onClick={() => setShowAISettings(!showAISettings)}
+                        className={`p-2 rounded-lg transition-colors ${
+                          showAISettings
+                            ? 'text-violet-400 bg-violet-500/20'
+                            : 'text-slate-400 hover:text-white hover:bg-white/5'
+                        }`}
+                      >
+                        <Settings className="w-5 h-5" />
                       </button>
                     </Tooltip>
-                    <Tooltip content="Video call">
-                      <button className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
-                        <Video className="w-5 h-5" />
-                      </button>
-                    </Tooltip>
-                    <Tooltip content="Info">
-                      <button className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
-                        <Info className="w-5 h-5" />
+                    <Tooltip content="Generate AI Response">
+                      <button
+                        onClick={generateAIResponse}
+                        disabled={loadingAI}
+                        className="p-2 text-violet-400 hover:text-violet-300 hover:bg-violet-500/10 rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        <Sparkles className="w-5 h-5" />
                       </button>
                     </Tooltip>
                     <button className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
@@ -370,6 +474,64 @@ export default function Messages() {
                     </button>
                   </div>
                 </div>
+
+                {/* AI Settings Panel */}
+                <AnimatePresence>
+                  {showAISettings && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="p-4 border-b border-white/10 bg-violet-500/5"
+                    >
+                      <div className="flex items-center gap-2 mb-3">
+                        <Sparkles className="w-4 h-4 text-violet-400" />
+                        <h3 className="text-sm font-semibold text-white">AI Message Settings</h3>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs text-slate-400 mb-2">Tone</label>
+                          <select
+                            value={aiSettings.tone}
+                            onChange={(e) => saveAISettings({ ...aiSettings, tone: e.target.value as any })}
+                            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-violet-500/50"
+                          >
+                            <option value="friendly">😊 Friendly</option>
+                            <option value="professional">💼 Professional</option>
+                            <option value="casual">👋 Casual</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs text-slate-400 mb-2">Mode</label>
+                          <select
+                            value={aiSettings.mode}
+                            onChange={(e) => saveAISettings({ ...aiSettings, mode: e.target.value as any })}
+                            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-violet-500/50"
+                          >
+                            <option value="auto">⚡ Auto-send</option>
+                            <option value="draft">✏️ Draft only</option>
+                            <option value="notify">🔔 Notify only</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="auto-reply"
+                          checked={aiSettings.auto_reply_enabled}
+                          onChange={(e) => saveAISettings({ ...aiSettings, auto_reply_enabled: e.target.checked })}
+                          className="rounded border-white/10 bg-white/5 text-violet-500 focus:ring-violet-500"
+                        />
+                        <label htmlFor="auto-reply" className="text-sm text-slate-300">
+                          Enable AI auto-reply
+                        </label>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 {/* Messages */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -432,9 +594,9 @@ export default function Messages() {
                   <div ref={messagesEndRef} />
                 </div>
 
-                {/* AI Suggestions */}
+                {/* AI Suggestion Preview */}
                 <AnimatePresence>
-                  {showAISuggestions && (
+                  {aiSuggestion && (
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -444,40 +606,42 @@ export default function Messages() {
                       <div className="flex items-center gap-2 mb-3">
                         <Sparkles className="w-4 h-4 text-violet-400" />
                         <span className="text-sm font-medium text-white">
-                          AI Suggested Replies
+                          AI Suggestion
                         </span>
+                        {aiSuggestion.confidence && (
+                          <Badge variant="success" size="sm">
+                            {Math.round(aiSuggestion.confidence * 100)}% confidence
+                          </Badge>
+                        )}
                         <button
-                          onClick={() => setShowAISuggestions(false)}
+                          onClick={() => setAISuggestion(null)}
                           className="ml-auto text-xs text-slate-400 hover:text-white"
                         >
-                          Hide
+                          Dismiss
                         </button>
                       </div>
-                      <div className="space-y-2">
-                        {aiSuggestions.map((suggestion) => (
-                          <motion.button
-                            key={suggestion.id}
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={() => handleUseSuggestion(suggestion)}
-                            className="w-full text-left p-3 bg-white/10 border border-white/10 rounded-xl hover:bg-white/15 hover:shadow-lg hover:shadow-violet-500/20 transition-all group"
-                          >
-                            <div className="flex items-start gap-2">
-                              <Sparkles className="w-4 h-4 text-violet-400 mt-0.5 flex-shrink-0" />
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm text-white">
-                                  {suggestion.text}
-                                </p>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <Badge variant="info" size="sm">
-                                    {suggestion.tone}
-                                  </Badge>
-                                  <span className="text-xs text-slate-400">{suggestion.context}</span>
-                                </div>
-                              </div>
-                            </div>
-                          </motion.button>
-                        ))}
+
+                      <div className="p-3 bg-white/10 border border-white/10 rounded-xl">
+                        <p className="text-sm text-white mb-2">{aiSuggestion.text}</p>
+                        <div className="flex items-center gap-2">
+                          {aiSuggestion.intention && (
+                            <span className="text-xs text-slate-400">
+                              Intent: {aiSuggestion.intention}
+                            </span>
+                          )}
+                          <div className="ml-auto flex gap-2">
+                            <Tooltip content="Good response">
+                              <button className="p-1 text-green-400 hover:bg-green-500/10 rounded transition-colors">
+                                <ThumbsUp className="w-4 h-4" />
+                              </button>
+                            </Tooltip>
+                            <Tooltip content="Not helpful">
+                              <button className="p-1 text-red-400 hover:bg-red-500/10 rounded transition-colors">
+                                <ThumbsDown className="w-4 h-4" />
+                              </button>
+                            </Tooltip>
+                          </div>
+                        </div>
                       </div>
                     </motion.div>
                   )}

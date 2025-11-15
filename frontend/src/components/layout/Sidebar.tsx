@@ -21,6 +21,9 @@ import {
   Zap,
   Users,
   HardDrive,
+  DollarSign,
+  CalendarClock,
+  Sparkles,
 } from 'lucide-react';
 import { Badge } from '../common/Badge';
 
@@ -43,11 +46,13 @@ const mainNavItems: NavItem[] = [
   { label: 'Drafts', path: '/drafts', icon: FileText, badge: 12 },
   { label: 'Publish', path: '/publish', icon: Calendar },
   { label: 'Analytics', path: '/analytics', icon: BarChart3 },
+  { label: 'Price Optimizer', path: '/price-optimizer', icon: DollarSign, badge: 'AI', badgeVariant: 'success' },
+  { label: 'Scheduling', path: '/scheduling', icon: CalendarClock, badge: 'ML', badgeVariant: 'primary' },
   { label: 'Storage', path: '/storage', icon: HardDrive },
   { label: 'Automation', path: '/automation', icon: Zap },
   { label: 'Messages', path: '/messages', icon: MessageCircle, badge: 3, badgeVariant: 'error' },
   { label: 'Orders', path: '/orders', icon: Package },
-  { label: 'Image Editor', path: '/image-editor', icon: ImageIcon },
+  { label: 'Image Editor', path: '/image-editor', icon: ImageIcon, badge: 'AI', badgeVariant: 'success' },
   { label: 'History', path: '/history', icon: Clock },
   { label: 'Templates', path: '/templates', icon: FileEdit },
 ];
