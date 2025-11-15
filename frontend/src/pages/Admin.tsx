@@ -22,8 +22,12 @@ import {
   XCircle,
 } from 'lucide-react';
 import { adminAPI } from '../api/client';
-import StatsCard from '../components/common/StatsCard';
-import Skeleton from 'react-loading-skeleton';
+import { GlassCard } from '../components/ui/GlassCard';
+import { StatCard } from '../components/ui/StatCard';
+import { Button } from '../components/ui/Button';
+import { Badge } from '../components/ui/Badge';
+import { AnimatedNumber } from '../components/ui/AnimatedNumber';
+import toast from 'react-hot-toast';
 import { logger } from '../utils/logger';
 
 const SUPER_ADMIN_EMAIL = 'ronanchenlopes@gmail.com';
@@ -131,8 +135,10 @@ export default function Admin() {
     } catch (error: any) {
       logger.error('Failed to load admin data', error);
       if (error.response?.status === 403) {
-        alert('Access denied. Super admin privileges required.');
+        toast.error('Access denied. Super admin privileges required.');
         navigate('/');
+      } else {
+        toast.error('Failed to load admin data');
       }
     } finally {
       setLoading(false);
@@ -148,13 +154,14 @@ export default function Admin() {
   const handleDeleteUser = async (userId: string) => {
     if (!confirm('Are you sure you want to delete this user?')) return;
 
+    const toastId = toast.loading('Deleting user...');
     try {
       await adminAPI.deleteUser(userId);
       setUsers(users.filter(u => u.id !== userId));
-      alert('User deleted successfully');
+      toast.success('User deleted successfully', { id: toastId });
     } catch (error) {
       logger.error('Failed to delete user', error);
-      alert('Failed to delete user');
+      toast.error('Failed to delete user', { id: toastId });
     }
   };
 
@@ -162,51 +169,58 @@ export default function Admin() {
     const plan = prompt('Enter new plan (free/premium/enterprise):');
     if (!plan) return;
 
+    const toastId = toast.loading('Changing plan...');
     try {
       await adminAPI.changePlan(userId, plan);
       setUsers(users.map(u => u.id === userId ? { ...u, plan } : u));
-      alert('Plan changed successfully');
+      toast.success('Plan changed successfully', { id: toastId });
     } catch (error) {
       logger.error('Failed to change plan', error);
-      alert('Failed to change plan');
+      toast.error('Failed to change plan', { id: toastId });
     }
   };
 
   const handleImpersonate = async (userId: string) => {
     if (!confirm('Login as this user? You will be logged out of your admin account.')) return;
 
+    const toastId = toast.loading('Switching accounts...');
     try {
       const response = await adminAPI.impersonate(userId);
       localStorage.setItem('auth_token', response.data.access_token);
-      window.location.href = '/';
+      toast.success('Account switched! Redirecting...', { id: toastId });
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1000);
     } catch (error) {
       logger.error('Failed to impersonate', error);
-      alert('Failed to impersonate user');
+      toast.error('Failed to impersonate user', { id: toastId });
     }
   };
 
   const handleCreateBackup = async () => {
     if (!confirm('Create a new database backup?')) return;
 
+    const toastId = toast.loading('Creating backup...');
     try {
       await adminAPI.createBackup();
-      alert('Backup created successfully');
+      toast.success('Backup created successfully', { id: toastId });
       await loadData();
     } catch (error) {
       logger.error('Failed to create backup', error);
-      alert('Failed to create backup');
+      toast.error('Failed to create backup', { id: toastId });
     }
   };
 
   const handleClearCache = async () => {
     if (!confirm('Clear all Redis cache? This will temporarily slow down requests.')) return;
 
+    const toastId = toast.loading('Clearing cache...');
     try {
       await adminAPI.clearCache();
-      alert('Cache cleared successfully');
+      toast.success('Cache cleared successfully', { id: toastId });
     } catch (error) {
       logger.error('Failed to clear cache', error);
-      alert('Failed to clear cache');
+      toast.error('Failed to clear cache', { id: toastId });
     }
   };
 
@@ -225,311 +239,345 @@ export default function Admin() {
 
   if (loading && !userStats && !systemStats) {
     return (
-      <div className="space-y-6">
-        <Skeleton height={60} />
-        <Skeleton height={100} />
-        <Skeleton height={400} />
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-8">
+        <div className="max-w-7xl mx-auto space-y-6">
+          <GlassCard className="p-12">
+            <div className="flex flex-col items-center justify-center space-y-4">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                className="w-12 h-12 border-4 border-violet-500/30 border-t-violet-500 rounded-full"
+              />
+              <p className="text-slate-400">Loading admin panel...</p>
+            </div>
+          </GlassCard>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between"
-      >
-        <div>
-          <div className="flex items-center gap-3">
-            <Shield className="w-8 h-8 text-red-600" />
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Super Admin Panel
-            </h1>
-          </div>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Logged in as: <span className="font-mono font-semibold">{user?.email}</span>
-          </p>
-        </div>
-        <button
-          onClick={handleRefresh}
-          disabled={refreshing}
-          className="btn btn-secondary flex items-center gap-2"
-        >
-          <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-          Refresh
-        </button>
-      </motion.div>
-
-      {/* Tabs */}
-      <div className="border-b border-gray-200 dark:border-gray-700">
-        <nav className="flex gap-4">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors ${
-                  activeTab === tab.id
-                    ? 'border-primary-600 text-primary-600 dark:text-primary-400'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-                }`}
-              >
-                <Icon className="w-5 h-5" />
-                {tab.label}
-              </button>
-            );
-          })}
-        </nav>
-      </div>
-
-      {/* Overview Tab */}
-      {activeTab === 'overview' && userStats && systemStats && (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      <div className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8 space-y-8">
+        {/* Header */}
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="space-y-6"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
         >
-          {/* User Stats */}
-          <div>
-            <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">User Statistics</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <StatsCard
-                title="Total Users"
-                value={userStats.total_users}
-                icon={Users}
-              />
-              <StatsCard
-                title="Premium Users"
-                value={userStats.premium_users}
-                icon={TrendingUp}
-                trend={((userStats.premium_users / userStats.total_users) * 100).toFixed(1) + '%'}
-              />
-              <StatsCard
-                title="New Today"
-                value={userStats.users_today}
-                icon={Users}
-              />
-              <StatsCard
-                title="Active Now"
-                value={userStats.active_users}
-                icon={Activity}
-              />
+          <div className="flex items-center gap-4">
+            <div className="p-4 bg-gradient-to-br from-red-500 to-orange-600 rounded-2xl shadow-lg shadow-red-500/50">
+              <Shield className="w-8 h-8 text-white" />
             </div>
-          </div>
-
-          {/* System Stats */}
-          <div>
-            <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">System Resources</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="card">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">PostgreSQL</h3>
-                  <Database className="w-5 h-5 text-blue-600" />
-                </div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
-                  {systemStats.postgres.active_connections}/{systemStats.postgres.total_connections}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {systemStats.postgres.database_size_mb.toFixed(2)} MB
-                </p>
-              </div>
-
-              <div className="card">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Redis Cache</h3>
-                  <Activity className="w-5 h-5 text-red-600" />
-                </div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
-                  {systemStats.redis.cache_hit_rate.toFixed(1)}%
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {systemStats.redis.used_memory_mb.toFixed(2)} MB used
-                </p>
-              </div>
-
-              <div className="card">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">S3 Storage</h3>
-                  <HardDrive className="w-5 h-5 text-green-600" />
-                </div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
-                  {systemStats.s3.total_files}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {systemStats.s3.total_size_mb.toFixed(2)} MB
-                </p>
-              </div>
-
-              <div className="card">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">AI Costs</h3>
-                  <DollarSign className="w-5 h-5 text-yellow-600" />
-                </div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
-                  ${systemStats.ai.total_cost_today.toFixed(2)}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  ${systemStats.ai.total_cost_month.toFixed(2)} this month
+            <div>
+              <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-white via-red-200 to-orange-200 bg-clip-text text-transparent">
+                Super Admin Panel
+              </h1>
+              <div className="flex items-center gap-2 mt-1">
+                <Badge variant="error" size="md">SUPER ADMIN</Badge>
+                <p className="text-slate-400 text-sm">
+                  {user?.email}
                 </p>
               </div>
             </div>
           </div>
-
-          {/* Quick Actions */}
-          <div>
-            <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Quick Actions</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <button
-                onClick={handleClearCache}
-                className="card hover:shadow-lg transition-shadow cursor-pointer text-left"
-              >
-                <div className="flex items-center gap-3">
-                  <RefreshCw className="w-6 h-6 text-blue-600" />
-                  <div>
-                    <h3 className="font-semibold text-gray-900 dark:text-white">Clear Cache</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Reset Redis cache</p>
-                  </div>
-                </div>
-              </button>
-
-              <button
-                onClick={handleCreateBackup}
-                className="card hover:shadow-lg transition-shadow cursor-pointer text-left"
-              >
-                <div className="flex items-center gap-3">
-                  <Database className="w-6 h-6 text-green-600" />
-                  <div>
-                    <h3 className="font-semibold text-gray-900 dark:text-white">Create Backup</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Backup PostgreSQL</p>
-                  </div>
-                </div>
-              </button>
-
-              <button
-                onClick={() => window.open('http://localhost:9090', '_blank')}
-                className="card hover:shadow-lg transition-shadow cursor-pointer text-left"
-              >
-                <div className="flex items-center gap-3">
-                  <Activity className="w-6 h-6 text-purple-600" />
-                  <div>
-                    <h3 className="font-semibold text-gray-900 dark:text-white">View Metrics</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Open Prometheus</p>
-                  </div>
-                </div>
-              </button>
-            </div>
-          </div>
+          <Button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            variant="outline"
+            icon={RefreshCw}
+            className={refreshing ? 'animate-spin' : ''}
+          >
+            Refresh
+          </Button>
         </motion.div>
-      )}
 
-      {/* Users Tab */}
-      {activeTab === 'users' && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="space-y-4"
-        >
-          {/* Search */}
-          <div className="card">
-            <input
-              type="text"
-              placeholder="Search users by email or name..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="input w-full"
-            />
+        {/* Tabs */}
+        <GlassCard noPadding>
+          <div className="flex gap-2 p-2 overflow-x-auto">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`flex items-center gap-2 px-4 py-3 rounded-xl font-medium transition-all whitespace-nowrap ${
+                    activeTab === tab.id
+                      ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/30'
+                      : 'text-slate-300 hover:bg-white/5'
+                  }`}
+                >
+                  <Icon className="w-5 h-5" />
+                  {tab.label}
+                </button>
+              );
+            })}
           </div>
+        </GlassCard>
 
-          {/* Users Table */}
-          <div className="card overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">User</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Plan</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Status</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Created</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {filteredUsers.map((user) => (
-                    <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-                      <td className="px-4 py-3">
-                        <div>
-                          <div className="font-medium text-gray-900 dark:text-white">{user.name}</div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400">{user.email}</div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                          user.plan === 'premium' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' :
-                          user.plan === 'enterprise' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
-                          'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
-                        }`}>
-                          {user.plan}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        {user.is_active ? (
-                          <CheckCircle className="w-5 h-5 text-green-600" />
-                        ) : (
-                          <XCircle className="w-5 h-5 text-red-600" />
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
-                        {new Date(user.created_at).toLocaleDateString()}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => alert(`View user details: ${user.id}`)}
-                            className="p-1 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
-                            title="View Details"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleChangePlan(user.id)}
-                            className="p-1 text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 rounded"
-                            title="Change Plan"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleImpersonate(user.id)}
-                            className="p-1 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded"
-                            title="Impersonate User"
-                          >
-                            <UserCog className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteUser(user.id)}
-                            className="p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
-                            title="Delete User"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
+        {/* Overview Tab */}
+        {activeTab === 'overview' && userStats && systemStats && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="space-y-8"
+          >
+            {/* User Stats */}
+            <div>
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-white via-violet-200 to-purple-200 bg-clip-text text-transparent mb-6">
+                User Statistics
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <StatCard
+                  title="Total Users"
+                  value={<AnimatedNumber value={userStats.total_users} />}
+                  icon={Users}
+                  iconColor="blue"
+                />
+                <StatCard
+                  title="Premium Users"
+                  value={<AnimatedNumber value={userStats.premium_users} />}
+                  icon={TrendingUp}
+                  iconColor="purple"
+                  subtitle={`${((userStats.premium_users / userStats.total_users) * 100).toFixed(1)}% of total`}
+                />
+                <StatCard
+                  title="New Today"
+                  value={<AnimatedNumber value={userStats.users_today} />}
+                  icon={Users}
+                  iconColor="green"
+                />
+                <StatCard
+                  title="Active Now"
+                  value={<AnimatedNumber value={userStats.active_users} />}
+                  icon={Activity}
+                  iconColor="yellow"
+                />
+              </div>
+            </div>
+
+            {/* System Stats */}
+            <div>
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-white via-violet-200 to-purple-200 bg-clip-text text-transparent mb-6">
+                System Resources
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <GlassCard hover>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-medium text-slate-400">PostgreSQL</h3>
+                    <div className="p-2 bg-blue-500/20 rounded-lg border border-blue-500/30">
+                      <Database className="w-5 h-5 text-blue-400" />
+                    </div>
+                  </div>
+                  <p className="text-2xl font-bold text-white mb-1">
+                    {systemStats.postgres.active_connections}/{systemStats.postgres.total_connections}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {systemStats.postgres.database_size_mb.toFixed(2)} MB
+                  </p>
+                </GlassCard>
+
+                <GlassCard hover>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-medium text-slate-400">Redis Cache</h3>
+                    <div className="p-2 bg-red-500/20 rounded-lg border border-red-500/30">
+                      <Activity className="w-5 h-5 text-red-400" />
+                    </div>
+                  </div>
+                  <p className="text-2xl font-bold text-white mb-1">
+                    {systemStats.redis.cache_hit_rate.toFixed(1)}%
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {systemStats.redis.used_memory_mb.toFixed(2)} MB used
+                  </p>
+                </GlassCard>
+
+                <GlassCard hover>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-medium text-slate-400">S3 Storage</h3>
+                    <div className="p-2 bg-green-500/20 rounded-lg border border-green-500/30">
+                      <HardDrive className="w-5 h-5 text-green-400" />
+                    </div>
+                  </div>
+                  <p className="text-2xl font-bold text-white mb-1">
+                    {systemStats.s3.total_files}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {systemStats.s3.total_size_mb.toFixed(2)} MB
+                  </p>
+                </GlassCard>
+
+                <GlassCard hover>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-medium text-slate-400">AI Costs</h3>
+                    <div className="p-2 bg-yellow-500/20 rounded-lg border border-yellow-500/30">
+                      <DollarSign className="w-5 h-5 text-yellow-400" />
+                    </div>
+                  </div>
+                  <p className="text-2xl font-bold text-white mb-1">
+                    ${systemStats.ai.total_cost_today.toFixed(2)}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    ${systemStats.ai.total_cost_month.toFixed(2)} this month
+                  </p>
+                </GlassCard>
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div>
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-white via-violet-200 to-purple-200 bg-clip-text text-transparent mb-6">
+                Quick Actions
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <GlassCard hover className="cursor-pointer" onClick={handleClearCache}>
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-blue-500/20 rounded-xl border border-blue-500/30">
+                      <RefreshCw className="w-6 h-6 text-blue-400" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-white">Clear Cache</h3>
+                      <p className="text-sm text-slate-400">Reset Redis cache</p>
+                    </div>
+                  </div>
+                </GlassCard>
+
+                <GlassCard hover className="cursor-pointer" onClick={handleCreateBackup}>
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-green-500/20 rounded-xl border border-green-500/30">
+                      <Database className="w-6 h-6 text-green-400" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-white">Create Backup</h3>
+                      <p className="text-sm text-slate-400">Backup PostgreSQL</p>
+                    </div>
+                  </div>
+                </GlassCard>
+
+                <GlassCard hover className="cursor-pointer" onClick={() => window.open('http://localhost:9090', '_blank')}>
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-violet-500/20 rounded-xl border border-violet-500/30">
+                      <Activity className="w-6 h-6 text-violet-400" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-white">View Metrics</h3>
+                      <p className="text-sm text-slate-400">Open Prometheus</p>
+                    </div>
+                  </div>
+                </GlassCard>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Users Tab */}
+        {activeTab === 'users' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="space-y-6"
+          >
+            {/* Search */}
+            <GlassCard>
+              <div className="relative">
+                <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search users by email or name..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-11 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-violet-500/50 focus:bg-white/10 transition-all"
+                />
+              </div>
+            </GlassCard>
+
+            {/* Users Table */}
+            <GlassCard noPadding className="overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-white/5 border-b border-white/10">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">User</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Plan</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Status</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Created</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {filteredUsers.map((user) => (
+                      <tr key={user.id} className="hover:bg-white/5 transition-colors">
+                        <td className="px-4 py-3">
+                          <div>
+                            <div className="font-medium text-white">{user.name}</div>
+                            <div className="text-sm text-slate-400">{user.email}</div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge
+                            variant={user.plan === 'premium' ? 'primary' : user.plan === 'enterprise' ? 'warning' : 'info'}
+                            size="sm"
+                          >
+                            {user.plan.toUpperCase()}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3">
+                          {user.is_active ? (
+                            <CheckCircle className="w-5 h-5 text-green-400" />
+                          ) : (
+                            <XCircle className="w-5 h-5 text-red-400" />
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-400">
+                          {new Date(user.created_at).toLocaleDateString()}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => toast.info(`User ID: ${user.id}`)}
+                              className="p-1.5 text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors"
+                              title="View Details"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleChangePlan(user.id)}
+                              className="p-1.5 text-yellow-400 hover:bg-yellow-500/10 rounded-lg transition-colors"
+                              title="Change Plan"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleImpersonate(user.id)}
+                              className="p-1.5 text-green-400 hover:bg-green-500/10 rounded-lg transition-colors"
+                              title="Impersonate User"
+                            >
+                              <UserCog className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteUser(user.id)}
+                              className="p-1.5 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                              title="Delete User"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </GlassCard>
 
-          {filteredUsers.length === 0 && (
-            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-              No users found
-            </div>
-          )}
-        </motion.div>
-      )}
+            {filteredUsers.length === 0 && (
+              <GlassCard className="text-center py-12">
+                <Users className="w-12 h-12 text-slate-500 mx-auto mb-3" />
+                <p className="text-slate-400">No users found</p>
+              </GlassCard>
+            )}
+          </motion.div>
+        )}
 
       {/* System Tab */}
       {activeTab === 'system' && systemStats && (
