@@ -16,8 +16,11 @@ import {
   Edit,
   PlayCircle,
 } from 'lucide-react';
-import { Badge } from '../components/common/Badge';
-import { Tooltip } from '../components/common/Tooltip';
+import { GlassCard } from '../components/ui/GlassCard';
+import { StatCard } from '../components/ui/StatCard';
+import { Button } from '../components/ui/Button';
+import { Badge } from '../components/ui/Badge';
+import { AnimatedNumber } from '../components/ui/AnimatedNumber';
 
 interface ScheduledDraft {
   id: string;
@@ -161,94 +164,89 @@ export default function Publish() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between"
-      >
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            📅 Publishing Schedule
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">
-            Plan and automate your Vinted listings
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          {/* View Mode Toggle */}
-          <div className="flex items-center gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
-            <button
-              onClick={() => setViewMode('calendar')}
-              className={`p-2 rounded-lg transition-colors ${
-                viewMode === 'calendar'
-                  ? 'bg-white dark:bg-gray-700 text-primary-600 dark:text-primary-400 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-              }`}
-              title="Calendar view"
-            >
-              <Grid3x3 className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={`p-2 rounded-lg transition-colors ${
-                viewMode === 'list'
-                  ? 'bg-white dark:bg-gray-700 text-primary-600 dark:text-primary-400 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-              }`}
-              title="List view"
-            >
-              <List className="w-5 h-5" />
-            </button>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      <div className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8 space-y-8">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+        >
+          <div className="flex items-center gap-4">
+            <div className="p-4 bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl shadow-lg shadow-violet-500/50">
+              <CalendarIcon className="w-8 h-8 text-white" />
+            </div>
+            <div>
+              <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-white via-violet-200 to-purple-200 bg-clip-text text-transparent">
+                Publishing Schedule
+              </h1>
+              <p className="text-slate-400 mt-1">
+                Plan and automate your Vinted listings
+              </p>
+            </div>
           </div>
 
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="px-6 py-3 bg-primary-500 hover:bg-primary-600 text-white rounded-lg flex items-center gap-2 font-medium shadow-lg transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-            Schedule Draft
-          </motion.button>
-        </div>
-      </motion.div>
-
-      {/* Stats Cards */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.1 }}
-        className="grid grid-cols-1 md:grid-cols-4 gap-4"
-      >
-        {[
-          { label: 'Scheduled', value: scheduledDrafts.filter(d => d.status === 'scheduled').length, color: 'primary', icon: Clock },
-          { label: 'Publishing Today', value: scheduledDrafts.filter(d => d.scheduledDate.toDateString() === new Date().toDateString()).length, color: 'warning', icon: PlayCircle },
-          { label: 'Published', value: scheduledDrafts.filter(d => d.status === 'published').length, color: 'success', icon: Check },
-          { label: 'Failed', value: scheduledDrafts.filter(d => d.status === 'failed').length, color: 'error', icon: AlertCircle },
-        ].map((stat, index) => (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 + index * 0.05 }}
-            className="card p-6"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">{stat.label}</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                  {stat.value}
-                </p>
-              </div>
-              <div className={`p-3 bg-${stat.color}-100 dark:bg-${stat.color}-900/20 rounded-xl`}>
-                <stat.icon className={`w-6 h-6 text-${stat.color}-600 dark:text-${stat.color}-400`} />
-              </div>
+          <div className="flex items-center gap-3">
+            {/* View Mode Toggle */}
+            <div className="flex items-center gap-2 p-1 bg-white/5 border border-white/10 rounded-xl">
+              <button
+                onClick={() => setViewMode('calendar')}
+                className={`p-2 rounded-lg transition-all ${
+                  viewMode === 'calendar'
+                    ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/30'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+                title="Calendar view"
+              >
+                <Grid3x3 className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-2 rounded-lg transition-all ${
+                  viewMode === 'list'
+                    ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/30'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+                title="List view"
+              >
+                <List className="w-5 h-5" />
+              </button>
             </div>
-          </motion.div>
-        ))}
-      </motion.div>
+
+            <Button icon={Plus}>
+              Schedule Draft
+            </Button>
+          </div>
+        </motion.div>
+
+        {/* Stats Cards */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.1 }}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+        >
+          {[
+            { label: 'Scheduled', value: scheduledDrafts.filter(d => d.status === 'scheduled').length, iconColor: 'blue', icon: Clock },
+            { label: 'Publishing Today', value: scheduledDrafts.filter(d => d.scheduledDate.toDateString() === new Date().toDateString()).length, iconColor: 'yellow', icon: PlayCircle },
+            { label: 'Published', value: scheduledDrafts.filter(d => d.status === 'published').length, iconColor: 'green', icon: Check },
+            { label: 'Failed', value: scheduledDrafts.filter(d => d.status === 'failed').length, iconColor: 'red', icon: AlertCircle },
+          ].map((stat, index) => (
+            <motion.div
+              key={stat.label}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 + index * 0.05 }}
+            >
+              <StatCard
+                title={stat.label}
+                value={<AnimatedNumber value={stat.value} />}
+                icon={stat.icon}
+                iconColor={stat.iconColor as any}
+              />
+            </motion.div>
+          ))}
+        </motion.div>
 
       {viewMode === 'calendar' ? (
         <motion.div
@@ -502,6 +500,7 @@ export default function Publish() {
           </motion.div>
         )}
       </AnimatePresence>
+      </div>
     </div>
   );
 }
