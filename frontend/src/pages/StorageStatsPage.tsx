@@ -210,34 +210,39 @@ export default function StorageStatsPage() {
           <GlassCard>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <Clock className="w-5 h-5 text-gray-600" />
-                <h3 className="font-semibold text-gray-900">TIER 1 - TEMP</h3>
+                <Clock className="w-5 h-5 text-slate-400" />
+                <h3 className="font-semibold text-white">TIER 1 - TEMP</h3>
               </div>
-              <Badge variant="secondary">Gratuit</Badge>
+              <Badge variant="info">Gratuit</Badge>
             </div>
 
             <div className="space-y-3">
               <div>
                 <div className="flex justify-between text-sm mb-1">
-                  <span className="text-gray-600">Photos</span>
-                  <span className="font-medium">{stats.temp_count}</span>
+                  <span className="text-slate-400">Photos</span>
+                  <span className="font-medium text-white">{stats.temp_count}</span>
                 </div>
-                <Progress value={(stats.temp_count / stats.total_count) * 100} />
+                <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-green-500 to-emerald-500 rounded-full transition-all duration-500"
+                    style={{ width: `${(stats.temp_count / stats.total_count) * 100}%` }}
+                  />
+                </div>
               </div>
 
               <div>
                 <div className="flex justify-between text-sm mb-1">
-                  <span className="text-gray-600">Taille</span>
-                  <span className="font-medium">{formatGB(stats.temp_size_gb)}</span>
+                  <span className="text-slate-400">Taille</span>
+                  <span className="font-medium text-white">{formatGB(stats.temp_size_gb)}</span>
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-gray-200">
+              <div className="pt-3 border-t border-white/10">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Coût</span>
-                  <span className="font-bold text-green-600">$0.00</span>
+                  <span className="text-slate-400">Coût</span>
+                  <span className="font-bold text-green-400">$0.00</span>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-slate-500 mt-1">
                   Fly.io Volumes - Durée: 24-48h
                 </p>
               </div>
@@ -248,8 +253,8 @@ export default function StorageStatsPage() {
           <GlassCard>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <Database className="w-5 h-5 text-orange-600" />
-                <h3 className="font-semibold text-gray-900">TIER 2 - HOT</h3>
+                <Database className="w-5 h-5 text-orange-400" />
+                <h3 className="font-semibold text-white">TIER 2 - HOT</h3>
               </div>
               <Badge variant="warning">$0.015/GB</Badge>
             </div>
@@ -257,30 +262,32 @@ export default function StorageStatsPage() {
             <div className="space-y-3">
               <div>
                 <div className="flex justify-between text-sm mb-1">
-                  <span className="text-gray-600">Photos</span>
-                  <span className="font-medium">{stats.hot_count}</span>
+                  <span className="text-slate-400">Photos</span>
+                  <span className="font-medium text-white">{stats.hot_count}</span>
                 </div>
-                <Progress
-                  value={(stats.hot_count / stats.total_count) * 100}
-                  className="bg-orange-200"
-                />
+                <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-orange-500 to-amber-500 rounded-full transition-all duration-500"
+                    style={{ width: `${(stats.hot_count / stats.total_count) * 100}%` }}
+                  />
+                </div>
               </div>
 
               <div>
                 <div className="flex justify-between text-sm mb-1">
-                  <span className="text-gray-600">Taille</span>
-                  <span className="font-medium">{formatGB(stats.hot_size_gb)}</span>
+                  <span className="text-slate-400">Taille</span>
+                  <span className="font-medium text-white">{formatGB(stats.hot_size_gb)}</span>
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-gray-200">
+              <div className="pt-3 border-t border-white/10">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Coût</span>
-                  <span className="font-bold text-orange-600">
+                  <span className="text-slate-400">Coût</span>
+                  <span className="font-bold text-orange-400">
                     {formatCost(breakdown.hot.cost)}
                   </span>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-slate-500 mt-1">
                   Cloudflare R2 - Drafts actifs &lt;90j
                 </p>
               </div>
@@ -291,8 +298,8 @@ export default function StorageStatsPage() {
           <GlassCard>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <Archive className="w-5 h-5 text-blue-600" />
-                <h3 className="font-semibold text-gray-900">TIER 3 - COLD</h3>
+                <Archive className="w-5 h-5 text-blue-400" />
+                <h3 className="font-semibold text-white">TIER 3 - COLD</h3>
               </div>
               <Badge variant="info">$0.006/GB</Badge>
             </div>
@@ -300,30 +307,32 @@ export default function StorageStatsPage() {
             <div className="space-y-3">
               <div>
                 <div className="flex justify-between text-sm mb-1">
-                  <span className="text-gray-600">Photos</span>
-                  <span className="font-medium">{stats.cold_count}</span>
+                  <span className="text-slate-400">Photos</span>
+                  <span className="font-medium text-white">{stats.cold_count}</span>
                 </div>
-                <Progress
-                  value={(stats.cold_count / stats.total_count) * 100}
-                  className="bg-blue-200"
-                />
+                <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full transition-all duration-500"
+                    style={{ width: `${(stats.cold_count / stats.total_count) * 100}%` }}
+                  />
+                </div>
               </div>
 
               <div>
                 <div className="flex justify-between text-sm mb-1">
-                  <span className="text-gray-600">Taille</span>
-                  <span className="font-medium">{formatGB(stats.cold_size_gb)}</span>
+                  <span className="text-slate-400">Taille</span>
+                  <span className="font-medium text-white">{formatGB(stats.cold_size_gb)}</span>
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-gray-200">
+              <div className="pt-3 border-t border-white/10">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Coût</span>
-                  <span className="font-bold text-blue-600">
+                  <span className="text-slate-400">Coût</span>
+                  <span className="font-bold text-blue-400">
                     {formatCost(breakdown.cold.cost)}
                   </span>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-slate-500 mt-1">
                   Backblaze B2 - Archives &gt;90j
                 </p>
               </div>
@@ -332,7 +341,7 @@ export default function StorageStatsPage() {
         </div>
 
         {/* Lifecycle Metrics (Last 30 Days) */}
-        <Card className="p-6">
+        <GlassCard>
           <h3 className="text-lg font-semibold text-white mb-4">
             Lifecycle (30 derniers jours)
           </h3>
@@ -345,7 +354,7 @@ export default function StorageStatsPage() {
               <p className="text-2xl font-bold text-gray-900">
                 {lifecycle.photos_uploaded.toLocaleString()}
               </p>
-              <p className="text-sm text-gray-600">Photos uploadées</p>
+              <p className="text-sm text-slate-400">Photos uploadées</p>
             </div>
 
             <div className="text-center">
@@ -355,7 +364,7 @@ export default function StorageStatsPage() {
               <p className="text-2xl font-bold text-gray-900">
                 {lifecycle.photos_promoted.toLocaleString()}
               </p>
-              <p className="text-sm text-gray-600">Promues HOT</p>
+              <p className="text-sm text-slate-400">Promues HOT</p>
             </div>
 
             <div className="text-center">
@@ -365,7 +374,7 @@ export default function StorageStatsPage() {
               <p className="text-2xl font-bold text-gray-900">
                 {lifecycle.photos_archived.toLocaleString()}
               </p>
-              <p className="text-sm text-gray-600">Archivées COLD</p>
+              <p className="text-sm text-slate-400">Archivées COLD</p>
             </div>
 
             <div className="text-center">
@@ -375,10 +384,10 @@ export default function StorageStatsPage() {
               <p className="text-2xl font-bold text-gray-900">
                 {lifecycle.photos_deleted.toLocaleString()}
               </p>
-              <p className="text-sm text-gray-600">Supprimées</p>
+              <p className="text-sm text-slate-400">Supprimées</p>
             </div>
           </div>
-        </Card>
+        </GlassCard>
 
         {/* Recommendations */}
         {recommendations.length > 0 && (
@@ -399,7 +408,7 @@ export default function StorageStatsPage() {
                   ) : (
                     <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
                   )}
-                  <p className="text-sm text-gray-700">{rec}</p>
+                  <p className="text-sm text-slate-300">{rec}</p>
                 </div>
               ))}
             </div>
@@ -407,7 +416,7 @@ export default function StorageStatsPage() {
         )}
 
         {/* Cost Breakdown Chart */}
-        <Card className="p-6">
+        <GlassCard>
           <h3 className="text-lg font-semibold text-white mb-4">
             Répartition des Coûts
           </h3>
@@ -415,8 +424,8 @@ export default function StorageStatsPage() {
           <div className="space-y-4">
             <div>
               <div className="flex justify-between text-sm mb-2">
-                <span className="text-gray-600">TIER 1 - TEMP (Gratuit)</span>
-                <span className="font-medium">0%</span>
+                <span className="text-slate-400">TIER 1 - TEMP (Gratuit)</span>
+                <span className="font-medium text-white">0%</span>
               </div>
               <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
                 <div className="h-full bg-green-500" style={{ width: '0%' }}></div>
@@ -425,8 +434,8 @@ export default function StorageStatsPage() {
 
             <div>
               <div className="flex justify-between text-sm mb-2">
-                <span className="text-gray-600">TIER 2 - HOT (Cloudflare R2)</span>
-                <span className="font-medium">{breakdown.hot.percentage.toFixed(1)}%</span>
+                <span className="text-slate-400">TIER 2 - HOT (Cloudflare R2)</span>
+                <span className="font-medium text-white">{breakdown.hot.percentage.toFixed(1)}%</span>
               </div>
               <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
                 <div
@@ -438,8 +447,8 @@ export default function StorageStatsPage() {
 
             <div>
               <div className="flex justify-between text-sm mb-2">
-                <span className="text-gray-600">TIER 3 - COLD (Backblaze B2)</span>
-                <span className="font-medium">{breakdown.cold.percentage.toFixed(1)}%</span>
+                <span className="text-slate-400">TIER 3 - COLD (Backblaze B2)</span>
+                <span className="font-medium text-white">{breakdown.cold.percentage.toFixed(1)}%</span>
               </div>
               <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
                 <div
@@ -461,10 +470,10 @@ export default function StorageStatsPage() {
               ✓ Économie de {formatCost(stats.savings_vs_all_hot)} vs. stockage HOT seul
             </p>
           </div>
-        </Card>
+        </GlassCard>
 
         {/* Storage Lifecycle Workflow */}
-        <Card className="p-6">
+        <GlassCard>
           <h3 className="text-lg font-semibold text-white mb-4">
             Workflow Lifecycle
           </h3>
@@ -475,7 +484,7 @@ export default function StorageStatsPage() {
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-2">
                   <Clock className="w-8 h-8 text-gray-600" />
                 </div>
-                <p className="font-medium text-gray-900">Upload</p>
+                <p className="font-medium text-white">Upload</p>
                 <p className="text-xs text-gray-600">TIER 1 - 48h</p>
               </div>
 
@@ -487,7 +496,7 @@ export default function StorageStatsPage() {
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-orange-100 rounded-full mb-2">
                   <Database className="w-8 h-8 text-orange-600" />
                 </div>
-                <p className="font-medium text-gray-900">Active</p>
+                <p className="font-medium text-white">Active</p>
                 <p className="text-xs text-gray-600">TIER 2 - 90j</p>
               </div>
 
@@ -499,7 +508,7 @@ export default function StorageStatsPage() {
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-2">
                   <Archive className="w-8 h-8 text-blue-600" />
                 </div>
-                <p className="font-medium text-gray-900">Archive</p>
+                <p className="font-medium text-white">Archive</p>
                 <p className="text-xs text-gray-600">TIER 3 - 365j</p>
               </div>
 
@@ -511,7 +520,7 @@ export default function StorageStatsPage() {
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mb-2">
                   <Trash2 className="w-8 h-8 text-red-600" />
                 </div>
-                <p className="font-medium text-gray-900">Delete</p>
+                <p className="font-medium text-white">Delete</p>
                 <p className="text-xs text-gray-600">Après 365j</p>
               </div>
             </div>
@@ -523,7 +532,7 @@ export default function StorageStatsPage() {
               </p>
             </div>
           </div>
-        </Card>
+        </GlassCard>
       </div>
     </div>
   );
