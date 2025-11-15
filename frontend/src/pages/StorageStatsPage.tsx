@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card } from '@/components/ui/Card';
-import { Progress } from '@/components/ui/Progress';
-import { Badge } from '@/components/ui/Badge';
+import { motion } from 'framer-motion';
 import {
   HardDrive,
   TrendingDown,
@@ -14,6 +12,9 @@ import {
   CheckCircle,
   Database
 } from 'lucide-react';
+import { GlassCard } from '../components/ui/GlassCard';
+import { Button } from '../components/ui/Button';
+import { Badge } from '../components/ui/Badge';
 
 interface StorageStats {
   temp_count: number;
@@ -96,106 +97,117 @@ export default function StorageStatsPage() {
 
   if (loading || !stats || !breakdown || !lifecycle) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-8">
         <div className="max-w-7xl mx-auto">
-          <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="h-32 bg-gray-200 rounded"></div>
-              ))}
+          <GlassCard className="p-12">
+            <div className="flex flex-col items-center justify-center space-y-4">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                className="w-12 h-12 border-4 border-violet-500/30 border-t-violet-500 rounded-full"
+              />
+              <p className="text-slate-400">Loading storage stats...</p>
             </div>
-          </div>
+          </GlassCard>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      <div className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8 space-y-8">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              Stockage Multi-Tier
-            </h1>
-            <p className="text-gray-600 mt-1">
-              Optimisation automatique des coûts de stockage photos
-            </p>
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center justify-between"
+        >
+          <div className="flex items-center gap-4">
+            <div className="p-4 bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl shadow-lg shadow-violet-500/50">
+              <Database className="w-8 h-8 text-white" />
+            </div>
+            <div>
+              <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-white via-violet-200 to-purple-200 bg-clip-text text-transparent">
+                Stockage Multi-Tier
+              </h1>
+              <p className="text-slate-400 mt-1">
+                Optimisation automatique des coûts de stockage photos
+              </p>
+            </div>
           </div>
-          <button
+          <Button
             onClick={fetchStorageData}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+            variant="outline"
           >
             Actualiser
-          </button>
-        </div>
+          </Button>
+        </motion.div>
 
         {/* Cost Overview */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card className="p-6">
+          <GlassCard>
             <div className="flex items-center gap-3">
               <div className="p-3 bg-green-100 rounded-lg">
                 <DollarSign className="w-6 h-6 text-green-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-600">Coût Mensuel</p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-sm text-slate-400">Coût Mensuel</p>
+                <p className="text-2xl font-bold text-white">
                   {formatCost(stats.monthly_cost_estimate)}
                 </p>
               </div>
             </div>
-          </Card>
+          </GlassCard>
 
-          <Card className="p-6">
+          <GlassCard>
             <div className="flex items-center gap-3">
               <div className="p-3 bg-blue-100 rounded-lg">
                 <TrendingDown className="w-6 h-6 text-blue-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-600">Économies</p>
+                <p className="text-sm text-slate-400">Économies</p>
                 <p className="text-2xl font-bold text-green-600">
                   {formatCost(stats.savings_vs_all_hot)}
                 </p>
                 <p className="text-xs text-gray-500">vs. tout en HOT</p>
               </div>
             </div>
-          </Card>
+          </GlassCard>
 
-          <Card className="p-6">
+          <GlassCard>
             <div className="flex items-center gap-3">
               <div className="p-3 bg-purple-100 rounded-lg">
                 <Database className="w-6 h-6 text-purple-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-600">Total Photos</p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-sm text-slate-400">Total Photos</p>
+                <p className="text-2xl font-bold text-white">
                   {stats.total_count.toLocaleString()}
                 </p>
               </div>
             </div>
-          </Card>
+          </GlassCard>
 
-          <Card className="p-6">
+          <GlassCard>
             <div className="flex items-center gap-3">
               <div className="p-3 bg-orange-100 rounded-lg">
                 <HardDrive className="w-6 h-6 text-orange-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-600">Taille Totale</p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-sm text-slate-400">Taille Totale</p>
+                <p className="text-2xl font-bold text-white">
                   {formatGB(stats.total_size_gb)}
                 </p>
               </div>
             </div>
-          </Card>
+          </GlassCard>
         </div>
 
         {/* Storage Tiers */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* TIER 1 - TEMP */}
-          <Card className="p-6">
+          <GlassCard>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <Clock className="w-5 h-5 text-gray-600" />
@@ -230,10 +242,10 @@ export default function StorageStatsPage() {
                 </p>
               </div>
             </div>
-          </Card>
+          </GlassCard>
 
           {/* TIER 2 - HOT */}
-          <Card className="p-6">
+          <GlassCard>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <Database className="w-5 h-5 text-orange-600" />
@@ -273,10 +285,10 @@ export default function StorageStatsPage() {
                 </p>
               </div>
             </div>
-          </Card>
+          </GlassCard>
 
           {/* TIER 3 - COLD */}
-          <Card className="p-6">
+          <GlassCard>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <Archive className="w-5 h-5 text-blue-600" />
@@ -316,12 +328,12 @@ export default function StorageStatsPage() {
                 </p>
               </div>
             </div>
-          </Card>
+          </GlassCard>
         </div>
 
         {/* Lifecycle Metrics (Last 30 Days) */}
         <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          <h3 className="text-lg font-semibold text-white mb-4">
             Lifecycle (30 derniers jours)
           </h3>
 
@@ -370,8 +382,8 @@ export default function StorageStatsPage() {
 
         {/* Recommendations */}
         {recommendations.length > 0 && (
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <GlassCard>
+            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
               <AlertCircle className="w-5 h-5 text-blue-600" />
               Recommandations
             </h3>
@@ -391,12 +403,12 @@ export default function StorageStatsPage() {
                 </div>
               ))}
             </div>
-          </Card>
+          </GlassCard>
         )}
 
         {/* Cost Breakdown Chart */}
         <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          <h3 className="text-lg font-semibold text-white mb-4">
             Répartition des Coûts
           </h3>
 
@@ -453,7 +465,7 @@ export default function StorageStatsPage() {
 
         {/* Storage Lifecycle Workflow */}
         <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          <h3 className="text-lg font-semibold text-white mb-4">
             Workflow Lifecycle
           </h3>
 
