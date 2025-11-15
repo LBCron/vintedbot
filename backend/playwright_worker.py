@@ -209,7 +209,7 @@ async def run_playwright_job(job_id: str, headless: bool = True):
                     category_parts = [part.strip() for part in listing.category.split('/')]
                     for part in category_parts:
                         # Click on the element containing the category part text
-                        await page.locator('div[data-testid*="catalog-tree-item"] >> text='{}''.format(part)).click()
+                        await page.locator(f'div[data-testid*="catalog-tree-item"] >> text="{part}"').click()
                         # Small delay to allow UI to update
                         await page.wait_for_timeout(500)
                     
