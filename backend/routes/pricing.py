@@ -98,6 +98,123 @@ async def get_market_analysis(
     request: MarketAnalysisRequest
 ):
     """Get market price analysis for similar items"""
+
+
+# ML-powered pricing endpoints
+class MLPriceRequest(BaseModel):
+    category: Optional[str] = None
+    brand: Optional[str] = None
+    size: Optional[str] = None
+    condition: Optional[str] = None
+    color: Optional[str] = None
+    views: int = 0
+    favorites: int = 0
+    age_days: int = 0
+
+
+@router.post("/ml-predict")
+@limiter.limit(AI_RATE_LIMIT)
+async def ml_price_prediction(
+    http_request: Request,
+    request: MLPriceRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get ML-powered price prediction with market data"""
+    from backend.services.ml_pricing_service import ml_pricing_service
+    from backend.services.market_scraper import market_scraper
+
+    # Get market data
+    market_data = await market_scraper.get_market_statistics(
+        category=request.category,
+        brand=request.brand,
+        size=request.size
+    )
+
+    # Get ML prediction
+    prediction = await ml_pricing_service.predict_price(
+        category=request.category,
+        brand=request.brand,
+        size=request.size,
+        condition=request.condition,
+        color=request.color,
+        views=request.views,
+        favorites=request.favorites,
+        age_days=request.age_days,
+        market_data=market_data
+    )
+
+    return {
+        "prediction": prediction,
+        "market_data": market_data
+    }
+
+
+@router.post("/ml-strategy")
+@limiter.limit(AI_RATE_LIMIT)
+async def ml_pricing_strategy(
+    http_request: Request,
+    request: MLPriceRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get complete pricing strategy from ML model"""
+    from backend.services.ml_pricing_service import ml_pricing_service
+    from backend.services.market_scraper import market_scraper
+
+    # Get market data
+    market_data = await market_scraper.get_market_statistics(
+        category=request.category,
+        brand=request.brand,
+        size=request.size
+    )
+
+    # Get pricing strategy
+    item_data = {
+        'category': request.category,
+        'brand': request.brand,
+        'size': request.size,
+        'condition': request.condition,
+        'color': request.color,
+        'views': request.views,
+        'favorites': request.favorites,
+        'age_days': request.age_days
+    }
+
+    strategy = await ml_pricing_service.get_optimal_price_strategy(
+        item_data=item_data,
+        market_data=market_data
+    )
+
+    return strategy
+
+
+@router.get("/market-scrape")
+@limiter.limit(AI_RATE_LIMIT)
+async def scrape_market_data(
+    http_request: Request,
+    category: Optional[str] = None,
+    brand: Optional[str] = None,
+    size: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Scrape Vinted for real-time market data"""
+    from backend.services.market_scraper import market_scraper
+
+    stats = await market_scraper.get_market_statistics(
+        category=category,
+        brand=brand,
+        size=size
+    )
+
+    recommendations = await market_scraper.get_price_recommendations(
+        category=category,
+        brand=brand,
+        size=size
+    )
+
+    return {
+        "statistics": stats,
+        "recommendations": recommendations
+    }
     service = PriceOptimizerService()
     return await service.analyze_market_prices(
         request.category,
