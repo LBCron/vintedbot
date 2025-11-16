@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"="width=device-width, initial-scale=1.0">
+  <title>VintedBot</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- SECURITY: CSP meta tag for extra protection -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🤖 VintedBot</h1>
+      <p class="tagline">AI-Powered Listing Assistant</p>
+    </header>
+
+    <main id="main-content">
+      <!-- Login view -->
+      <div id="login-view" class="view">
+        <h2>Welcome!</h2>
+        <p>Connect to your VintedBot account to get started.</p>
+        
+        <div class="form-group">
+          <label for="api-url">API URL:</label>
+          <!-- SECURITY: type="url" for validation -->
+          <input type="url" id="api-url" placeholder="https://vintedbot.com" value="https://vintedbot-staging.fly.dev">
+        </div>
+        
+        <button id="login-btn" class="btn-primary">
+          Login to VintedBot
+        </button>
+      </div>
+
+      <!-- Dashboard view -->
+      <div id="dashboard-view" class="view" style="display: none;">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-value" id="listings-count">--</div>
+            <div class="stat-label">Listings</div>
+          </div>
+          
+          <div class="stat-card">
+            <div class="stat-value" id="views-count">--</div>
+            <div class="stat-label">Views</div>
+          </div>
+          
+          <div class="stat-card">
+            <div class="stat-value" id="plan-name">Free</div>
+            <div class="stat-label">Plan</div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <a href="https://vintedbot-staging.fly.dev/dashboard" target="_blank" class="btn-secondary">
+            Open Dashboard
+          </a>
+          
+          <button id="logout-btn" class="btn-secondary">
+            Logout
+          </button>
+        </div>
+
+        <div class="info">
+          <p>✨ Create a listing on Vinted and click "AI Auto-fill" to generate amazing descriptions!</p>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <small>VintedBot v1.0.0</small>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
