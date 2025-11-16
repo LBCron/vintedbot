@@ -722,30 +722,56 @@ async def execute_upselling(
         if not session_data:
             raise HTTPException(status_code=400, detail="No Vinted session found. Please configure your Vinted cookie first.")
 
-        # TODO: Get orders and find similar items
-        # For now, simulate the process
+        # ✅ IMPLEMENTED: Real upselling with UpsellingService
+        from backend.services.upselling_service import UpsellingService
+
+        upselling_service = UpsellingService()
+
         for order_id in order_ids:
             try:
-                # Simulate finding similar items
-                similar_items = [
-                    {"title": "Similar Item 1", "price": 25.00, "url": "https://vinted.fr/..."},
-                    {"title": "Similar Item 2", "price": 30.00, "url": "https://vinted.fr/..."}
-                ]
+                # Get order details from store
+                store = get_store()
+                order = store.get_order(order_id)
 
-                # Format upsell message
-                message = f"Hi! Thanks for your purchase! You might also like these similar items: "
-                message += ", ".join([f"{item['title']} ({item['price']}€)" for item in similar_items])
+                if not order:
+                    results["failed"].append({
+                        "order_id": order_id,
+                        "error": "Order not found"
+                    })
+                    continue
 
-                # TODO: Send message via Vinted API
-                # await vinted_client.send_message(buyer_id, message)
+                # Get sold item ID and buyer name
+                sold_item_id = order.get("item_id")
+                buyer_name = order.get("buyer_name")
 
-                results["success"].append({
-                    "order_id": order_id,
-                    "message_sent": True,
-                    "items_suggested": len(similar_items)
-                })
+                if not sold_item_id:
+                    results["failed"].append({
+                        "order_id": order_id,
+                        "error": "No item ID in order"
+                    })
+                    continue
 
-                print(f"[UPSELL] Sent to order {order_id}: {len(similar_items)} items suggested")
+                # Execute upselling workflow
+                upsell_result = await upselling_service.execute_upselling(
+                    sold_item_id=sold_item_id,
+                    user_id=str(current_user.id),
+                    buyer_name=buyer_name,
+                    auto_send=False  # Don't auto-send, return message for review
+                )
+
+                if upsell_result["success"]:
+                    results["success"].append({
+                        "order_id": order_id,
+                        "message": upsell_result["message"],
+                        "similar_items_count": len(upsell_result["similar_items"]),
+                        "message_sent": upsell_result["auto_sent"]
+                    })
+                    print(f"[UPSELL] Generated upsell for order {order_id}: {len(upsell_result['similar_items'])} items suggested")
+                else:
+                    results["failed"].append({
+                        "order_id": order_id,
+                        "error": upsell_result.get("message", "Upselling failed")
+                    })
 
             except Exception as e:
                 results["failed"].append({
