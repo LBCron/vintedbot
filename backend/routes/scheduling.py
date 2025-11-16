@@ -65,7 +65,7 @@ async def schedule_draft(
 @router.get("/optimal-times")
 @limiter.limit(AI_RATE_LIMIT)
 async def get_optimal_times(
-    http_request: Request,
+    request: Request,
     current_user: dict = Depends(get_current_user),
     db = Depends(get_db_pool)
 ):
@@ -77,16 +77,16 @@ async def get_optimal_times(
 @router.post("/bulk-schedule")
 @limiter.limit(BATCH_RATE_LIMIT)
 async def bulk_schedule(
-    http_request: Request,
-    request: BulkScheduleRequest,
+    request: Request,
+    body: BulkScheduleRequest,
     current_user: dict = Depends(get_current_user),
     db = Depends(get_db_pool)
 ):
     """Schedule multiple drafts using ML strategy"""
     service = SchedulerService()
     return await service.auto_schedule_bulk(
-        request.draft_ids,
-        request.strategy,
+        body.draft_ids,
+        body.strategy,
         current_user["id"],
         db
     )
