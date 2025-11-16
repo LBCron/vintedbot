@@ -185,8 +185,8 @@ app.include_router(images.router, tags=["images"])  # Bulk image editing (Dotb f
 app.include_router(storage.router, prefix="/api", tags=["storage"])  # Multi-tier photo storage (TEMP/HOT/COLD)
 
 # MEGA-PROMPT PREMIUM FEATURES (Nov 2025) - Market Domination Features!
-app.include_router(payments.router, tags=["payments"])  # Stripe payments & subscriptions
-app.include_router(webhooks.router, tags=["webhooks"])  # External webhooks (Zapier, Make, etc.)
+app.include_router(payments.router, prefix="/api/v1", tags=["payments"])  # Stripe payments & subscriptions
+app.include_router(webhooks.router, prefix="/api/v1", tags=["webhooks"])  # External webhooks (Zapier, Make, etc.)
 
 # SUPER-ADMIN FEATURES - DB-based role system with SQL injection protection
 app.include_router(admin.router, tags=["admin"])  # Admin panel (secured - Nov 2025)
