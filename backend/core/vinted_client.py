@@ -29,6 +29,7 @@ class VintedClient:
         self.browser: Optional[Browser] = None
         self.context: Optional[BrowserContext] = None
         self.page: Optional[Page] = None
+        self.playwright = None  # ✅ FIXED: Store playwright instance for proper cleanup
     
     async def __aenter__(self):
         """Async context manager entry"""
@@ -49,7 +50,8 @@ class VintedClient:
         except:
             chromium_path = None  # Fallback to Playwright's bundled browser
 
-        playwright = await async_playwright().start()
+        # ✅ FIXED: Store playwright instance for proper cleanup
+        self.playwright = await async_playwright().start()
 
         # Extended Chromium args for better performance and anti-detection
         launch_kwargs = {
@@ -89,7 +91,7 @@ class VintedClient:
         if chromium_path:
             launch_kwargs['executable_path'] = chromium_path
 
-        self.browser = await playwright.chromium.launch(**launch_kwargs)
+        self.browser = await self.playwright.chromium.launch(**launch_kwargs)
     
     async def create_context(self, session: VintedSession) -> BrowserContext:
         """
@@ -156,13 +158,38 @@ class VintedClient:
         return self.page
     
     async def close(self):
-        """Close browser and context"""
-        if self.page:
-            await self.page.close()
-        if self.context:
-            await self.context.close()
-        if self.browser:
-            await self.browser.close()
+        """
+        ✅ FIXED: Close all resources including playwright instance
+        """
+        try:
+            if self.page:
+                await self.page.close()
+                self.page = None
+        except Exception as e:
+            logger.warning(f"Error closing page: {e}")
+
+        try:
+            if self.context:
+                await self.context.close()
+                self.context = None
+        except Exception as e:
+            logger.warning(f"Error closing context: {e}")
+
+        try:
+            if self.browser:
+                await self.browser.close()
+                self.browser = None
+        except Exception as e:
+            logger.warning(f"Error closing browser: {e}")
+
+        # ✅ FIXED: Stop playwright instance to free resources
+        try:
+            if self.playwright:
+                await self.playwright.stop()
+                self.playwright = None
+                logger.debug("✅ Playwright instance stopped")
+        except Exception as e:
+            logger.warning(f"Error stopping playwright: {e}")
     
     async def human_delay(self, min_ms: int = 100, max_ms: int = 500):
         """

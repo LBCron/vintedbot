@@ -31,6 +31,7 @@ from backend.api.v1.routers import (
     ingest, health as health_v1, vinted, bulk, ai, auth as auth_v1, billing,
     analytics, automation, accounts, admin, orders as orders_v1, images, storage
 )
+from backend.middleware.security_middleware import SecurityMiddleware
 from backend.settings import settings
 
 load_dotenv()
@@ -168,6 +169,9 @@ app.add_middleware(
 
 # GZip middleware
 app.add_middleware(GZipMiddleware, minimum_size=1024)
+
+# ✅ SECURITY: Global security middleware (SQL injection, XSS, path traversal, rate limiting)
+app.add_middleware(SecurityMiddleware)
 
 # Handle OPTIONS requests globally (CORS preflight)
 # REMOVED: Do NOT use wildcard "*" - CORSMiddleware handles this properly with whitelist
