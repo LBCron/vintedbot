@@ -1,0 +1,60 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    postgresql-client \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements
+COPY requirements.txt .
+
+# Install Python dependencies (without heavy ones for faster builds)
+RUN pip install --no-cache-dir -r requirements.txt || true
+
+# Install essential packages individually
+RUN pip install --no-cache-dir \
+    fastapi \
+    uvicorn[standard] \
+    sqlalchemy \
+    asyncpg \
+    psycopg2-binary \
+    redis \
+    python-jose[cryptography] \
+    passlib[bcrypt] \
+    python-multipart \
+    pydantic \
+    pydantic-settings \
+    openai \
+    httpx \
+    pillow \
+    playwright \
+    slowapi \
+    python-dotenv \
+    loguru \
+    pytest \
+    pytest-asyncio \
+    pytest-cov
+
+# Install Playwright browsers (Chromium only for testing)
+RUN playwright install chromium --with-deps
+
+# Copy application code
+COPY . .
+
+# Create necessary directories
+RUN mkdir -p /app/backend/data/uploads /app/backend/data/temp_uploads /app/logs
+
+# Expose port
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=10s --timeout=5s --retries=5 --start-period=30s \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Start command (with auto-migration)
+CMD ["sh", "-c", "python -c 'from backend.database import init_db; init_db()' && uvicorn backend.app:app --host 0.0.0.0 --port 8000 --reload"]

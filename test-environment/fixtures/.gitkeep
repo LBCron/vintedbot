@@ -1,0 +1,11 @@
+# Place test images here
+#
+# Recommended test fixtures:
+# - shirt_front.jpg (front view of a t-shirt)
+# - shirt_back.jpg (back view)
+# - shirt_label.jpg (brand label closeup)
+#
+# Images should be:
+# - Format: JPG or PNG
+# - Size: 800x800px minimum
+# - Real product photos for best AI testing

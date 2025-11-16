@@ -1,0 +1,123 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Test Database
+  postgres:
+    image: postgres:14-alpine
+    container_name: vintedbot_test_postgres
+    environment:
+      POSTGRES_DB: vintedbot_test
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: testpass123
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U testuser"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - vintedbot_test
+
+  # Redis Test Cache
+  redis:
+    image: redis:7-alpine
+    container_name: vintedbot_test_redis
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - vintedbot_test
+
+  # Backend API Test
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.test
+    container_name: vintedbot_test_backend
+    ports:
+      - "8001:8000"
+    environment:
+      # Database
+      DATABASE_URL: postgresql+asyncpg://testuser:testpass123@postgres:5432/vintedbot_test
+
+      # Redis
+      REDIS_URL: redis://redis:6379/0
+
+      # OpenAI (use your real key)
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+
+      # Environment
+      ENVIRONMENT: test
+      DEBUG: "true"
+
+      # Security
+      SECRET_KEY: test_secret_key_12345678901234567890
+
+      # CORS
+      ALLOWED_ORIGINS: http://localhost:5174,http://frontend:5173
+
+      # Mock mode for testing without real Vinted
+      MOCK_MODE: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    volumes:
+      - ./backend:/app
+      - backend_test_logs:/app/logs
+      - backend_test_data:/app/backend/data
+    networks:
+      - vintedbot_test
+
+  # Frontend Test
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.test
+    container_name: vintedbot_test_frontend
+    ports:
+      - "5174:5173"
+    environment:
+      VITE_API_URL: http://localhost:8001
+      VITE_WS_URL: ws://localhost:8001
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:5173"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - vintedbot_test
+
+volumes:
+  postgres_test_data:
+    name: vintedbot_test_postgres_data
+  backend_test_logs:
+    name: vintedbot_test_backend_logs
+  backend_test_data:
+    name: vintedbot_test_backend_data
+
+networks:
+  vintedbot_test:
+    name: vintedbot_test_network
+    driver: bridge
