@@ -12,7 +12,7 @@ Rate limits:
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from fastapi import Request
-from backend.security.auth import get_current_user
+from backend.core.auth import get_current_user  # ✅ FIXED: Moved from backend.security.auth
 import logging
 
 logger = logging.getLogger(__name__)

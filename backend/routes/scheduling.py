@@ -5,7 +5,7 @@ from typing import List
 from datetime import datetime, timedelta
 from backend.services.scheduler_service import SchedulerService
 from backend.core.database import get_db_pool
-from backend.security.auth import get_current_user
+from backend.core.auth import get_current_user  # ✅ FIXED: Moved from backend.security.auth
 from backend.core.rate_limiter import limiter, AI_RATE_LIMIT, BATCH_RATE_LIMIT, ANALYTICS_RATE_LIMIT
 import logging
 

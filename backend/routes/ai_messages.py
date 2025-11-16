@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from pydantic import BaseModel
 from backend.services.ai_message_service import AIMessageService
 from backend.core.database import get_db_pool
-from backend.security.auth import get_current_user
+from backend.core.auth import get_current_user  # ✅ FIXED: Moved from backend.security.auth
 from backend.core.rate_limiter import limiter, AI_RATE_LIMIT, BATCH_RATE_LIMIT
 
 logger = logging.getLogger(__name__)
