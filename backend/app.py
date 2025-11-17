@@ -62,6 +62,14 @@ async def lifespan(app: FastAPI):
     """Application lifespan manager"""
     logger.info("Starting VintedBot Connector Backend...")
 
+    # SECURITY FIX Bug #17: Cleanup old temporary files on startup
+    try:
+        from backend.utils.temp_file_manager import cleanup_old_temp_files
+        cleanup_old_temp_files(str(TEMP_DIR), max_age_hours=24)
+        logger.info("✅ Old temporary files cleaned up")
+    except Exception as e:
+        logger.warning(f"⚠️ Failed to cleanup old temp files: {e}")
+
     # Register HEIC/HEIF support for PIL
     try:
         from pillow_heif import register_heif_opener
