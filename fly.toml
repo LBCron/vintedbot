@@ -25,10 +25,12 @@ primary_region = "cdg"
     soft_limit = 200
     hard_limit = 250
 
-[[vm]]
+# SECURITY FIX Bug #57: Align memory allocation with staging config
+# Using Fly.io v2 [compute] syntax instead of deprecated [[vm]]
+[compute]
   cpu_kind = "shared"
   cpus = 1
-  memory_mb = 512
+  memory = "512mb"
 
 [mounts]
   source = "vintedbot_data"
