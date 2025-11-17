@@ -9,6 +9,8 @@ __pycache__
 *.egg-info
 dist
 build
+frontend/dist
+frontend/node_modules
 .env
 .env.local
 .env.production
