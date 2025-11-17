@@ -35,8 +35,26 @@ from backend.settings import settings
 
 load_dotenv()
 
-# Rate limiter
-limiter = Limiter(key_func=get_remote_address)
+# SECURITY FIX Bug #66: Global rate limiting configuration
+ENV = os.getenv("ENV", "development")
+
+# Rate limits by environment
+if ENV == "production":
+    DEFAULT_RATE_LIMIT = "100/minute"  # Production: 100 requests per minute per IP
+    AUTH_RATE_LIMIT = "5/minute"        # Auth endpoints: 5 per minute (brute-force protection)
+elif ENV == "staging":
+    DEFAULT_RATE_LIMIT = "200/minute"  # Staging: more permissive for testing
+    AUTH_RATE_LIMIT = "10/minute"
+else:
+    DEFAULT_RATE_LIMIT = "1000/minute"  # Development: very permissive
+    AUTH_RATE_LIMIT = "50/minute"
+
+# Rate limiter with default limit
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=[DEFAULT_RATE_LIMIT],  # Apply to all endpoints
+    storage_uri=os.getenv("REDIS_URL", "redis://localhost:6379/0")  # Use Redis for distributed limiting
+)
 
 
 @asynccontextmanager

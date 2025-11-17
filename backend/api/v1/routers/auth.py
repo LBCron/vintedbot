@@ -1,10 +1,14 @@
 """
 Authentication router for VintedBot SaaS
 Handles user registration, login, and profile management
+
+SECURITY FIX Bug #66: Added rate limiting on auth endpoints
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Header, status, Response, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from backend.core.auth import (
     UserRegister,
     UserLogin,
@@ -27,6 +31,11 @@ from urllib.parse import urlencode
 
 router = APIRouter(prefix="/auth")
 security = HTTPBearer(auto_error=False)  # Don't auto-error if no Bearer token (we use cookies too)
+
+# SECURITY FIX Bug #66: Rate limiter for auth endpoints (brute-force protection)
+limiter = Limiter(key_func=get_remote_address)
+ENV = os.getenv("ENV", "development")
+AUTH_RATE_LIMIT = "5/minute" if ENV == "production" else ("10/minute" if ENV == "staging" else "50/minute")
 
 # Cookie configuration
 COOKIE_NAME = "auth_token"
@@ -118,7 +127,8 @@ def get_current_user(
 # ========== Public Endpoints ==========
 
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
-async def register(user_data: UserRegister, response: Response):
+@limiter.limit(AUTH_RATE_LIMIT)  # SECURITY FIX Bug #66: Rate limit registration (5/min in prod)
+async def register(request: Request, user_data: UserRegister, response: Response):
     """
     Register a new user account
 
@@ -126,6 +136,7 @@ async def register(user_data: UserRegister, response: Response):
     - Sets up default quotas automatically
     - Sets HTTP-only cookie with JWT token
     - Also returns token in body for backwards compatibility
+    - RATE LIMITED: 5 requests/minute in production (prevents abuse)
 
     Example:
         POST /auth/register
@@ -182,7 +193,8 @@ async def register(user_data: UserRegister, response: Response):
 
 
 @router.post("/login", response_model=Token)
-async def login(credentials: UserLogin, response: Response):
+@limiter.limit(AUTH_RATE_LIMIT)  # SECURITY FIX Bug #66: Rate limit login (5/min in prod, brute-force protection)
+async def login(request: Request, credentials: UserLogin, response: Response):
     """
     Login with email and password
 
@@ -190,6 +202,7 @@ async def login(credentials: UserLogin, response: Response):
     - Sets HTTP-only cookie with JWT token
     - Token expires in 7 days
     - Also returns token in body for backwards compatibility
+    - RATE LIMITED: 5 requests/minute in production (brute-force protection)
 
     Example:
         POST /auth/login
