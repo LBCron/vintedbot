@@ -52,12 +52,18 @@ COPY . /app/backend/
 # Create data directory
 RUN mkdir -p /app/backend/data
 
-# Expose port
-EXPOSE 8001
+# SECURITY FIX Bug #52: Run as non-root user
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+RUN chown -R appuser:appuser /app
+USER appuser
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-    CMD curl -f http://localhost:8001/health || exit 1
+# BUG FIX #48/#49: Use environment variable for port (configurable via Fly.io)
+ENV PORT=8000
+EXPOSE ${PORT}
 
-# Run the application with proper module path
-CMD ["uvicorn", "backend.app:app", "--host", "0.0.0.0", "--port", "8001"]
+# BUG FIX #50: Increased healthcheck timeout from 5s to 10s
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:${PORT}/health || exit 1
+
+# BUG FIX #48: Use PORT environment variable for flexibility
+CMD sh -c "uvicorn backend.app:app --host 0.0.0.0 --port ${PORT}"
