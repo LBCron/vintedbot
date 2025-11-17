@@ -195,10 +195,11 @@ app.include_router(admin.router, tags=["admin"])  # Admin panel (secured - Nov 2
 app.include_router(ingest.router, tags=["ingest-alias"])
 
 # Mount static files for uploads and media
+# SECURITY FIX Bug #70: Replaced bare except with specific exceptions
 try:
     app.mount("/uploads", StaticFiles(directory="backend/data/uploads"), name="uploads")
-except:
-    pass
+except (FileNotFoundError, RuntimeError, PermissionError) as e:
+    logger.warning(f"Could not mount uploads directory: {e}")
 
 # Mount temp photos for Vinted uploads
 try:
