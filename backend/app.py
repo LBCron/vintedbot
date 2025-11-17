@@ -141,6 +141,41 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+
+# SECURITY FIX Bug #36: Global exception handler
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """
+    Global exception handler for unhandled exceptions
+
+    Prevents sensitive error details from leaking to clients
+    Logs full stack trace for debugging
+    Returns generic error message
+    """
+    import traceback
+
+    # Log full exception with stack trace
+    logger.error(
+        f"Unhandled exception: {type(exc).__name__}: {str(exc)}",
+        extra={
+            "path": request.url.path,
+            "method": request.method,
+            "client": request.client.host if request.client else "unknown",
+            "traceback": traceback.format_exc()
+        }
+    )
+
+    # Return generic error to client (don't leak implementation details)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "Internal Server Error",
+            "message": "An unexpected error occurred. Please try again later.",
+            "request_id": getattr(request.state, "request_id", "unknown")
+        }
+    )
+
+
 # CORS middleware - Allow frontend domain
 # SECURITY FIX Bug #60: Strict CORS validation in production
 ENV = os.getenv("ENV", "development")
@@ -192,6 +227,35 @@ app.add_middleware(GZipMiddleware, minimum_size=1024)
 # async def block_direct_api_access(request: Request, call_next):
 #     # Middleware disabled for debugging
 #     return await call_next(request)
+
+
+# SECURITY FIX Bug #24: Content Security Policy (CSP) middleware
+@app.middleware("http")
+async def security_headers_middleware(request: Request, call_next):
+    """Add security headers to all responses"""
+    response = await call_next(request)
+
+    # Content Security Policy - prevents XSS, clickjacking, code injection
+    csp_policy = "; ".join([
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval'",  # unsafe-eval needed for Vue/React dev
+        "style-src 'self' 'unsafe-inline'",
+        "img-src 'self' data: https:",
+        "font-src 'self' data:",
+        "connect-src 'self' https://www.googleapis.com https://oauth2.googleapis.com",
+        "frame-ancestors 'none'",  # Clickjacking protection
+        "base-uri 'self'",
+        "form-action 'self'"
+    ])
+    response.headers["Content-Security-Policy"] = csp_policy
+
+    # Additional security headers
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+
+    return response
 
 
 # Request ID and logging middleware

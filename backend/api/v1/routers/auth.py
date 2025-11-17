@@ -42,6 +42,9 @@ COOKIE_NAME = "auth_token"
 COOKIE_MAX_AGE = 60 * 60 * 24 * 7  # 7 days in seconds
 COOKIE_SECURE = os.getenv("ENV", "development") == "production"  # True in production
 COOKIE_HTTPONLY = True
+# SECURITY NOTE Bug #22: SameSite=lax is REQUIRED for OAuth callbacks
+# SameSite=strict would break OAuth redirects from Google/GitHub
+# This is a standard security tradeoff for OAuth flows
 COOKIE_SAMESITE = "lax"  # Allow cross-site for OAuth callbacks
 
 # Google OAuth configuration

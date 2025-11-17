@@ -28,16 +28,20 @@ class ConnectionManager:
             for connection in self.active_connections[session_id]:
                 try:
                     await connection.send_json(message)
-                except:
-                    pass
+                except (RuntimeError, ConnectionResetError) as e:
+                    # SECURITY FIX Bug #18: Specific exception handling instead of bare except
+                    logger.debug(f"Failed to send WebSocket message to {session_id}: {e}")
+                    # Connection likely closed, will be cleaned up on disconnect
     
     async def broadcast(self, message: dict):
         for connections in self.active_connections.values():
             for connection in connections:
                 try:
                     await connection.send_json(message)
-                except:
-                    pass
+                except (RuntimeError, ConnectionResetError) as e:
+                    # SECURITY FIX Bug #18: Specific exception handling instead of bare except
+                    logger.debug(f"Failed to broadcast WebSocket message: {e}")
+                    # Connection likely closed, will be cleaned up on disconnect
 
 
 manager = ConnectionManager()
@@ -60,8 +64,11 @@ async def websocket_general(websocket: WebSocket):
                     "type": "echo",
                     "data": message
                 })
-            except:
-                pass
+            except json.JSONDecodeError as e:
+                # SECURITY FIX Bug #18: Specific exception handling instead of bare except
+                logger.warning(f"Invalid JSON received on WebSocket: {e}")
+            except Exception as e:
+                logger.error(f"Error processing WebSocket message: {e}")
     
     except WebSocketDisconnect:
         manager.disconnect(websocket, session_id)

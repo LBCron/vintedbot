@@ -74,9 +74,19 @@ COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 # Create data directories
 RUN mkdir -p /data/backups /data/temp_photos /data/uploads /data/temp_uploads
 
+# SECURITY FIX Bug #38: Run as non-root user for security
+# Create a non-root user and group
+RUN groupadd -r vintedbot && useradd -r -g vintedbot vintedbot
+
+# Change ownership of app and data directories
+RUN chown -R vintedbot:vintedbot /app /data
+
 # Environment
 ENV PYTHONUNBUFFERED=1
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
+# Switch to non-root user
+USER vintedbot
 
 # Expose port
 EXPOSE 8000
