@@ -12,12 +12,25 @@ from typing import Optional
 from loguru import logger
 
 from backend.core.auth import get_current_user
-from backend.core.database import get_db_pool
+# from backend.core.database import get_db_pool  # DISABLED: Function no longer exists
 from backend.services.stripe_service import stripe_service
-from backend.models.user import User
+from backend.models import User  # FIXED: Import from models not models.user
 
 
 router = APIRouter(prefix="/payments", tags=["payments"])
+
+
+# Temporary stub to prevent crashes during migration
+def get_db_pool():
+    """
+    DEPRECATED: This function is no longer available.
+    The application has migrated from asyncpg to SQLAlchemy.
+    Payment endpoints need to be refactored.
+    """
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail="Payment endpoints are temporarily disabled during database migration. Please use the main API."
+    )
 
 
 # Request/Response Models

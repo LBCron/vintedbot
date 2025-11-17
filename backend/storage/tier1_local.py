@@ -16,10 +16,10 @@ class LocalStorage:
     - Temporaire (24-48h)
     - Utilisé pour photos en attente d'analyse IA
 
-    Path: /app/backend/data/photos/temp/
+    Path: /data/temp_photos/
     """
 
-    def __init__(self, base_path: str = "/app/backend/data/photos/temp"):
+    def __init__(self, base_path: str = "/data/temp_photos"):
         """
         Initialize local storage
 

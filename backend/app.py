@@ -22,7 +22,7 @@ tempfile.tempdir = str(TEMP_DIR)
 os.environ["TMPDIR"] = str(TEMP_DIR)
 
 from backend.db import create_tables
-from backend.database import init_db
+# from backend.database import init_db  # DISABLED: Using async database from backend.core.database instead
 from backend.jobs import start_scheduler, stop_scheduler
 from backend.utils.logger import logger, log_request, sanitize_headers
 from backend.routes import auth, messages, publish, listings, offers, orders, health, ws, feedback
@@ -80,38 +80,40 @@ async def lifespan(app: FastAPI):
 
     # Initialize databases
     create_tables()  # Legacy JSON database (SQLite)
-    init_db()  # PostgreSQL database
+    # init_db()  # DISABLED: Using async database from backend.core.database instead
 
     # SECURITY FIX Bug #64: Check database migrations on startup
     try:
         from alembic.config import Config
         from alembic.script import ScriptDirectory
         from alembic.runtime.migration import MigrationContext
-        from backend.database import engine
+        # from backend.database import engine  # DISABLED: Using async database from backend.core.database
 
+        # DISABLED: Alembic check uses old sync database engine
         # Check if alembic is configured
-        alembic_cfg_path = "alembic.ini"
-        if os.path.exists(alembic_cfg_path):
-            alembic_cfg = Config(alembic_cfg_path)
-            script = ScriptDirectory.from_config(alembic_cfg)
-
-            # Get current database revision
-            with engine.connect() as connection:
-                context = MigrationContext.configure(connection)
-                current_rev = context.get_current_revision()
-
-                # Get latest revision from migrations
-                head_rev = script.get_current_head()
-
-                if current_rev is None:
-                    logger.warning("⚠️ Database not initialized - run 'alembic upgrade head'")
-                elif current_rev != head_rev:
-                    logger.warning(f"⚠️ Database schema outdated: current={current_rev}, latest={head_rev}")
-                    logger.warning("Run 'alembic upgrade head' to apply pending migrations")
-                else:
-                    logger.info(f"✅ Database schema up-to-date (revision: {current_rev})")
-        else:
-            logger.info("ℹ️ Alembic not configured - skipping migration check")
+        # alembic_cfg_path = "alembic.ini"
+        # if os.path.exists(alembic_cfg_path):
+        #     alembic_cfg = Config(alembic_cfg_path)
+        #     script = ScriptDirectory.from_config(alembic_cfg)
+        #
+        #     # Get current database revision
+        #     with engine.connect() as connection:
+        #         context = MigrationContext.configure(connection)
+        #         current_rev = context.get_current_revision()
+        #
+        #         # Get latest revision from migrations
+        #         head_rev = script.get_current_head()
+        #
+        #         if current_rev is None:
+        #             logger.warning("⚠️ Database not initialized - run 'alembic upgrade head'")
+        #         elif current_rev != head_rev:
+        #             logger.warning(f"⚠️ Database schema outdated: current={current_rev}, latest={head_rev}")
+        #             logger.warning("Run 'alembic upgrade head' to apply pending migrations")
+        #         else:
+        #             logger.info(f"✅ Database schema up-to-date (revision: {current_rev})")
+        # else:
+        #     logger.info("ℹ️ Alembic not configured - skipping migration check")
+        logger.info("ℹ️ Alembic migration check disabled (migrated to async database)")
     except ImportError:
         logger.info("ℹ️ Alembic not installed - skipping migration check")
     except Exception as e:
