@@ -46,7 +46,7 @@ export default function Billing() {
       const API_URL = import.meta.env.VITE_API_URL || '';
 
       // Fetch subscription info
-      const subResponse = await fetch(`${API_URL}/api/v1/payments/subscription`, {
+      const subResponse = await fetch(`${API_URL}/billing/subscription`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -56,7 +56,7 @@ export default function Billing() {
       setSubscription(subData);
 
       // Fetch plan limits
-      const limitsResponse = await fetch(`${API_URL}/api/v1/payments/limits`, {
+      const limitsResponse = await fetch(`${API_URL}/billing/limits`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -84,8 +84,15 @@ export default function Billing() {
       const token = localStorage.getItem('token');
       const API_URL = import.meta.env.VITE_API_URL || '';
 
-      const response = await fetch(`${API_URL}/api/v1/payments/billing-portal`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const response = await fetch(`${API_URL}/billing/portal`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          return_url: `${window.location.origin}/billing`
+        })
       });
 
       if (!response.ok) {

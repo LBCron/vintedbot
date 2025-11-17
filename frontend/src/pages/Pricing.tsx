@@ -31,7 +31,7 @@ export default function Pricing() {
   const fetchPlans = async () => {
     try {
       const API_URL = import.meta.env.VITE_API_URL || '';
-      const response = await fetch(`${API_URL}/api/v1/payments/plans`);
+      const response = await fetch(`${API_URL}/billing/plans`);
 
       if (!response.ok) throw new Error('Failed to fetch plans');
 
@@ -66,14 +66,14 @@ export default function Pricing() {
       }
 
       const API_URL = import.meta.env.VITE_API_URL || '';
-      const response = await fetch(`${API_URL}/api/v1/payments/checkout`, {
+      const response = await fetch(`${API_URL}/billing/checkout`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          plan: planId,
+          tier: planId,
           success_url: `${window.location.origin}/dashboard?payment=success`,
           cancel_url: `${window.location.origin}/pricing?payment=canceled`
         })
