@@ -1,7 +1,9 @@
 import os
 import time
 import psutil
+from datetime import datetime
 from fastapi import APIRouter
+from fastapi.responses import JSONResponse
 from backend.settings import settings
 
 router = APIRouter(tags=["health"])
@@ -12,45 +14,111 @@ start_time = time.time()
 @router.get("/health")
 @router.options("/health")
 async def health_check():
-    """Enhanced health check endpoint"""
+    """
+    Comprehensive health check endpoint
+
+    SECURITY FIX Bug #67: Tests all critical dependencies
+    Returns 200 if healthy, 503 if degraded/unhealthy
+    """
+    checks = {
+        "status": "healthy",
+        "version": "1.0.0",
+        "timestamp": datetime.utcnow().isoformat(),
+        "uptime_seconds": int(time.time() - start_time),
+        "checks": {}
+    }
+
+    # Process info
     process = psutil.Process()
     memory_info = process.memory_info()
-    
-    # Get scheduler jobs count if available
-    scheduler_jobs_count = 0
+    checks["process"] = {
+        "pid": os.getpid(),
+        "mem_mb": round(memory_info.rss / 1024 / 1024, 2),
+        "cpu_percent": process.cpu_percent(interval=0.1)
+    }
+
+    # Database check (PostgreSQL)
+    try:
+        from backend.database import get_db_pool
+        db_pool = get_db_pool()
+        async with db_pool.acquire() as conn:
+            await conn.fetchval("SELECT 1")
+        checks["checks"]["database"] = {"status": "healthy", "type": "postgresql"}
+    except Exception as e:
+        checks["checks"]["database"] = {"status": "unhealthy", "error": str(e), "type": "postgresql"}
+        checks["status"] = "degraded"
+
+    # Redis check
+    try:
+        from backend.core.cache import cache_service
+        # Ping Redis
+        cache_service.set("healthcheck_test", "ok", ttl=10)
+        result = cache_service.get("healthcheck_test")
+        if result == "ok":
+            checks["checks"]["redis"] = {"status": "healthy"}
+        else:
+            checks["checks"]["redis"] = {"status": "degraded", "error": "ping failed"}
+            checks["status"] = "degraded"
+    except Exception as e:
+        checks["checks"]["redis"] = {"status": "unhealthy", "error": str(e)}
+        checks["status"] = "degraded"
+
+    # Scheduler check
     try:
         from backend.jobs import scheduler
         if scheduler:
-            scheduler_jobs_count = len(scheduler.get_jobs())
-    except:
-        pass
-    
-    return {
-        "status": "healthy",
-        "version": "1.0.0",
-        "uptime_seconds": int(time.time() - start_time),
-        "process": {
-            "pid": os.getpid(),
-            "mem_mb": round(memory_info.rss / 1024 / 1024, 2)
-        },
-        "config": {
-            "port": 5000,
-            "openai_enabled": bool(os.getenv("OPENAI_API_KEY")),
-            "allowed_origins": os.getenv("ALLOWED_ORIGINS", "*"),
-            "mock_mode": settings.MOCK_MODE
-        },
-        "scheduler_jobs_count": scheduler_jobs_count
+            jobs_count = len(scheduler.get_jobs())
+            checks["checks"]["scheduler"] = {
+                "status": "healthy",
+                "jobs_count": jobs_count
+            }
+        else:
+            checks["checks"]["scheduler"] = {"status": "unhealthy", "error": "not initialized"}
+            checks["status"] = "degraded"
+    except Exception as e:
+        checks["checks"]["scheduler"] = {"status": "unhealthy", "error": str(e)}
+        checks["status"] = "degraded"
+
+    # Configuration check
+    checks["config"] = {
+        "environment": os.getenv("ENV", "development"),
+        "openai_enabled": bool(os.getenv("OPENAI_API_KEY")),
+        "stripe_enabled": bool(os.getenv("STRIPE_SECRET_KEY")),
+        "mock_mode": settings.MOCK_MODE
     }
+
+    # Return appropriate status code
+    status_code = 200 if checks["status"] == "healthy" else 503
+    return JSONResponse(content=checks, status_code=status_code)
 
 
 @router.get("/ready")
 @router.options("/ready")
 async def readiness_check():
-    """Readiness check endpoint for Lovable.dev frontend"""
-    return {
-        "status": "ready",
-        "timestamp": int(time.time())
-    }
+    """
+    Kubernetes-style readiness check
+    Returns 200 if ready to serve traffic, 503 otherwise
+    """
+    try:
+        # Quick database check
+        from backend.database import get_db_pool
+        db_pool = get_db_pool()
+        async with db_pool.acquire() as conn:
+            await conn.fetchval("SELECT 1")
+
+        return {
+            "status": "ready",
+            "timestamp": int(time.time())
+        }
+    except Exception as e:
+        return JSONResponse(
+            content={
+                "status": "not_ready",
+                "error": str(e),
+                "timestamp": int(time.time())
+            },
+            status_code=503
+        )
 
 
 @router.get("/stats")
@@ -60,12 +128,12 @@ async def backend_stats():
     from backend.db import get_db_session
     from backend.models import Listing, Draft, PublishJob
     from sqlmodel import func, select
-    
+
     with get_db_session() as db:
         total_listings = db.exec(select(func.count(Listing.id))).first() or 0
         total_drafts = db.exec(select(func.count(Draft.id))).first() or 0
         total_jobs = db.exec(select(func.count(PublishJob.job_id))).first() or 0
-    
+
     return {
         "status": "ok",
         "stats": {

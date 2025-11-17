@@ -7,10 +7,20 @@ Caches:
 - API responses
 - ML predictions
 - Market data
+
+SECURITY FIX Bug #59: Added retry logic for Redis connections
 """
 import os
 import json
 import redis
+from redis.backoff import ExponentialBackoff
+from redis.retry import Retry
+from redis.exceptions import (
+    ConnectionError,
+    TimeoutError,
+    BusyLoadingError,
+    ResponseError
+)
 from typing import Optional, Any
 from loguru import logger
 from functools import wraps
@@ -38,21 +48,39 @@ class CacheService:
 
 
     def _connect(self):
-        """Connect to Redis"""
+        """
+        Connect to Redis with retry logic
+
+        SECURITY FIX Bug #59: Exponential backoff retry for resilience
+        Retries 3 times with delays: 0.5s, 1s, 2s
+        """
         try:
+            # Configure retry with exponential backoff
+            retry_policy = Retry(ExponentialBackoff(), 3)
+
             self.client = redis.from_url(
                 self.redis_url,
                 decode_responses=True,
                 socket_connect_timeout=5,
-                socket_timeout=5
+                socket_timeout=5,
+                socket_keepalive=True,
+                socket_keepalive_options={},
+                health_check_interval=30,  # Ping every 30s to keep connection alive
+                retry=retry_policy,
+                retry_on_timeout=True,
+                retry_on_error=[ConnectionError, TimeoutError, BusyLoadingError]
             )
 
-            # Test connection
+            # Test connection with retry
             self.client.ping()
-            logger.info("✅ Redis cache connected")
+            logger.info("✅ Redis cache connected with retry policy (3 retries, exponential backoff)")
 
+        except (ConnectionError, TimeoutError, ResponseError) as e:
+            logger.warning(f"⚠️ Redis connection failed after retries: {e} - Caching disabled")
+            self.enabled = False
+            self.client = None
         except Exception as e:
-            logger.warning(f"⚠️ Redis connection failed: {e} - Caching disabled")
+            logger.error(f"❌ Unexpected Redis error: {e} - Caching disabled")
             self.enabled = False
             self.client = None
 

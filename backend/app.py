@@ -81,42 +81,48 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS middleware - Allow frontend domain
-# CRITICAL: Cannot use "*" with credentials=True, must specify exact origin
-allowed_origins = os.getenv("ALLOWED_ORIGINS", "https://vintedbot-frontend.fly.dev,https://vintedbot.app,https://www.vintedbot.app,http://localhost:3000,http://localhost:5173")
-if allowed_origins == "*":
-    # Fallback to specific origin for credentials support
-    origins = ["https://vintedbot-frontend.fly.dev", "https://vintedbot.app", "https://www.vintedbot.app", "http://localhost:3000", "http://localhost:5173"]
-    allow_origin_regex = None
+# SECURITY FIX Bug #60: Strict CORS validation in production
+ENV = os.getenv("ENV", "development")
+allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "")
+
+if ENV == "production":
+    # PRODUCTION: Require explicit CORS origins (fail if not set)
+    if not allowed_origins_env or allowed_origins_env == "*":
+        logger.error("❌ CORS SECURITY: ALLOWED_ORIGINS must be set in production (not * or empty)")
+        logger.error("Set ALLOWED_ORIGINS=https://yourdomain.com,https://www.yourdomain.com")
+        # Use restrictive defaults in production as fallback
+        origins = ["https://vintedbot-frontend.fly.dev", "https://vintedbot.app", "https://www.vintedbot.app"]
+        logger.warning(f"Using restrictive CORS origins: {origins}")
+    else:
+        origins = [origin.strip() for origin in allowed_origins_env.split(",")]
+        logger.info(f"✅ CORS origins configured: {origins}")
 else:
-    origins = [origin.strip() for origin in allowed_origins.split(",")]
-    # Add regex pattern for all Lovable domains
-    allow_origin_regex = r"https://.*\.lovable(project\.com|\.dev|\.app)"
+    # DEVELOPMENT: Allow localhost for development
+    if allowed_origins_env:
+        origins = [origin.strip() for origin in allowed_origins_env.split(",")]
+    else:
+        origins = ["http://localhost:3000", "http://localhost:5173", "http://localhost:5000"]
+    logger.info(f"Development CORS origins: {origins}")
+
+# Add regex pattern for Lovable domains (for development/preview)
+allow_origin_regex = r"https://.*\.lovable(project\.com|\.dev|\.app)" if ENV != "production" else None
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_origin_regex=allow_origin_regex,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],  # Explicit methods
+    allow_headers=["Content-Type", "Authorization", "X-Request-ID", "Accept"],  # Explicit headers
     expose_headers=["x-request-id"]
 )
 
 # GZip middleware
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 
-# Handle OPTIONS requests globally (CORS preflight)
-@app.options("/{full_path:path}")
-async def options_handler(full_path: str):
-    return JSONResponse(
-        content={},
-        headers={
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "*",
-            "Access-Control-Allow-Headers": "*",
-            "Access-Control-Max-Age": "3600"
-        }
-    )
+# SECURITY FIX Bug #60: Removed insecure OPTIONS handler
+# CORSMiddleware already handles OPTIONS requests properly
+# The previous handler was bypassing CORS security with "Access-Control-Allow-Origin: *"
 
 
 # Security: Block direct API access in production (force use of frontend)
