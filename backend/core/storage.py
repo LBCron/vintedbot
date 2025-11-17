@@ -17,7 +17,7 @@ from PIL import Image
 STORAGE_BACKEND = os.getenv("STORAGE_BACKEND", "sqlite")
 TTL_DRAFTS_DAYS = int(os.getenv("TTL_DRAFTS_DAYS", "30"))
 TTL_PUBLISH_LOG_DAYS = int(os.getenv("TTL_PUBLISH_LOG_DAYS", "90"))
-DB_PATH = os.getenv("SQLITE_DB_PATH", "backend/data/vbs.db")
+DB_PATH = os.getenv("SQLITE_DB_PATH", "/data/vbs.db")
 
 
 class SQLiteStore:
