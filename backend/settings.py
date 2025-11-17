@@ -30,9 +30,29 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: str = "*"
     CORS_ORIGINS: List[str] = ["*"]
 
-    # Encryption
-    ENCRYPTION_KEY: str = "default-32-byte-key-change-this!"
-    SECRET_KEY: str = "dev-secret"
+    # Encryption - SECURITY FIX: No default values in production
+    # Generate secure keys with: python backend/generate_secrets.py
+    ENCRYPTION_KEY: str = "default-32-byte-key-change-this!"  # Must be overridden in .env
+    SECRET_KEY: str = "dev-secret"  # Must be overridden in .env
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # SECURITY: Validate keys in production
+        if self.ENV == "production":
+            if self.ENCRYPTION_KEY == "default-32-byte-key-change-this!":
+                raise ValueError(
+                    "ENCRYPTION_KEY must be set to a secure value in production. "
+                    "Run: python backend/generate_secrets.py"
+                )
+            if self.SECRET_KEY == "dev-secret":
+                raise ValueError(
+                    "SECRET_KEY must be set to a secure value in production. "
+                    "Run: python backend/generate_secrets.py"
+                )
+            if len(self.ENCRYPTION_KEY) < 32:
+                raise ValueError("ENCRYPTION_KEY must be at least 32 characters")
+            if len(self.SECRET_KEY) < 32:
+                raise ValueError("SECRET_KEY must be at least 32 characters")
 
     # Mock mode
     MOCK_MODE: bool = False

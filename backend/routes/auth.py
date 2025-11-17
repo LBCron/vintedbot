@@ -12,7 +12,8 @@ from backend.utils.logger import logger
 
 router = APIRouter(prefix="/vinted/auth", tags=["authentication"])
 
-MOCK_MODE = os.getenv("MOCK_MODE", "true").lower() == "true"
+# SECURITY FIX: Default to "false" to prevent accidental validation bypass in production
+MOCK_MODE = os.getenv("MOCK_MODE", "false").lower() == "true"
 
 
 class SessionCreate(BaseModel):

@@ -78,7 +78,10 @@ class SystemMonitor:
             table_counts = {}
             for table in tables:
                 try:
-                    cursor.execute(f"SELECT COUNT(*) FROM {table}")
+                    # SECURITY FIX: Quote identifier to prevent SQL injection
+                    # table comes from sqlite_master, but still quote it
+                    query = f'SELECT COUNT(*) FROM "{table}"'
+                    cursor.execute(query)
                     count = cursor.fetchone()[0]
                     table_counts[table] = count
                 except:

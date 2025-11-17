@@ -131,7 +131,8 @@ class MigrationManager:
                 }
 
                 # Get column information
-                cursor.execute(f"PRAGMA table_info({table_name})")
+                # SECURITY FIX: Quote identifier (table_name from sqlite_master is safe, but quote anyway)
+                cursor.execute(f'PRAGMA table_info("{table_name}")')
                 for col_info in cursor.fetchall():
                     tables[table_name]['columns'].append({
                         'name': col_info[1],

@@ -16,7 +16,10 @@ from backend.core.auth import (
     decode_access_token
 )
 from backend.core.storage import get_store
+from backend.core.cache import cache_service
+from backend.utils.password_validator import validate_password, get_password_strength
 from typing import Optional
+from datetime import datetime
 import httpx
 import os
 import secrets
@@ -37,8 +40,9 @@ GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
 GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:5000/auth/google/callback")
 
-# Temporary storage for OAuth states (in production use Redis)
-oauth_states = {}
+# SECURITY FIX: OAuth states stored in Redis instead of memory
+# TTL of 600 seconds (10 minutes) for OAuth state tokens
+OAUTH_STATE_TTL = 600
 
 
 # ========== Helper Functions ==========
@@ -132,11 +136,12 @@ async def register(user_data: UserRegister, response: Response):
             detail="Email already registered"
         )
 
-    # Validate password strength (basic check)
-    if len(user_data.password) < 8:
+    # SECURITY FIX: Strong password validation
+    is_valid, error_message = validate_password(user_data.password)
+    if not is_valid:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Password must be at least 8 characters"
+            detail=error_message
         )
 
     # Hash password and create user
@@ -319,9 +324,13 @@ async def google_login():
             detail="Google OAuth not configured. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET"
         )
 
-    # Generate random state for CSRF protection
+    # SECURITY FIX: Generate random state for CSRF protection and store in Redis
     state = secrets.token_urlsafe(32)
-    oauth_states[state] = True  # Store state temporarily
+    cache_service.set(
+        f"oauth:state:{state}",
+        {"created_at": datetime.now().isoformat(), "provider": "google"},
+        ttl=OAUTH_STATE_TTL  # 10 minutes expiration
+    )
 
     # Build Google OAuth URL
     params = {
@@ -355,13 +364,16 @@ async def google_callback(code: str, state: str):
             detail="Google OAuth not configured"
         )
 
-    # Verify state (CSRF protection)
-    if state not in oauth_states:
+    # SECURITY FIX: Verify state from Redis (CSRF protection)
+    state_data = cache_service.get(f"oauth:state:{state}")
+    if not state_data:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid state parameter"
+            detail="Invalid or expired state parameter. Please try logging in again."
         )
-    del oauth_states[state]  # Remove used state
+
+    # Delete state immediately after use (prevents replay attacks)
+    cache_service.delete(f"oauth:state:{state}")
 
     # Exchange code for access token
     async with httpx.AsyncClient() as client:

@@ -4,7 +4,38 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
-ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY", "default-32-byte-key-change-this!")
+# SECURITY FIX: No default key, require explicit configuration
+ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")
+
+# Validate encryption key
+ENV = os.getenv("ENV", "development")
+if not ENCRYPTION_KEY:
+    if ENV == "production":
+        raise ValueError(
+            "ENCRYPTION_KEY environment variable must be set in production. "
+            "Run: python backend/generate_secrets.py"
+        )
+    else:
+        # Allow default only in development with warning
+        import warnings
+        warnings.warn(
+            "⚠️ Using default ENCRYPTION_KEY in development. "
+            "DO NOT use this in production!",
+            UserWarning
+        )
+        ENCRYPTION_KEY = "default-32-byte-key-change-this!"
+
+# Additional validation: reject known weak keys in production
+if ENV == "production" and ENCRYPTION_KEY in [
+    "default-32-byte-key-change-this!",
+    "dev-secret",
+    "changeme",
+    "test",
+]:
+    raise ValueError(
+        f"Weak ENCRYPTION_KEY detected in production. "
+        "Generate a strong key with: python backend/generate_secrets.py"
+    )
 
 
 def get_key() -> bytes:

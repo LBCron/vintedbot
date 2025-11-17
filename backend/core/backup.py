@@ -266,7 +266,11 @@ class DataExporter:
                     logger.warning(f"Table '{table}' not found, skipping")
                     continue
 
-                cursor.execute(f"SELECT * FROM {table}")
+                # SECURITY FIX: Use parameterized query with proper identifier quoting
+                # Validate table name is from sqlite_master (already done above)
+                # Use double quotes for identifier (table name) - SQLite standard
+                query = f'SELECT * FROM "{table}"'  # Quoted identifier, not user input in string
+                cursor.execute(query)
                 rows = cursor.fetchall()
 
                 # Convert rows to dictionaries

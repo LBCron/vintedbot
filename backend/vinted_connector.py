@@ -4,7 +4,8 @@ from typing import List, Dict, Optional
 from datetime import datetime
 from backend.utils.logger import logger
 
-MOCK_MODE = os.getenv("MOCK_MODE", "true").lower() == "true"
+# SECURITY FIX: Default to "false" to prevent accidental bypass in production
+MOCK_MODE = os.getenv("MOCK_MODE", "false").lower() == "true"
 VINTED_BASE_URL = "https://www.vinted.com/api/v2"
 
 

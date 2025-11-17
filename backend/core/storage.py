@@ -1330,13 +1330,15 @@ class SQLiteStore:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             
+            # SECURITY FIX: Whitelist validation for column name (already done)
             valid_types = ["drafts_created", "publications_month", "ai_analyses_month", "photos_storage_mb"]
             if quota_type not in valid_types:
                 raise ValueError(f"Invalid quota_type: {quota_type}")
-            
+
+            # Use double quotes for column identifier
             cursor.execute(f"""
-                UPDATE user_quotas 
-                SET {quota_type} = {quota_type} + ?
+                UPDATE user_quotas
+                SET "{quota_type}" = "{quota_type}" + ?
                 WHERE user_id = ?
             """, (amount, user_id))
             conn.commit()
