@@ -47,8 +47,15 @@ async def fetch_inbox(cookie: str, limit: int = 50) -> List[Dict]:
             else:
                 logger.error(f"Fetch inbox failed: {response.status_code}")
                 return []
-    
-    except Exception as e:
+
+    # SECURITY FIX Bug #69: Replace generic Exception with specific httpx exceptions
+    except httpx.TimeoutException as e:
+        logger.error(f"Fetch inbox timeout: {e}")
+        return []
+    except httpx.ConnectError as e:
+        logger.error(f"Fetch inbox connection error: {e}")
+        return []
+    except (httpx.HTTPError, ValueError, KeyError) as e:
         logger.error(f"Fetch inbox error: {e}")
         return []
 
@@ -89,8 +96,15 @@ async def fetch_thread_messages(cookie: str, thread_id: str, page: int = 1) -> L
             else:
                 logger.error(f"Fetch thread messages failed: {response.status_code}")
                 return []
-    
-    except Exception as e:
+
+    # SECURITY FIX Bug #69: Replace generic Exception with specific httpx exceptions
+    except httpx.TimeoutException as e:
+        logger.error(f"Fetch thread messages timeout: {e}")
+        return []
+    except httpx.ConnectError as e:
+        logger.error(f"Fetch thread messages connection error: {e}")
+        return []
+    except (httpx.HTTPError, ValueError, KeyError) as e:
         logger.error(f"Fetch thread messages error: {e}")
         return []
 
@@ -134,7 +148,14 @@ async def validate_session_cookie(cookie: str) -> bool:
                 timeout=10.0
             )
             return response.status_code == 200
-    
-    except Exception as e:
+
+    # SECURITY FIX Bug #69: Replace generic Exception with specific httpx exceptions
+    except httpx.TimeoutException as e:
+        logger.error(f"Cookie validation timeout: {e}")
+        return False
+    except httpx.ConnectError as e:
+        logger.error(f"Cookie validation connection error: {e}")
+        return False
+    except httpx.HTTPError as e:
         logger.error(f"Cookie validation error: {e}")
         return False
