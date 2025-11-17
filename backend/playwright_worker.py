@@ -3,6 +3,7 @@ import os
 import sys
 import asyncio
 import argparse
+import shutil  # SECURITY FIX Bug #9: Safe command lookup
 from datetime import datetime
 from pathlib import Path
 
@@ -70,15 +71,19 @@ async def run_playwright_job(job_id: str, headless: bool = True):
     
     async with async_playwright() as p:
         # Get Chromium path from Nix (fix for Replit NixOS)
-        import subprocess
+        # SECURITY FIX Bug #9: Use shutil.which() instead of subprocess (injection-safe)
         try:
-            chromium_path = subprocess.check_output(['which', 'chromium']).decode().strip()
-            browser = await p.chromium.launch(
-                executable_path=chromium_path,
-                headless=headless,
-                args=['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
-            )
-        except:
+            chromium_path = shutil.which('chromium')
+            if chromium_path:
+                browser = await p.chromium.launch(
+                    executable_path=chromium_path,
+                    headless=headless,
+                    args=['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+                )
+            else:
+                raise FileNotFoundError("Chromium not found in PATH")
+        except Exception as e:
+            logger.warning(f"Could not use system chromium: {e}, using bundled browser")
             # Fallback to Playwright's bundled browser
             browser = await p.chromium.launch(headless=headless)
         context = await browser.new_context()

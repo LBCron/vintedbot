@@ -36,9 +36,18 @@ COOKIE_HTTPONLY = True
 COOKIE_SAMESITE = "lax"  # Allow cross-site for OAuth callbacks
 
 # Google OAuth configuration
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
-GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
+# SECURITY FIX Bug #12: No fallback for OAuth credentials (fail-fast in production)
+ENV = os.getenv("ENV", "development")
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:5000/auth/google/callback")
+
+# Validate OAuth config in production
+if ENV == "production":
+    if not GOOGLE_CLIENT_ID:
+        logger.warning("GOOGLE_CLIENT_ID not set - Google OAuth will be disabled")
+    if not GOOGLE_CLIENT_SECRET:
+        logger.warning("GOOGLE_CLIENT_SECRET not set - Google OAuth will be disabled")
 
 # SECURITY FIX: OAuth states stored in Redis instead of memory
 # TTL of 600 seconds (10 minutes) for OAuth state tokens
