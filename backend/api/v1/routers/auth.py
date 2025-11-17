@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Depends, Header, status, Response,
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from slowapi import Limiter
 from slowapi.util import get_remote_address
+from loguru import logger
 from backend.core.auth import (
     UserRegister,
     UserLogin,
@@ -46,6 +47,8 @@ COOKIE_HTTPONLY = True
 # SameSite=strict would break OAuth redirects from Google/GitHub
 # This is a standard security tradeoff for OAuth flows
 COOKIE_SAMESITE = "lax"  # Allow cross-site for OAuth callbacks
+# SECURITY FIX Bug #13: Domain set to allow cookie sharing between frontend and backend subdomains
+COOKIE_DOMAIN = ".fly.dev" if os.getenv("ENV") in ("production", "staging") else None
 
 # Google OAuth configuration
 # SECURITY FIX Bug #12: No fallback for OAuth credentials (fail-fast in production)
@@ -183,14 +186,17 @@ async def register(request: Request, user_data: UserRegister, response: Response
     })
 
     # Set HTTP-only cookie
-    response.set_cookie(
-        key=COOKIE_NAME,
-        value=access_token,
-        max_age=COOKIE_MAX_AGE,
-        httponly=COOKIE_HTTPONLY,
-        secure=COOKIE_SECURE,
-        samesite=COOKIE_SAMESITE
-    )
+    cookie_kwargs = {
+        "key": COOKIE_NAME,
+        "value": access_token,
+        "max_age": COOKIE_MAX_AGE,
+        "httponly": COOKIE_HTTPONLY,
+        "secure": COOKIE_SECURE,
+        "samesite": COOKIE_SAMESITE
+    }
+    if COOKIE_DOMAIN:
+        cookie_kwargs["domain"] = COOKIE_DOMAIN
+    response.set_cookie(**cookie_kwargs)
 
     return Token(access_token=access_token)
 
@@ -245,14 +251,17 @@ async def login(request: Request, credentials: UserLogin, response: Response):
     })
 
     # Set HTTP-only cookie
-    response.set_cookie(
-        key=COOKIE_NAME,
-        value=access_token,
-        max_age=COOKIE_MAX_AGE,
-        httponly=COOKIE_HTTPONLY,
-        secure=COOKIE_SECURE,
-        samesite=COOKIE_SAMESITE
-    )
+    cookie_kwargs = {
+        "key": COOKIE_NAME,
+        "value": access_token,
+        "max_age": COOKIE_MAX_AGE,
+        "httponly": COOKIE_HTTPONLY,
+        "secure": COOKIE_SECURE,
+        "samesite": COOKIE_SAMESITE
+    }
+    if COOKIE_DOMAIN:
+        cookie_kwargs["domain"] = COOKIE_DOMAIN
+    response.set_cookie(**cookie_kwargs)
 
     return Token(access_token=access_token)
 
