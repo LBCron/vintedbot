@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from sqlmodel import SQLModel, create_engine, Session as DBSession, select
 from typing import Optional, List
 from datetime import datetime
@@ -6,9 +7,18 @@ from backend.models import (
     User, Session, MessageThread, Message, PublishJob, Listing,
     JobStatus, JobMode, ListingStatus
 )
+from backend.settings import settings
 
-# Force SQLite database (ignore Replit's PostgreSQL DATABASE_URL)
-DATABASE_URL = os.getenv("VINTEDBOT_DATABASE_URL", "sqlite:///backend/data/db.sqlite")
+# SECURITY FIX Bug #61: Configurable SQLite path with proper defaults
+# Use environment variable or DATA_DIR from settings
+SQLITE_DB_PATH = os.getenv("SQLITE_DB_PATH")
+if not SQLITE_DB_PATH:
+    # Default: use DATA_DIR from settings
+    db_dir = Path(settings.DATA_DIR) / "db"
+    db_dir.mkdir(parents=True, exist_ok=True)
+    SQLITE_DB_PATH = str(db_dir / "app.sqlite")
+
+DATABASE_URL = os.getenv("VINTEDBOT_DATABASE_URL", f"sqlite:///{SQLITE_DB_PATH}")
 engine = create_engine(DATABASE_URL, echo=False)
 
 

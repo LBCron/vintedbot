@@ -71,8 +71,43 @@ async def lifespan(app: FastAPI):
         logger.warning(f"⚠️ Failed to register HEIC support: {e}")
 
     # Initialize databases
-    create_tables()  # Legacy JSON database
+    create_tables()  # Legacy JSON database (SQLite)
     init_db()  # PostgreSQL database
+
+    # SECURITY FIX Bug #64: Check database migrations on startup
+    try:
+        from alembic.config import Config
+        from alembic.script import ScriptDirectory
+        from alembic.runtime.migration import MigrationContext
+        from backend.database import engine
+
+        # Check if alembic is configured
+        alembic_cfg_path = "alembic.ini"
+        if os.path.exists(alembic_cfg_path):
+            alembic_cfg = Config(alembic_cfg_path)
+            script = ScriptDirectory.from_config(alembic_cfg)
+
+            # Get current database revision
+            with engine.connect() as connection:
+                context = MigrationContext.configure(connection)
+                current_rev = context.get_current_revision()
+
+                # Get latest revision from migrations
+                head_rev = script.get_current_head()
+
+                if current_rev is None:
+                    logger.warning("⚠️ Database not initialized - run 'alembic upgrade head'")
+                elif current_rev != head_rev:
+                    logger.warning(f"⚠️ Database schema outdated: current={current_rev}, latest={head_rev}")
+                    logger.warning("Run 'alembic upgrade head' to apply pending migrations")
+                else:
+                    logger.info(f"✅ Database schema up-to-date (revision: {current_rev})")
+        else:
+            logger.info("ℹ️ Alembic not configured - skipping migration check")
+    except ImportError:
+        logger.info("ℹ️ Alembic not installed - skipping migration check")
+    except Exception as e:
+        logger.warning(f"⚠️ Migration check failed: {e}")
 
     # Start scheduler
     start_scheduler()
