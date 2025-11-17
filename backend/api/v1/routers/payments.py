@@ -5,6 +5,7 @@ Handles subscriptions and billing via Stripe
 SECURITY: All critical vulnerabilities fixed
 """
 import os  # SECURITY FIX: Missing import added
+import stripe  # SECURITY FIX Bug #69: Import stripe for specific exception handling
 from fastapi import APIRouter, Depends, HTTPException, status, Header, Request
 from pydantic import BaseModel
 from typing import Optional
@@ -113,11 +114,24 @@ async def create_checkout_session(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
-    except Exception as e:
-        logger.error(f"Checkout error: {e}")
+    # SECURITY FIX Bug #69: Replace generic Exception with specific Stripe exceptions
+    except stripe.error.InvalidRequestError as e:
+        logger.error(f"Invalid Stripe request: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid payment configuration"
+        )
+    except (stripe.error.APIConnectionError, stripe.error.RateLimitError) as e:
+        logger.error(f"Stripe API error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Payment service temporarily unavailable"
+        )
+    except stripe.error.StripeError as e:
+        logger.error(f"Stripe error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create checkout session"
+            detail="Payment processing error"
         )
 
 
@@ -160,8 +174,21 @@ async def get_billing_portal(
 
         return BillingPortalResponse(**portal_data)
 
-    except Exception as e:
-        logger.error(f"Billing portal error: {e}")
+    # SECURITY FIX Bug #69: Replace generic Exception with specific Stripe exceptions
+    except stripe.error.InvalidRequestError as e:
+        logger.error(f"Invalid billing portal request: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid billing configuration"
+        )
+    except (stripe.error.APIConnectionError, stripe.error.RateLimitError) as e:
+        logger.error(f"Stripe API error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Billing portal temporarily unavailable"
+        )
+    except stripe.error.StripeError as e:
+        logger.error(f"Stripe error in billing portal: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to access billing portal"
@@ -183,8 +210,15 @@ async def get_plan_limits(
 
         return PlanLimitsResponse(**limits)
 
+    # SECURITY FIX Bug #69: Replace generic Exception with specific exceptions
+    except (ValueError, KeyError) as e:
+        logger.error(f"Invalid plan data: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid plan configuration"
+        )
     except Exception as e:
-        logger.error(f"Plan limits error: {e}")
+        logger.error(f"Database error checking plan limits: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to check plan limits"
@@ -220,11 +254,18 @@ async def stripe_webhook(
             signature=stripe_signature
         )
 
-    except Exception as e:
-        logger.error(f"Webhook verification failed: {e}")
+    # SECURITY FIX Bug #69: Replace generic Exception with specific Stripe exceptions
+    except stripe.error.SignatureVerificationError as e:
+        logger.error(f"Webhook signature verification failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid webhook signature"
+        )
+    except (ValueError, TypeError) as e:
+        logger.error(f"Invalid webhook payload: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid webhook payload format"
         )
 
     # Handle different event types
@@ -248,10 +289,16 @@ async def stripe_webhook(
 
         return {"status": "success"}
 
+    # SECURITY FIX Bug #69: Replace generic Exception with specific exceptions
+    except (ValueError, KeyError, TypeError) as e:
+        logger.error(f"Webhook data validation error: {e}")
+        # Return 200 to prevent Stripe from retrying invalid data
+        return {"status": "error", "message": "Invalid webhook data format"}
     except Exception as e:
-        logger.error(f"Webhook processing error: {e}")
+        # Last resort: catch database and unexpected errors
+        logger.error(f"Unexpected webhook processing error: {e}", exc_info=True)
         # Return 200 to prevent Stripe from retrying
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": "Internal processing error"}
 
 
 @router.get("/subscription")

@@ -4,11 +4,13 @@ Encrypts/decrypts credentials, tokens, and sensitive user data
 """
 import os
 import base64
+import binascii
 from typing import Optional, Tuple
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.exceptions import InvalidTag
 from loguru import logger
 
 
@@ -126,9 +128,10 @@ class EncryptionService:
             # Return as base64
             return base64.b64encode(encrypted_data).decode('utf-8')
 
-        except Exception as e:
+        # SECURITY FIX Bug #69: Replace generic Exception with specific types
+        except (TypeError, UnicodeEncodeError, ValueError) as e:
             logger.error(f"Encryption failed: {e}")
-            raise
+            raise ValueError(f"Encryption failed: {str(e)}") from e
 
     def decrypt(self, encrypted_data: str, context: str = "") -> str:
         """
@@ -178,9 +181,19 @@ class EncryptionService:
 
             return plaintext.decode('utf-8')
 
-        except Exception as e:
-            logger.error(f"Decryption failed: {e}")
-            raise ValueError("Decryption failed - invalid key or corrupted data")
+        # SECURITY FIX Bug #69: Replace generic Exception with specific types
+        except InvalidTag as e:
+            # Most common error: wrong key or tampered data
+            logger.error(f"Decryption failed - authentication tag invalid: {e}")
+            raise ValueError("Decryption failed - invalid key or tampered data") from e
+        except (binascii.Error, ValueError, TypeError) as e:
+            # Base64 decode error, invalid format, or type mismatch
+            logger.error(f"Decryption failed - invalid data format: {e}")
+            raise ValueError("Decryption failed - corrupted or invalid data format") from e
+        except UnicodeDecodeError as e:
+            # Decrypted data is not valid UTF-8
+            logger.error(f"Decryption failed - invalid character encoding: {e}")
+            raise ValueError("Decryption failed - data encoding error") from e
 
 
 def encrypt_credentials(email: str, password: str, user_id: str) -> str:

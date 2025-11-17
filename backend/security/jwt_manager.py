@@ -313,8 +313,12 @@ class JWTManager:
         """
         try:
             return jwt.decode(token, options={"verify_signature": False})
-        except Exception as e:
-            logger.error(f"Failed to decode token: {e}")
+        # SECURITY FIX Bug #69: Replace generic Exception with specific JWT exceptions
+        except (jwt.DecodeError, jwt.InvalidTokenError) as e:
+            logger.error(f"Failed to decode JWT token: {e}")
+            return None
+        except (TypeError, ValueError) as e:
+            logger.error(f"Invalid token format: {e}")
             return None
 
 
