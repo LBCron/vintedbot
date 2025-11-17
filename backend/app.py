@@ -24,7 +24,7 @@ os.environ["TMPDIR"] = str(TEMP_DIR)
 from backend.db import create_tables
 from backend.database import init_db
 from backend.jobs import start_scheduler, stop_scheduler
-from backend.utils.logger import logger, log_request
+from backend.utils.logger import logger, log_request, sanitize_headers
 from backend.routes import auth, messages, publish, listings, offers, orders, health, ws, feedback
 from backend.api.v1.routers import (
     ingest, health as health_v1, vinted, bulk, ai, auth as auth_v1, billing,
@@ -193,11 +193,12 @@ async def request_logging_middleware(request: Request, call_next):
     request.state.request_id = request_id
 
     # DEBUG: Log multipart upload details for /bulk/photos/analyze
+    # SECURITY FIX Bug #15: Sanitize headers to prevent logging sensitive data
     if request.url.path == "/bulk/photos/analyze" and request.method == "POST":
         logger.info(f"[DEBUG] Multipart upload detected:")
         logger.info(f"   Content-Type: {request.headers.get('content-type', 'MISSING')}")
         logger.info(f"   Content-Length: {request.headers.get('content-length', 'MISSING')}")
-        logger.info(f"   Headers: {dict(request.headers)}")
+        logger.info(f"   Headers: {sanitize_headers(dict(request.headers))}")
 
     start_time = time.time()
     response = await call_next(request)

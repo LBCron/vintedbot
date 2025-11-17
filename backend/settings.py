@@ -87,7 +87,25 @@ class Settings(BaseSettings):
     # Upload policy
     MAX_UPLOADS_PER_REQUEST: int = 20
     MAX_FILE_SIZE_MB: int = 15
+
+    # SECURITY FIX Bug #16: Explicit MIME type whitelist (block SVG for XSS protection)
+    # SVG files (image/svg+xml) can contain JavaScript and lead to XSS attacks
+    ALLOWED_MIME_TYPES: List[str] = [
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/gif",
+        "image/webp",
+        "image/heic",
+        "image/heif",
+        "image/bmp",
+        "image/tiff",
+        # NOTE: image/svg+xml is BLOCKED for security reasons
+    ]
+
+    # Legacy: kept for backward compatibility
     ALLOWED_MIME_PREFIXES: List[str] = ["image/"]
+
     JPEG_QUALITY: int = 80
     MAX_DIM_PX: int = 1600
     STRIP_GPS: bool = True

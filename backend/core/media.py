@@ -27,8 +27,23 @@ def check_size_limit(data: bytes):
 
 
 def is_allowed_mime(mime: str) -> bool:
-    """Check if MIME type is allowed based on prefix matching."""
-    return any(mime.startswith(p) for p in settings.ALLOWED_MIME_PREFIXES)
+    """
+    SECURITY FIX Bug #16: Check if MIME type is allowed using explicit whitelist
+
+    Blocks image/svg+xml to prevent XSS attacks via embedded JavaScript in SVG files.
+    Uses explicit MIME type list instead of prefix matching for better security.
+    """
+    # Explicitly block SVG files
+    if mime in ("image/svg+xml", "image/svg"):
+        return False
+
+    # Check against explicit whitelist
+    if mime in settings.ALLOWED_MIME_TYPES:
+        return True
+
+    # Fallback to prefix matching for backward compatibility
+    return any(mime.startswith(p) for p in settings.ALLOWED_MIME_PREFIXES) and \
+           mime not in ("image/svg+xml", "image/svg")
 
 
 def process_image(data: bytes) -> Tuple[bytes, int, int, str]:

@@ -398,7 +398,8 @@ async def google_callback(code: str, state: str):
     cache_service.delete(f"oauth:state:{state}")
 
     # Exchange code for access token
-    async with httpx.AsyncClient() as client:
+    # SECURITY FIX Bug #10: Add timeout to prevent hanging requests
+    async with httpx.AsyncClient(timeout=15.0) as client:
         token_response = await client.post(
             "https://oauth2.googleapis.com/token",
             data={
