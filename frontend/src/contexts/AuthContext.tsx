@@ -19,20 +19,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const loadUser = async () => {
-    // Check if token exists in localStorage
-    const token = localStorage.getItem('auth_token');
-    if (!token) {
-      setUser(null);
-      setLoading(false);
-      return;
-    }
-
+    // SECURITY FIX Bug #3: Use HTTP-only cookies instead of localStorage
+    // Backend automatically sends session cookie with each request (withCredentials: true)
     try {
       const response = await authAPI.getMe();
       setUser(response.data);
     } catch (error) {
-      // Token invalid or expired - clear it and user not authenticated
-      localStorage.removeItem('auth_token');
+      // Cookie expired or invalid - user not authenticated
       setUser(null);
     } finally {
       setLoading(false);
@@ -44,24 +37,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (data: LoginRequest) => {
-    // Get token from response and store in localStorage
-    const response = await authAPI.login(data);
-    const token = response.data.access_token;
-    localStorage.setItem('auth_token', token);
+    // SECURITY FIX Bug #3: Backend sets HTTP-only cookie automatically
+    // No need to store token in localStorage (vulnerable to XSS)
+    await authAPI.login(data);
     await loadUser();
   };
 
   const register = async (data: RegisterRequest) => {
-    // Get token from response and store in localStorage
-    const response = await authAPI.register(data);
-    const token = response.data.access_token;
-    localStorage.setItem('auth_token', token);
+    // SECURITY FIX Bug #3: Backend sets HTTP-only cookie automatically
+    // No need to store token in localStorage (vulnerable to XSS)
+    await authAPI.register(data);
     await loadUser();
   };
 
   const logout = async () => {
-    // Clear token from localStorage
-    localStorage.removeItem('auth_token');
+    // SECURITY FIX Bug #3: No localStorage to clear
+    // Backend clears HTTP-only cookie on logout
     try {
       await authAPI.logout();
     } catch (error) {

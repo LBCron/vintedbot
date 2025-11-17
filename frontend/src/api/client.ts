@@ -21,17 +21,9 @@ export const apiClient = axios.create({
   withCredentials: true, // CRITICAL: Send cookies with requests (HTTP-only auth cookies)
 });
 
-// Request interceptor: add Authorization header from localStorage
-apiClient.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+// SECURITY FIX Bug #3: Removed localStorage token interceptor
+// Authentication now uses HTTP-only cookies (set by backend)
+// No need to manually add Authorization header - cookies are sent automatically
 
 // Response interceptor: redirect to login on 401
 apiClient.interceptors.response.use(

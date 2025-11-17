@@ -176,8 +176,9 @@ export default function Admin() {
     if (!confirm('Login as this user? You will be logged out of your admin account.')) return;
 
     try {
-      const response = await adminAPI.impersonate(userId);
-      localStorage.setItem('auth_token', response.data.access_token);
+      // SECURITY FIX Bug #3: Backend sets HTTP-only cookie automatically
+      // No need to store token in localStorage (vulnerable to XSS)
+      await adminAPI.impersonate(userId);
       window.location.href = '/';
     } catch (error) {
       logger.error('Failed to impersonate', error);
