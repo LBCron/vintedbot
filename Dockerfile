@@ -1,3 +1,4 @@
+# SECURITY FIX Bug #63: Multi-stage Docker build for reduced image size
 # Stage 1: Build frontend
 FROM node:18-alpine AS frontend-builder
 
@@ -7,13 +8,30 @@ RUN npm ci --legacy-peer-deps
 COPY frontend/ ./
 RUN npm run build
 
-# Stage 2: Backend Python
+# Stage 2: Python dependencies builder
+FROM python:3.11-slim AS python-builder
+
+# Install build dependencies (needed for compiling Python packages)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    make \
+    libpq-dev \
+    libheif-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy and build Python dependencies
+COPY backend/requirements.txt ./
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip wheel --no-cache-dir --wheel-dir /wheels -r requirements.txt
+
+# Stage 3: Runtime image (final lightweight image)
 FROM python:3.11-slim
 
-# Install system dependencies for Playwright + HEIC support
-RUN apt-get update && apt-get install -y \
-    wget \
-    gnupg \
+# Install ONLY runtime dependencies (no build tools)
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     fonts-liberation \
     fonts-noto-color-emoji \
@@ -31,16 +49,17 @@ RUN apt-get update && apt-get install -y \
     libcairo2 \
     libasound2 \
     libxshmfence1 \
-    libheif-dev \
     libheif1 \
+    libpq5 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copy and install Python dependencies
-COPY backend/requirements.txt ./
+# Install Python packages from wheels (pre-compiled, no build deps needed)
+COPY --from=python-builder /wheels /wheels
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir --no-index --find-links=/wheels /wheels/* && \
+    rm -rf /wheels
 
 # Install Playwright browsers
 RUN playwright install chromium --with-deps || \
@@ -49,7 +68,7 @@ RUN playwright install chromium --with-deps || \
 # Copy backend code
 COPY backend/ ./backend/
 
-# Copy built frontend
+# Copy built frontend from frontend-builder stage
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
 # Create data directories
