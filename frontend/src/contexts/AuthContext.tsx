@@ -19,13 +19,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const loadUser = async () => {
-    // SECURITY FIX Bug #3: Use HTTP-only cookies instead of localStorage
-    // Backend automatically sends session cookie with each request (withCredentials: true)
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setUser(null);
+      setLoading(false);
+      return;
+    }
+
     try {
       const response = await authAPI.getMe();
       setUser(response.data);
     } catch (error) {
-      // Cookie expired or invalid - user not authenticated
+      // Token expired or invalid - clear it
+      localStorage.removeItem('token');
       setUser(null);
     } finally {
       setLoading(false);
@@ -37,27 +43,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (data: LoginRequest) => {
-    // SECURITY FIX Bug #3: Backend sets HTTP-only cookie automatically
-    // No need to store token in localStorage (vulnerable to XSS)
-    await authAPI.login(data);
+    const response = await authAPI.login(data);
+    localStorage.setItem('token', response.data.access_token);
     await loadUser();
   };
 
   const register = async (data: RegisterRequest) => {
-    // SECURITY FIX Bug #3: Backend sets HTTP-only cookie automatically
-    // No need to store token in localStorage (vulnerable to XSS)
-    await authAPI.register(data);
+    const response = await authAPI.register(data);
+    localStorage.setItem('token', response.data.access_token);
     await loadUser();
   };
 
   const logout = async () => {
-    // SECURITY FIX Bug #3: No localStorage to clear
-    // Backend clears HTTP-only cookie on logout
     try {
       await authAPI.logout();
     } catch (error) {
       logger.error('Logout error', error);
     } finally {
+      localStorage.removeItem('token');
       setUser(null);
     }
   };

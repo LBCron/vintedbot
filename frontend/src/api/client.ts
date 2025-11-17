@@ -18,19 +18,28 @@ const API_URL = import.meta.env.VITE_API_URL || '';
 export const apiClient = axios.create({
   baseURL: API_URL,
   headers: { 'Content-Type': 'application/json' },
-  withCredentials: true, // CRITICAL: Send cookies with requests (HTTP-only auth cookies)
+  withCredentials: true, // Keep for CORS
 });
 
-// SECURITY FIX Bug #3: Removed localStorage token interceptor
-// Authentication now uses HTTP-only cookies (set by backend)
-// No need to manually add Authorization header - cookies are sent automatically
+// Request interceptor: add JWT token from localStorage
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 // Response interceptor: redirect to login on 401
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Cookie expired or invalid - redirect to login
+      // Token expired or invalid - clear and redirect to login
+      localStorage.removeItem('token');
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';
       }
