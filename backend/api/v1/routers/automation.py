@@ -297,9 +297,19 @@ async def execute_bump_now(
                     )
                     failed_listings.append(listing_id)
                     print(f"❌ Failed to bump listing {listing_id}: {error_msg}")
-                    
+
+            # SECURITY FIX Bug #69: Replace generic Exception with specific types
+            except (ValueError, KeyError, TypeError) as e:
+                print(f"❌ Data error bumping listing {listing_id}: {e}")
+                store.update_automation_job(
+                    job_id=job_id,
+                    status="failed",
+                    error=f"Invalid data: {str(e)}"
+                )
+                failed_listings.append(listing_id)
             except Exception as e:
-                print(f"❌ Exception bumping listing {listing_id}: {e}")
+                # Catch remaining errors (network, database, etc.)
+                print(f"❌ Unexpected error bumping listing {listing_id}: {e}")
                 store.update_automation_job(
                     job_id=job_id,
                     status="failed",
@@ -390,8 +400,17 @@ async def execute_follow_now(
                     failed_users.append(vinted_user_id)
                     print(f"❌ Failed to follow user {vinted_user_id}: {error_msg}")
 
+            # SECURITY FIX Bug #69: Replace generic Exception with specific types
+            except (ValueError, KeyError, TypeError) as e:
+                print(f"❌ Data error following user {vinted_user_id}: {e}")
+                store.update_automation_job(
+                    job_id=job_id,
+                    status="failed",
+                    error=f"Invalid data: {str(e)}"
+                )
+                failed_users.append(vinted_user_id)
             except Exception as e:
-                print(f"❌ Exception following user {vinted_user_id}: {e}")
+                print(f"❌ Unexpected error following user {vinted_user_id}: {e}")
                 store.update_automation_job(
                     job_id=job_id,
                     status="failed",
@@ -476,8 +495,17 @@ async def execute_unfollow_now(
                     failed_users.append(vinted_user_id)
                     print(f"❌ Failed to unfollow user {vinted_user_id}: {error_msg}")
 
+            # SECURITY FIX Bug #69: Replace generic Exception with specific types
+            except (ValueError, KeyError, TypeError) as e:
+                print(f"❌ Data error unfollowing user {vinted_user_id}: {e}")
+                store.update_automation_job(
+                    job_id=job_id,
+                    status="failed",
+                    error=f"Invalid data: {str(e)}"
+                )
+                failed_users.append(vinted_user_id)
             except Exception as e:
-                print(f"❌ Exception unfollowing user {vinted_user_id}: {e}")
+                print(f"❌ Unexpected error unfollowing user {vinted_user_id}: {e}")
                 store.update_automation_job(
                     job_id=job_id,
                     status="failed",
@@ -608,9 +636,22 @@ async def send_message(
                     "error": error_msg or "Failed to send message",
                     "job_id": job_id
                 }
-    
+
+    # SECURITY FIX Bug #69: Replace generic Exception with specific types
+    except (ValueError, KeyError, TypeError) as e:
+        print(f"❌ Data error sending message: {e}")
+        store.update_automation_job(
+            job_id=job_id,
+            status="failed",
+            error=f"Invalid data: {str(e)}"
+        )
+        return {
+            "ok": False,
+            "error": f"Invalid data: {str(e)}",
+            "job_id": job_id
+        }
     except Exception as e:
-        print(f"❌ Exception sending message: {e}")
+        print(f"❌ Unexpected error sending message: {e}")
         store.update_automation_job(
             job_id=job_id,
             status="failed",
@@ -747,6 +788,12 @@ async def execute_upselling(
 
                 print(f"[UPSELL] Sent to order {order_id}: {len(similar_items)} items suggested")
 
+            # SECURITY FIX Bug #69: Replace generic Exception with specific types
+            except (ValueError, KeyError, TypeError) as e:
+                results["failed"].append({
+                    "order_id": order_id,
+                    "error": f"Data validation error: {str(e)}"
+                })
             except Exception as e:
                 results["failed"].append({
                     "order_id": order_id,
@@ -761,10 +808,21 @@ async def execute_upselling(
 
     except HTTPException:
         raise
+    # SECURITY FIX Bug #69: Replace generic Exception with specific types
+    except (ValueError, KeyError, TypeError) as e:
+        print(f"[ERROR] Upselling data validation error: {e}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid data: {str(e)}"
+        )
     except Exception as e:
-        print(f"[ERROR] Upselling failed: {e}")
+        print(f"[ERROR] Unexpected upselling error: {e}")
         import traceback
         traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail="Upselling operation failed"
+        )
         raise HTTPException(status_code=500, detail=f"Upselling failed: {str(e)}")
 
 
