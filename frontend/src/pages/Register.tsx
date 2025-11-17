@@ -23,8 +23,15 @@ export default function Register() {
   const isEmailValid = email.length > 0 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const emailError = email.length > 0 && !isEmailValid ? 'Email invalide' : '';
 
-  const isPasswordValid = password.length >= 8;
-  const passwordError = password.length > 0 && !isPasswordValid ? 'Le mot de passe doit contenir au moins 8 caractères' : '';
+  // Backend password requirements
+  const hasMinLength = password.length >= 12;
+  const hasLowercase = /[a-z]/.test(password);
+  const hasUppercase = /[A-Z]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
+  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/;'`~]/.test(password);
+
+  const isPasswordValid = hasMinLength && hasLowercase && hasUppercase && hasNumber && hasSpecialChar;
+  const passwordError = password.length > 0 && !isPasswordValid ? 'Le mot de passe ne remplit pas tous les critères' : '';
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -41,7 +48,7 @@ export default function Register() {
     }
 
     if (!isPasswordValid) {
-      toast.error('Le mot de passe doit contenir au moins 8 caractères');
+      toast.error('Le mot de passe ne remplit pas tous les critères de sécurité');
       return;
     }
 
@@ -65,7 +72,7 @@ export default function Register() {
       } else if (errorMessage?.includes('email')) {
         toast.error('Email invalide ou déjà utilisé');
       } else if (errorMessage?.includes('password')) {
-        toast.error('Mot de passe trop faible. Utilisez au moins 8 caractères.');
+        toast.error(errorMessage || 'Mot de passe ne remplit pas tous les critères de sécurité');
       } else {
         toast.error('Erreur lors de la création du compte. Veuillez réessayer.');
       }
