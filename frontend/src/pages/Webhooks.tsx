@@ -4,6 +4,7 @@ import { Button } from '../components/common/Button';
 import { Badge } from '../components/common/Badge';
 import { Input } from '../components/common/Input';
 import { Textarea } from '../components/common/Textarea';
+import { logger } from '../utils/logger';
 import {
   Plus, Trash2, Power, PlayCircle, CheckCircle, XCircle,
   ExternalLink, Zap, TrendingUp, Globe
@@ -61,7 +62,8 @@ export default function Webhooks() {
       const data = await response.json();
       setWebhooks(data);
     } catch (error) {
-      console.error('Error fetching webhooks:', error);
+      // LOW BUG FIX: Use logger instead of console.error
+      logger.error('Error fetching webhooks:', error);
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -82,7 +84,8 @@ export default function Webhooks() {
       const data = await response.json();
       setEvents(data.description || {});
     } catch (error) {
-      console.error('Error fetching events:', error);
+      // LOW BUG FIX: Use logger instead of console.error
+      logger.error('Error fetching events:', error);
     }
   };
 

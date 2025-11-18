@@ -4,6 +4,7 @@ import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { Check, Zap, Sparkles, Crown } from 'lucide-react';
 import { useToast } from '../hooks/use-toast';
+import { logger } from '../utils/logger';
 
 interface PricingPlan {
   id: string;
@@ -38,7 +39,8 @@ export default function Pricing() {
       const data = await response.json();
       setPlans(data.plans);
     } catch (error) {
-      console.error('Error fetching plans:', error);
+      // LOW BUG FIX: Use logger instead of console.error
+      logger.error('Error fetching plans:', error);
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -90,7 +92,8 @@ export default function Pricing() {
       window.location.href = data.checkout_url;
 
     } catch (error: any) {
-      console.error('Checkout error:', error);
+      // LOW BUG FIX: Use logger instead of console.error
+      logger.error('Checkout error:', error);
       toast({
         variant: 'destructive',
         title: 'Checkout Error',

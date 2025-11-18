@@ -6,6 +6,7 @@ import { Badge } from '../components/common/Badge';
 import { CreditCard, Calendar, TrendingUp, ExternalLink, AlertCircle } from 'lucide-react';
 import { useToast } from '../hooks/use-toast';
 import { paymentsAPI } from '../api/client';
+import { logger } from '../utils/logger';
 
 interface SubscriptionInfo {
   plan: string;
@@ -47,7 +48,8 @@ export default function Billing() {
       setLimits(limitsResponse.data);
 
     } catch (error) {
-      console.error('Error fetching billing info:', error);
+      // LOW BUG FIX: Use logger instead of console.error
+      logger.error('Error fetching billing info:', error);
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -70,7 +72,8 @@ export default function Billing() {
       window.location.href = response.data.portal_url;
 
     } catch (error: any) {
-      console.error('Billing portal error:', error);
+      // LOW BUG FIX: Use logger instead of console.error
+      logger.error('Billing portal error:', error);
       toast({
         variant: 'destructive',
         title: 'Error',

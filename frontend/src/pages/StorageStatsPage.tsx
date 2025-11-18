@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Progress } from '@/components/ui/Progress';
 import { Badge } from '@/components/ui/Badge';
+import { logger } from '@/utils/logger';
 import {
   HardDrive,
   TrendingDown,
@@ -78,7 +79,8 @@ export default function StorageStatsPage() {
       setRecommendations(recData.recommendations);
 
     } catch (error) {
-      console.error('Failed to fetch storage data:', error);
+      // LOW BUG FIX: Use logger instead of console.error
+      logger.error('Failed to fetch storage data:', error);
     } finally {
       setLoading(false);
     }
