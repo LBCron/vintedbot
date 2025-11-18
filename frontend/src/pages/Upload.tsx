@@ -60,62 +60,70 @@ export default function Upload() {
 
     setUploading(true);
 
-    const formData = new FormData();
-    files.forEach((file) => {
-      formData.append('files', file);
-    });
-    formData.append('photos_per_item', '6');
+    // MEDIUM BUG FIX #13: Wrap in try-catch to ensure uploading state is reset on errors
+    try {
+      const formData = new FormData();
+      files.forEach((file) => {
+        formData.append('files', file);
+      });
+      formData.append('photos_per_item', '6');
 
-    const uploadAndPollPromise = new Promise((resolve, reject) => {
-      bulkAPI.uploadPhotos(formData)
-        .then((response) => {
-          const jobId = response.data.job_id;
+      const uploadAndPollPromise = new Promise((resolve, reject) => {
+        bulkAPI.uploadPhotos(formData)
+          .then((response) => {
+            const jobId = response.data.job_id;
 
-          const pollJob = () => {
-            bulkAPI.getJob(jobId)
-              .then((jobStatus) => {
-                setProgress(jobStatus.data.progress_percent);
+            const pollJob = () => {
+              bulkAPI.getJob(jobId)
+                .then((jobStatus) => {
+                  setProgress(jobStatus.data.progress_percent);
 
-                if (jobStatus.data.status === 'completed') {
-                  setFiles([]);
-                  setPreviews([]);
+                  if (jobStatus.data.status === 'completed') {
+                    setFiles([]);
+                    setPreviews([]);
+                    setUploading(false);
+                    setProgress(0);
+
+                    setTimeout(() => {
+                      navigate('/drafts');
+                    }, 1500);
+
+                    resolve(jobStatus.data);
+                  } else if (jobStatus.data.status === 'failed') {
+                    setUploading(false);
+                    setProgress(0);
+                    reject(new Error(jobStatus.data.errors?.join(', ') || 'Upload failed'));
+                  } else {
+                    setTimeout(pollJob, 2000);
+                  }
+                })
+                .catch((err) => {
                   setUploading(false);
                   setProgress(0);
+                  reject(err);
+                });
+            };
 
-                  setTimeout(() => {
-                    navigate('/drafts');
-                  }, 1500);
+            pollJob();
+          })
+          .catch((err) => {
+            setUploading(false);
+            setProgress(0);
+            reject(err);
+          });
+      });
 
-                  resolve(jobStatus.data);
-                } else if (jobStatus.data.status === 'failed') {
-                  setUploading(false);
-                  setProgress(0);
-                  reject(new Error(jobStatus.data.errors?.join(', ') || 'Upload failed'));
-                } else {
-                  setTimeout(pollJob, 2000);
-                }
-              })
-              .catch((err) => {
-                setUploading(false);
-                setProgress(0);
-                reject(err);
-              });
-          };
-
-          pollJob();
-        })
-        .catch((err) => {
-          setUploading(false);
-          setProgress(0);
-          reject(err);
-        });
-    });
-
-    showToast.promise(uploadAndPollPromise, {
-      loading: `Analyse IA de ${files.length} photo${files.length > 1 ? 's' : ''}...`,
-      success: 'Analyse IA terminée ! Redirection...',
-      error: (err: any) => `Erreur: ${err?.message || "Upload échoué"}`,
-    });
+      await showToast.promise(uploadAndPollPromise, {
+        loading: `Analyse IA de ${files.length} photo${files.length > 1 ? 's' : ''}...`,
+        success: 'Analyse IA terminée ! Redirection...',
+        error: (err: any) => `Erreur: ${err?.message || "Upload échoué"}`,
+      });
+    } catch (error) {
+      // Catch any synchronous errors before Promise creation
+      setUploading(false);
+      setProgress(0);
+      showToast.error('Erreur lors de la préparation de l\'upload');
+    }
   }, [files, navigate]);
 
   return (

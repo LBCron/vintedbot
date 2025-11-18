@@ -1,10 +1,17 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 /**
  * Hook to manage Command Palette state and keyboard shortcuts
  */
 export function useCommandPalette() {
   const [isOpen, setIsOpen] = useState(false);
+  // MEDIUM BUG FIX #12: Use ref to avoid recreating event listener on every state change
+  const isOpenRef = useRef(isOpen);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+  }, [isOpen]);
 
   const open = useCallback(() => setIsOpen(true), []);
   const close = useCallback(() => setIsOpen(false), []);
@@ -19,14 +26,15 @@ export function useCommandPalette() {
       }
 
       // ESC to close (handled by Dialog component but also here as fallback)
-      if (event.key === 'Escape' && isOpen) {
+      // Use ref to access latest value without recreating listener
+      if (event.key === 'Escape' && isOpenRef.current) {
         close();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, toggle, close]);
+  }, [toggle, close]); // Removed isOpen from deps - using ref instead
 
   return {
     isOpen,

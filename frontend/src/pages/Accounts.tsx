@@ -27,9 +27,11 @@ export default function Accounts() {
   const loadAccounts = async () => {
     try {
       const response = await accountsAPI.getAccounts();
-      setAccounts(response.data.accounts || []);
+      // MEDIUM BUG FIX #9: Safe access to nested response data
+      setAccounts(response?.data?.accounts || []);
     } catch (error) {
       logger.error('Failed to load accounts', error);
+      toast.error('Erreur lors du chargement des comptes');
     } finally {
       setLoading(false);
     }

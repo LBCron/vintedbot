@@ -1,6 +1,7 @@
 import { Fragment, useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, Combobox, Transition } from '@headlessui/react';
+import { useAuth } from '../contexts/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
@@ -55,6 +56,8 @@ const mockRecentSearches = [
 
 export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const navigate = useNavigate();
+  // MEDIUM BUG FIX #11: Use AuthContext logout function
+  const { logout } = useAuth();
   const [query, setQuery] = useState('');
 
   // Reset query when closing
@@ -216,8 +219,9 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
       name: 'Logout',
       description: 'Se déconnecter',
       icon: LogOut,
-      action: () => {
-        // In real app: logout()
+      action: async () => {
+        // MEDIUM BUG FIX #11: Call actual logout function
+        await logout();
         navigate('/login');
         onClose();
       },
