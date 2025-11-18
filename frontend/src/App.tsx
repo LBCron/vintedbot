@@ -13,6 +13,7 @@ const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Upload = lazy(() => import('./pages/Upload'));
 const Drafts = lazy(() => import('./pages/Drafts'));
 const DraftEdit = lazy(() => import('./pages/DraftEdit'));
+const DraftDetail = lazy(() => import('./pages/DraftDetail'));
 const Analytics = lazy(() => import('./pages/Analytics'));
 const Automation = lazy(() => import('./pages/Automation'));
 const Accounts = lazy(() => import('./pages/Accounts'));
@@ -76,6 +77,7 @@ function AppContent() {
           <Route path="/upload" element={<ProtectedRoute><Upload /></ProtectedRoute>} />
           <Route path="/drafts" element={<ProtectedRoute><Drafts /></ProtectedRoute>} />
           <Route path="/drafts/:id" element={<ProtectedRoute><DraftEdit /></ProtectedRoute>} />
+          <Route path="/draft-detail/:id" element={<ProtectedRoute><DraftDetail /></ProtectedRoute>} />
           <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
           <Route path="/automation" element={<ProtectedRoute><Automation /></ProtectedRoute>} />
           <Route path="/accounts" element={<ProtectedRoute><Accounts /></ProtectedRoute>} />
