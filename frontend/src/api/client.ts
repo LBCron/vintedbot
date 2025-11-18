@@ -190,6 +190,18 @@ export const billingAPI = {
     apiClient.get('/billing/subscription'),
 };
 
+// SECURITY FIX Bug #1: Payments API using HTTP-only cookies instead of localStorage
+export const paymentsAPI = {
+  getSubscription: () =>
+    apiClient.get('/api/v1/payments/subscription'),
+
+  getLimits: () =>
+    apiClient.get('/api/v1/payments/limits'),
+
+  getBillingPortal: () =>
+    apiClient.get('/api/v1/payments/billing-portal'),
+};
+
 export const vintedAPI = {
   saveSession: (cookie: string) =>
     apiClient.post('/vinted/auth/session', { cookie }),

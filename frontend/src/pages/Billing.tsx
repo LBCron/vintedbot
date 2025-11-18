@@ -5,6 +5,7 @@ import { Button } from '../components/common/Button';
 import { Badge } from '../components/common/Badge';
 import { CreditCard, Calendar, TrendingUp, ExternalLink, AlertCircle } from 'lucide-react';
 import { useToast } from '../hooks/use-toast';
+import { paymentsAPI } from '../api/client';
 
 interface SubscriptionInfo {
   plan: string;
@@ -34,36 +35,16 @@ export default function Billing() {
     fetchBillingInfo();
   }, []);
 
+  // SECURITY FIX Bug #1: Use paymentsAPI with HTTP-only cookies instead of localStorage
   const fetchBillingInfo = async () => {
     try {
-      const token = localStorage.getItem('token');
+      // Fetch subscription info using paymentsAPI (uses HTTP-only cookies)
+      const subResponse = await paymentsAPI.getSubscription();
+      setSubscription(subResponse.data);
 
-      if (!token) {
-        navigate('/login?redirect=/billing');
-        return;
-      }
-
-      const API_URL = import.meta.env.VITE_API_URL || '';
-
-      // Fetch subscription info
-      const subResponse = await fetch(`${API_URL}/api/v1/payments/subscription`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      if (!subResponse.ok) throw new Error('Failed to fetch subscription');
-
-      const subData = await subResponse.json();
-      setSubscription(subData);
-
-      // Fetch plan limits
-      const limitsResponse = await fetch(`${API_URL}/api/v1/payments/limits`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      if (!limitsResponse.ok) throw new Error('Failed to fetch limits');
-
-      const limitsData = await limitsResponse.json();
-      setLimits(limitsData);
+      // Fetch plan limits using paymentsAPI (uses HTTP-only cookies)
+      const limitsResponse = await paymentsAPI.getLimits();
+      setLimits(limitsResponse.data);
 
     } catch (error) {
       console.error('Error fetching billing info:', error);
@@ -77,33 +58,23 @@ export default function Billing() {
     }
   };
 
+  // SECURITY FIX Bug #1: Use paymentsAPI with HTTP-only cookies instead of localStorage
   const openBillingPortal = async () => {
     setPortalLoading(true);
 
     try {
-      const token = localStorage.getItem('token');
-      const API_URL = import.meta.env.VITE_API_URL || '';
-
-      const response = await fetch(`${API_URL}/api/v1/payments/billing-portal`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Failed to open billing portal');
-      }
-
-      const data = await response.json();
+      // Get billing portal URL using paymentsAPI (uses HTTP-only cookies)
+      const response = await paymentsAPI.getBillingPortal();
 
       // Redirect to Stripe billing portal
-      window.location.href = data.portal_url;
+      window.location.href = response.data.portal_url;
 
     } catch (error: any) {
       console.error('Billing portal error:', error);
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: error.message || 'Failed to open billing portal'
+        description: error.response?.data?.detail || 'Failed to open billing portal'
       });
       setPortalLoading(false);
     }
