@@ -6,6 +6,7 @@ import { CommandPaletteProvider, useCommandPalette } from './contexts/CommandPal
 import ProtectedRoute from './components/common/ProtectedRoute';
 import LoadingSpinner from './components/common/LoadingSpinner';
 import CommandPalette from './components/CommandPalette';
+import Onboarding from './components/Onboarding';
 
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
@@ -40,6 +41,7 @@ function AppContent() {
 
   return (
     <>
+      <Onboarding />
       <CommandPalette open={isOpen} onClose={close} />
       <Toaster
         position="top-right"

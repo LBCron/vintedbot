@@ -14,67 +14,20 @@ import {
 } from 'lucide-react';
 import { Badge } from '../common/Badge';
 import { useNavigate } from 'react-router-dom';
+import NotificationCenter from '../NotificationCenter';
 
 interface TopBarProps {
   onOpenCommandPalette: () => void;
 }
 
-interface Notification {
-  id: string;
-  type: 'success' | 'info' | 'warning' | 'error';
-  title: string;
-  message: string;
-  time: string;
-  read: boolean;
-}
-
-const mockNotifications: Notification[] = [
-  {
-    id: '1',
-    type: 'success',
-    title: 'Draft published',
-    message: 'Your "Nike Hoodie" has been published successfully',
-    time: '5m ago',
-    read: false,
-  },
-  {
-    id: '2',
-    type: 'info',
-    title: 'New message',
-    message: 'Marie asked about the Jordan 1',
-    time: '1h ago',
-    read: false,
-  },
-  {
-    id: '3',
-    type: 'warning',
-    title: 'Price alert',
-    message: 'Similar item listed at lower price',
-    time: '3h ago',
-    read: true,
-  },
-];
-
 export default function TopBar({ onOpenCommandPalette }: TopBarProps) {
   const navigate = useNavigate();
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
-  const [notifications] = useState<Notification[]>(mockNotifications);
-
-  const unreadCount = notifications.filter(n => !n.read).length;
 
   const toggleTheme = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light';
     setTheme(newTheme);
     document.documentElement.classList.toggle('dark');
-  };
-
-  const getNotificationIcon = (type: Notification['type']) => {
-    switch (type) {
-      case 'success': return '✅';
-      case 'info': return 'ℹ️';
-      case 'warning': return '⚠️';
-      case 'error': return '❌';
-    }
   };
 
   return (
@@ -113,80 +66,9 @@ export default function TopBar({ onOpenCommandPalette }: TopBarProps) {
           </button>
 
           {/* Notifications */}
-          <Menu as="div" className="relative">
-            <Menu.Button className="relative p-2.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
-              <Bell className="w-5 h-5" />
-              {unreadCount > 0 && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-error-500 rounded-full" />
-              )}
-            </Menu.Button>
-
-            <Transition
-              as={Fragment}
-              enter="transition ease-out duration-100"
-              enterFrom="transform opacity-0 scale-95"
-              enterTo="transform opacity-100 scale-100"
-              leave="transition ease-in duration-75"
-              leaveFrom="transform opacity-100 scale-100"
-              leaveTo="transform opacity-0 scale-95"
-            >
-              <Menu.Items className="absolute right-0 mt-2 w-96 origin-top-right rounded-lg bg-white dark:bg-gray-800 shadow-lg ring-1 ring-black/5 dark:ring-white/10 focus:outline-none">
-                {/* Header */}
-                <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-gray-900 dark:text-white">
-                      Notifications
-                    </h3>
-                    {unreadCount > 0 && (
-                      <Badge variant="primary" size="sm">
-                        {unreadCount} new
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-
-                {/* Notifications List */}
-                <div className="max-h-96 overflow-y-auto">
-                  {notifications.map((notification) => (
-                    <Menu.Item key={notification.id}>
-                      {({ active }) => (
-                        <div
-                          className={`px-4 py-3 border-b border-gray-200 dark:border-gray-700 last:border-0 cursor-pointer ${
-                            active ? 'bg-gray-50 dark:bg-gray-700' : ''
-                          } ${!notification.read ? 'bg-primary-50/30 dark:bg-primary-900/10' : ''}`}
-                        >
-                          <div className="flex items-start gap-3">
-                            <span className="text-xl">{getNotificationIcon(notification.type)}</span>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm text-gray-900 dark:text-white">
-                                {notification.title}
-                              </p>
-                              <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
-                                {notification.message}
-                              </p>
-                              <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                                {notification.time}
-                              </p>
-                            </div>
-                            {!notification.read && (
-                              <div className="w-2 h-2 bg-primary-500 rounded-full flex-shrink-0 mt-2" />
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </Menu.Item>
-                  ))}
-                </div>
-
-                {/* Footer */}
-                <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
-                  <button className="w-full text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium text-center">
-                    Mark all as read
-                  </button>
-                </div>
-              </Menu.Items>
-            </Transition>
-          </Menu>
+          <div className="relative">
+            <NotificationCenter />
+          </div>
 
           {/* User Menu */}
           <Menu as="div" className="relative">
