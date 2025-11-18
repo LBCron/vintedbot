@@ -7,6 +7,7 @@ import ProtectedRoute from './components/common/ProtectedRoute';
 import LoadingSpinner from './components/common/LoadingSpinner';
 import CommandPalette from './components/CommandPalette';
 
+const Landing = lazy(() => import('./pages/Landing'));
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -69,10 +70,12 @@ function AppContent() {
       />
       <Suspense fallback={<PageLoader />}>
         <Routes>
+          <Route path="/landing" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
           <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/upload" element={<ProtectedRoute><Upload /></ProtectedRoute>} />
           <Route path="/drafts" element={<ProtectedRoute><Drafts /></ProtectedRoute>} />
           <Route path="/drafts/:id" element={<ProtectedRoute><DraftEdit /></ProtectedRoute>} />
