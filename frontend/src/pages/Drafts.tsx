@@ -1,374 +1,249 @@
-import { useState, useEffect, useMemo } from 'react';
-import toast from 'react-hot-toast';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckSquare, Square, Trash2, Send, Search, Filter, X, SlidersHorizontal } from 'lucide-react';
-import { bulkAPI } from '../api/client';
-import DraftCard from '../components/common/DraftCard';
-import LoadingSpinner from '../components/common/LoadingSpinner';
-import type { Draft } from '../types';
-import { logger } from '../utils/logger';
+import {
+  Grid3x3,
+  List,
+  Plus,
+  Search,
+  Eye,
+  Heart,
+  Clock,
+  CheckCircle2,
+  Trash2,
+  Edit3,
+  Copy,
+  MoreVertical,
+  Image as ImageIcon,
+  TrendingUp,
+  Calendar,
+  Package,
+  Send,
+  X,
+  Filter as FilterIcon,
+  SlidersHorizontal
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { cn, formatPrice, formatDate } from '@/lib/utils';
+import toast from 'react-hot-toast';
+import { bulkAPI } from '@/api/client';
+import { logger } from '@/utils/logger';
+import type { Draft } from '@/types';
+
+type ViewMode = 'grid' | 'list';
+type FilterStatus = 'all' | 'draft' | 'ready' | 'published';
 
 export default function Drafts() {
+  const navigate = useNavigate();
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDrafts, setSelectedDrafts] = useState<string[]>([]);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [priceRange, setPriceRange] = useState<{ min: string; max: string }>({ min: '', max: '' });
-  const [sortBy, setSortBy] = useState<'date' | 'price' | 'confidence'>('date');
-  const [publishingId, setPublishingId] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [bulkProcessing, setBulkProcessing] = useState(false);
 
   useEffect(() => {
     loadDrafts();
-  }, [filter]);
+  }, [filterStatus]);
 
   const loadDrafts = async () => {
     try {
-      const params = filter !== 'all' ? { status: filter } : {};
+      setLoading(true);
+      const params = filterStatus !== 'all' ? { status: filterStatus } : {};
       const response = await bulkAPI.getDrafts(params);
       setDrafts(response.data.drafts);
     } catch (error) {
       logger.error('Failed to load drafts', error);
+      toast.error('Erreur lors du chargement des brouillons');
     } finally {
       setLoading(false);
     }
   };
 
-  const handlePublish = async (id: string) => {
-    // Show confirmation dialog with enhanced messaging
-    if (!confirm('Publier cet article sur Vinted maintenant ?\n\nCette action utilisera la nouvelle publication directe optimisée avec anti-détection.')) return;
+  const filteredDrafts = drafts.filter(draft => {
+    const matchesStatus = filterStatus === 'all' || draft.status === filterStatus;
+    const matchesSearch = searchQuery === '' ||
+      draft.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      draft.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      draft.brand?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = categoryFilter === 'all' || draft.category === categoryFilter;
 
-    setPublishingId(id);
-
-    // Show loading toast
-    const loadingToast = toast.loading('Publication en cours... ⏳');
-
-    try {
-      // Use the new optimized 1-click publish endpoint
-      const response = await bulkAPI.publishDraftDirect(id, 'auto');
-
-      // Dismiss loading toast
-      toast.dismiss(loadingToast);
-
-      // Show success message with listing URL if available
-      if (response.data.listing_url) {
-        toast.success(
-          <div>
-            <strong>Annonce publiée avec succès !</strong>
-            <br />
-            <a
-              href={response.data.listing_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary-600 hover:underline font-medium mt-1 inline-block"
-            >
-              Voir sur Vinted →
-            </a>
-          </div>,
-          { duration: 5000 }
-        );
-      } else {
-        toast.success(response.data.message || 'Annonce publiée avec succès !');
-      }
-
-      // Reload drafts to update status
-      loadDrafts();
-    } catch (error: any) {
-      // Dismiss loading toast
-      toast.dismiss(loadingToast);
-
-      // Enhanced error handling
-      const errorDetail = error.response?.data?.detail;
-      const errorReason = error.response?.data?.reason;
-
-      if (errorReason?.includes('Session expirée') || errorReason?.includes('cookie')) {
-        toast.error(
-          <div>
-            <strong>Session Vinted expirée</strong>
-            <br />
-            <span className="text-sm">Veuillez actualiser vos cookies Vinted dans les paramètres</span>
-          </div>,
-          { duration: 6000 }
-        );
-      } else if (errorReason?.includes('Captcha')) {
-        toast.error(
-          <div>
-            <strong>Captcha détecté</strong>
-            <br />
-            <span className="text-sm">Vinted demande une vérification. Réessayez dans quelques minutes.</span>
-          </div>,
-          { duration: 6000 }
-        );
-      } else if (errorReason?.includes('photo')) {
-        toast.error(
-          <div>
-            <strong>Erreur photos</strong>
-            <br />
-            <span className="text-sm">{errorReason}</span>
-          </div>,
-          { duration: 5000 }
-        );
-      } else {
-        toast.error(errorDetail || errorReason || 'Échec de la publication. Veuillez réessayer.');
-      }
-
-      logger.error('Failed to publish draft', error);
-    } finally {
-      setPublishingId(null);
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this draft?')) return;
-
-    setDeletingId(id);
-    try {
-      await bulkAPI.deleteDraft(id);
-      toast.success('Draft deleted successfully!');
-      loadDrafts();
-    } catch (error) {
-      toast.error('Failed to delete draft');
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
-  // Get unique categories from drafts
-  const categories = useMemo(() => {
-    const cats = new Set(drafts.map(d => d.category).filter(Boolean));
-    return Array.from(cats).sort();
-  }, [drafts]);
-
-  // Advanced filtering and sorting
-  const filteredDrafts = useMemo(() => {
-    let result = [...drafts];
-
-    // Status filter
-    if (filter !== 'all') {
-      result = result.filter(d => d.status === filter);
-    }
-
-    // Search query
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(d =>
-        d.title?.toLowerCase().includes(query) ||
-        d.description?.toLowerCase().includes(query) ||
-        d.brand?.toLowerCase().includes(query) ||
-        d.category?.toLowerCase().includes(query)
-      );
-    }
-
-    // Category filter
-    if (categoryFilter !== 'all') {
-      result = result.filter(d => d.category === categoryFilter);
-    }
-
-    // Price range filter
+    let matchesPrice = true;
     if (priceRange.min) {
-      const minPrice = parseFloat(priceRange.min);
-      result = result.filter(d => d.price >= minPrice);
+      matchesPrice = matchesPrice && (draft.price || 0) >= parseFloat(priceRange.min);
     }
     if (priceRange.max) {
-      const maxPrice = parseFloat(priceRange.max);
-      result = result.filter(d => d.price <= maxPrice);
+      matchesPrice = matchesPrice && (draft.price || 0) <= parseFloat(priceRange.max);
     }
 
-    // Sorting
-    result.sort((a, b) => {
-      switch (sortBy) {
-        case 'price':
-          return (b.price || 0) - (a.price || 0);
-        case 'confidence':
-          return (b.confidence || 0) - (a.confidence || 0);
-        case 'date':
-        default:
-          return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
-      }
-    });
+    return matchesStatus && matchesSearch && matchesCategory && matchesPrice;
+  });
 
-    return result;
-  }, [drafts, filter, searchQuery, categoryFilter, priceRange, sortBy]);
-
-  const clearFilters = () => {
-    setSearchQuery('');
-    setCategoryFilter('all');
-    setPriceRange({ min: '', max: '' });
-    setFilter('all');
-    setSortBy('date');
+  const statusCounts = {
+    all: drafts.length,
+    draft: drafts.filter(d => d.status === 'draft').length,
+    ready: drafts.filter(d => d.status === 'ready').length,
+    published: drafts.filter(d => d.status === 'published').length,
   };
 
-  const toggleSelection = (id: string) => {
-    setSelectedIds(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
+  const categories = Array.from(new Set(drafts.map(d => d.category).filter(Boolean)));
+
+  const handleBulkAction = async (action: 'publish' | 'delete' | 'duplicate') => {
+    if (selectedDrafts.length === 0) {
+      toast.error('Sélectionnez au moins un brouillon');
+      return;
+    }
+
+    if (action === 'delete') {
+      if (!confirm(`Supprimer ${selectedDrafts.length} brouillon(s) ?`)) return;
+
+      try {
+        for (const id of selectedDrafts) {
+          await bulkAPI.deleteDraft(id);
+        }
+        toast.success(`${selectedDrafts.length} brouillon(s) supprimé(s)`);
+        setSelectedDrafts([]);
+        loadDrafts();
+      } catch (error) {
+        toast.error('Erreur lors de la suppression');
       }
-      return newSet;
-    });
+    } else if (action === 'publish') {
+      toast.promise(
+        Promise.all(selectedDrafts.map(id => bulkAPI.publishDraftDirect(id, 'auto'))),
+        {
+          loading: `Publication de ${selectedDrafts.length} brouillon(s)...`,
+          success: `${selectedDrafts.length} brouillon(s) publié(s) !`,
+          error: 'Erreur lors de la publication'
+        }
+      );
+      setSelectedDrafts([]);
+      loadDrafts();
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedDrafts(prev =>
+      prev.includes(id)
+        ? prev.filter(dId => dId !== id)
+        : [...prev, id]
+    );
   };
 
   const toggleSelectAll = () => {
-    if (selectedIds.size === filteredDrafts.length) {
-      setSelectedIds(new Set());
+    if (selectedDrafts.length === filteredDrafts.length) {
+      setSelectedDrafts([]);
     } else {
-      setSelectedIds(new Set(filteredDrafts.map(d => d.id)));
+      setSelectedDrafts(filteredDrafts.map(d => d.id));
     }
   };
 
-  const handleBulkPublish = async () => {
-    const count = selectedIds.size;
-    if (count === 0) return;
-    if (!confirm(`Publish ${count} draft${count > 1 ? 's' : ''} to Vinted?`)) return;
-
-    setBulkProcessing(true);
-    let successCount = 0;
-    let errorCount = 0;
-
-    for (const id of selectedIds) {
-      try {
-        await bulkAPI.publishDraft(id);
-        successCount++;
-      } catch (error) {
-        errorCount++;
-        logger.error(`Failed to publish draft ${id}`, error);
-      }
-    }
-
-    if (successCount > 0) {
-      toast.success(`${successCount} draft${successCount > 1 ? 's' : ''} published successfully!`);
-    }
-    if (errorCount > 0) {
-      toast.error(`Failed to publish ${errorCount} draft${errorCount > 1 ? 's' : ''}`);
-    }
-
-    setSelectedIds(new Set());
-    setBulkProcessing(false);
-    loadDrafts();
-  };
-
-  const handleBulkDelete = async () => {
-    const count = selectedIds.size;
-    if (count === 0) return;
-    if (!confirm(`Delete ${count} draft${count > 1 ? 's' : ''}?`)) return;
-
-    setBulkProcessing(true);
-    let successCount = 0;
-    let errorCount = 0;
-
-    for (const id of selectedIds) {
-      try {
-        await bulkAPI.deleteDraft(id);
-        successCount++;
-      } catch (error) {
-        errorCount++;
-        logger.error(`Failed to delete draft ${id}`, error);
-      }
-    }
-
-    if (successCount > 0) {
-      toast.success(`${successCount} draft${successCount > 1 ? 's' : ''} deleted successfully!`);
-    }
-    if (errorCount > 0) {
-      toast.error(`Failed to delete ${errorCount} draft${errorCount > 1 ? 's' : ''}`);
-    }
-
-    setSelectedIds(new Set());
-    setBulkProcessing(false);
-    loadDrafts();
-  };
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-brand-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Chargement des brouillons...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-gray-50 -m-8">
       {/* Header */}
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Drafts</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-2">
-              {filteredDrafts.length} of {drafts.length} draft{drafts.length !== 1 ? 's' : ''}
-              {selectedIds.size > 0 && (
-                <span className="ml-2 text-primary-600 dark:text-primary-400 font-medium">
-                  • {selectedIds.size} selected
-                </span>
-              )}
-            </p>
-          </div>
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-6 py-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-1">Brouillons</h1>
+              <p className="text-gray-600">
+                {filteredDrafts.length} brouillon(s) • {selectedDrafts.length} sélectionné(s)
+              </p>
+            </div>
 
-          <div className="flex gap-2 flex-wrap">
-            {filteredDrafts.length > 0 && (
+            <div className="flex items-center gap-3">
+              {/* View Mode Toggle */}
+              <div className="flex bg-gray-100 rounded-xl p-1">
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={cn(
+                    "p-2 rounded-lg transition-all",
+                    viewMode === 'grid'
+                      ? "bg-white shadow-sm text-brand-600"
+                      : "text-gray-600 hover:text-gray-900"
+                  )}
+                >
+                  <Grid3x3 className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={cn(
+                    "p-2 rounded-lg transition-all",
+                    viewMode === 'list'
+                      ? "bg-white shadow-sm text-brand-600"
+                      : "text-gray-600 hover:text-gray-900"
+                  )}
+                >
+                  <List className="w-5 h-5" />
+                </button>
+              </div>
+
               <button
-                onClick={toggleSelectAll}
-                className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 font-medium flex items-center gap-2 transition-colors"
+                onClick={() => navigate('/upload')}
+                className="bg-gradient-to-r from-brand-600 to-purple-600 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
               >
-                {selectedIds.size === filteredDrafts.length ? (
-                  <CheckSquare className="w-4 h-4" />
-                ) : (
-                  <Square className="w-4 h-4" />
-                )}
-                Select All
+                <Plus className="w-5 h-5" />
+                Nouveau
               </button>
-            )}
+            </div>
           </div>
-        </div>
 
-        {/* Search and Filters */}
-        <div className="card p-4 space-y-4">
-          <div className="flex flex-col lg:flex-row gap-3">
-            {/* Search Bar */}
+          {/* Search & Filters */}
+          <div className="flex flex-col md:flex-row gap-4 mt-6">
+            {/* Search */}
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search by title, description, brand..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-10 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                placeholder="Rechercher un brouillon..."
+                className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
               />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              )}
             </div>
 
-            {/* Status Filters */}
-            <div className="flex gap-2">
-              {['all', 'ready', 'published', 'draft'].map((status) => (
+            {/* Status Filter */}
+            <div className="flex gap-2 overflow-x-auto pb-2">
+              {(['all', 'draft', 'ready', 'published'] as FilterStatus[]).map(status => (
                 <button
                   key={status}
-                  onClick={() => setFilter(status)}
-                  className={`px-4 py-2.5 rounded-lg font-medium transition-all ${
-                    filter === status
-                      ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-md'
-                      : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                  }`}
+                  onClick={() => setFilterStatus(status)}
+                  className={cn(
+                    "px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all",
+                    filterStatus === status
+                      ? "bg-brand-600 text-white shadow-md"
+                      : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-200"
+                  )}
                 >
-                  {status.charAt(0).toUpperCase() + status.slice(1)}
+                  {status === 'all' ? 'Tous' : status.charAt(0).toUpperCase() + status.slice(1)}
+                  <span className="ml-2 opacity-75">({statusCounts[status]})</span>
                 </button>
               ))}
             </div>
 
-            {/* Advanced Filters Toggle */}
             <button
               onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-              className={`px-4 py-2.5 rounded-lg font-medium flex items-center gap-2 transition-all ${
+              className={cn(
+                "px-4 py-2 rounded-xl font-medium flex items-center gap-2 transition-all",
                 showAdvancedFilters
-                  ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-              }`}
+                  ? "bg-brand-100 text-brand-700"
+                  : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-200"
+              )}
             >
               <SlidersHorizontal className="w-4 h-4" />
-              Filters
+              Filtres
             </button>
           </div>
 
@@ -379,80 +254,86 @@ export default function Drafts() {
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="overflow-hidden"
+                className="overflow-hidden mt-4"
               >
-                <div className="pt-4 border-t border-gray-200 dark:border-gray-700 space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {/* Category Filter */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Category
-                      </label>
-                      <select
-                        value={categoryFilter}
-                        onChange={(e) => setCategoryFilter(e.target.value)}
-                        className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      >
-                        <option value="all">All Categories</option>
-                        {categories.map((cat) => (
-                          <option key={cat} value={cat}>{cat}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Price Range */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Price Range (€)
-                      </label>
-                      <div className="flex gap-2">
-                        <input
-                          type="number"
-                          placeholder="Min"
-                          value={priceRange.min}
-                          onChange={(e) => setPriceRange({ ...priceRange, min: e.target.value })}
-                          className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        />
-                        <input
-                          type="number"
-                          placeholder="Max"
-                          value={priceRange.max}
-                          onChange={(e) => setPriceRange({ ...priceRange, max: e.target.value })}
-                          className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Sort By */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Sort By
-                      </label>
-                      <select
-                        value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value as any)}
-                        className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      >
-                        <option value="date">Date (Newest)</option>
-                        <option value="price">Price (Highest)</option>
-                        <option value="confidence">AI Confidence</option>
-                      </select>
-                    </div>
+                <div className="bg-gray-50 rounded-xl p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Catégorie
+                    </label>
+                    <select
+                      value={categoryFilter}
+                      onChange={(e) => setCategoryFilter(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg"
+                    >
+                      <option value="all">Toutes</option>
+                      {categories.map(cat => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                    </select>
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Prix min (€)
+                    </label>
+                    <input
+                      type="number"
+                      value={priceRange.min}
+                      onChange={(e) => setPriceRange({ ...priceRange, min: e.target.value })}
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Prix max (€)
+                    </label>
+                    <input
+                      type="number"
+                      value={priceRange.max}
+                      onChange={(e) => setPriceRange({ ...priceRange, max: e.target.value })}
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg"
+                    />
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-                  {/* Clear Filters */}
-                  {(searchQuery || categoryFilter !== 'all' || priceRange.min || priceRange.max || filter !== 'all' || sortBy !== 'date') && (
-                    <div className="flex justify-end">
-                      <button
-                        onClick={clearFilters}
-                        className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white flex items-center gap-2 transition-colors"
-                      >
-                        <X className="w-4 h-4" />
-                        Clear All Filters
-                      </button>
-                    </div>
-                  )}
+          {/* Bulk Actions */}
+          <AnimatePresence>
+            {selectedDrafts.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="mt-4 bg-brand-50 border border-brand-200 rounded-xl p-4 flex items-center justify-between"
+              >
+                <div className="flex items-center gap-4">
+                  <span className="text-brand-700 font-medium">
+                    {selectedDrafts.length} sélectionné(s)
+                  </span>
+                  <button
+                    onClick={toggleSelectAll}
+                    className="text-sm text-brand-600 hover:text-brand-700"
+                  >
+                    {selectedDrafts.length === filteredDrafts.length ? 'Tout désélectionner' : 'Tout sélectionner'}
+                  </button>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleBulkAction('publish')}
+                    className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors text-sm font-medium flex items-center gap-2"
+                  >
+                    <Send className="w-4 h-4" />
+                    Publier
+                  </button>
+                  <button
+                    onClick={() => handleBulkAction('delete')}
+                    className="px-4 py-2 bg-error-50 text-error-600 rounded-lg hover:bg-error-100 transition-colors text-sm font-medium flex items-center gap-2"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Supprimer
+                  </button>
                 </div>
               </motion.div>
             )}
@@ -460,97 +341,247 @@ export default function Drafts() {
         </div>
       </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <LoadingSpinner size="large" />
+      {/* Content */}
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        {filteredDrafts.length === 0 ? (
+          <EmptyState searchQuery={searchQuery} />
+        ) : viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredDrafts.map((draft, index) => (
+              <DraftCardGrid
+                key={draft.id}
+                draft={draft}
+                index={index}
+                isSelected={selectedDrafts.includes(draft.id)}
+                onSelect={() => toggleSelect(draft.id)}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filteredDrafts.map((draft, index) => (
+              <DraftCardList
+                key={draft.id}
+                draft={draft}
+                index={index}
+                isSelected={selectedDrafts.includes(draft.id)}
+                onSelect={() => toggleSelect(draft.id)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function DraftCardGrid({ draft, index, isSelected, onSelect }: any) {
+  const navigate = useNavigate();
+
+  const statusConfig = {
+    draft: { color: 'bg-gray-100 text-gray-700', label: 'Brouillon' },
+    ready: { color: 'bg-blue-100 text-blue-700', label: 'Prêt' },
+    published: { color: 'bg-success-100 text-success-700', label: 'Publié' },
+  };
+
+  const config = statusConfig[draft.status as keyof typeof statusConfig] || statusConfig.draft;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.05 }}
+      whileHover={{ y: -4 }}
+      className={cn(
+        "bg-white rounded-2xl border-2 overflow-hidden transition-all cursor-pointer group",
+        isSelected
+          ? "border-brand-500 shadow-lg ring-2 ring-brand-200"
+          : "border-gray-200 hover:border-brand-200 hover:shadow-md"
+      )}
+    >
+      {/* Image */}
+      <div className="relative aspect-square bg-gray-100 overflow-hidden">
+        <img
+          src={draft.photos?.[0]?.url || '/placeholder.jpg'}
+          alt={draft.title || 'Draft'}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          onClick={() => navigate(`/drafts/${draft.id}`)}
+        />
+
+        {/* Checkbox */}
+        <div className="absolute top-3 left-3">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelect();
+            }}
+            className={cn(
+              "w-6 h-6 rounded-lg border-2 transition-all",
+              isSelected
+                ? "bg-brand-600 border-brand-600"
+                : "bg-white/90 backdrop-blur-sm border-white hover:border-brand-400"
+            )}
+          >
+            {isSelected && <CheckCircle2 className="w-full h-full text-white p-0.5" />}
+          </button>
         </div>
-      ) : filteredDrafts.length === 0 ? (
-        <div className="card text-center py-12">
-          <p className="text-gray-600 dark:text-gray-400">No drafts found</p>
+
+        {/* Status Badge */}
+        <div className="absolute top-3 right-3">
+          <span className={cn(
+            "px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-sm",
+            config.color
+          )}>
+            {config.label}
+          </span>
         </div>
+      </div>
+
+      {/* Content */}
+      <div className="p-4" onClick={() => navigate(`/drafts/${draft.id}`)}>
+        <h3 className="font-semibold text-gray-900 line-clamp-2 mb-2 group-hover:text-brand-600 transition-colors">
+          {draft.title || 'Sans titre'}
+        </h3>
+
+        <p className="text-sm text-gray-600 line-clamp-2 mb-3">
+          {draft.description || 'Pas de description'}
+        </p>
+
+        <div className="flex items-center justify-between">
+          <span className="text-2xl font-bold text-gray-900">
+            {formatPrice(draft.price || 0)}
+          </span>
+          {draft.confidence && (
+            <div className="flex items-center gap-1 bg-brand-50 text-brand-700 px-2 py-1 rounded-lg">
+              <TrendingUp className="w-4 h-4" />
+              <span className="text-sm font-semibold">{(draft.confidence * 10).toFixed(1)}/10</span>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
+          <Calendar className="w-3 h-3" />
+          {draft.created_at ? formatDate(new Date(draft.created_at)) : 'Date inconnue'}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+function DraftCardList({ draft, index, isSelected, onSelect }: any) {
+  const navigate = useNavigate();
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: index * 0.03 }}
+      className={cn(
+        "bg-white rounded-xl border-2 p-4 transition-all cursor-pointer hover:shadow-md",
+        isSelected
+          ? "border-brand-500 shadow-md ring-2 ring-brand-200"
+          : "border-gray-200 hover:border-brand-200"
+      )}
+      onClick={() => navigate(`/drafts/${draft.id}`)}
+    >
+      <div className="flex items-center gap-4">
+        {/* Checkbox */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelect();
+          }}
+          className={cn(
+            "w-6 h-6 rounded-lg border-2 flex-shrink-0 transition-all",
+            isSelected
+              ? "bg-brand-600 border-brand-600"
+              : "bg-white border-gray-300 hover:border-brand-400"
+          )}
+        >
+          {isSelected && <CheckCircle2 className="w-full h-full text-white p-0.5" />}
+        </button>
+
+        {/* Image */}
+        <div className="w-20 h-20 rounded-xl bg-gray-100 overflow-hidden flex-shrink-0">
+          <img
+            src={draft.photos?.[0]?.url || '/placeholder.jpg'}
+            alt={draft.title || 'Draft'}
+            className="w-full h-full object-cover"
+          />
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-gray-900 truncate mb-1">
+            {draft.title || 'Sans titre'}
+          </h3>
+          <p className="text-sm text-gray-600 line-clamp-1 mb-2">
+            {draft.description || 'Pas de description'}
+          </p>
+          <div className="flex items-center gap-4 text-sm text-gray-500">
+            <span className="flex items-center gap-1">
+              <Calendar className="w-4 h-4" />
+              {draft.created_at ? formatDate(new Date(draft.created_at)) : 'Date inconnue'}
+            </span>
+          </div>
+        </div>
+
+        {/* Price & Status */}
+        <div className="flex items-center gap-4 flex-shrink-0">
+          <div className="text-right">
+            <div className="text-2xl font-bold text-gray-900">
+              {formatPrice(draft.price || 0)}
+            </div>
+            {draft.confidence && (
+              <div className="text-sm text-brand-600 font-semibold">
+                Score: {(draft.confidence * 10).toFixed(1)}/10
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+function EmptyState({ searchQuery }: { searchQuery: string }) {
+  const navigate = useNavigate();
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="text-center py-20"
+    >
+      <div className="w-32 h-32 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
+        <ImageIcon className="w-16 h-16 text-gray-400" />
+      </div>
+      {searchQuery ? (
+        <>
+          <h3 className="text-2xl font-bold text-gray-900 mb-2">
+            Aucun résultat
+          </h3>
+          <p className="text-gray-600 mb-6">
+            Aucun brouillon ne correspond à "{searchQuery}"
+          </p>
+        </>
       ) : (
         <>
-          <motion.div
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.3 }}
+          <h3 className="text-2xl font-bold text-gray-900 mb-2">
+            Aucun brouillon
+          </h3>
+          <p className="text-gray-600 mb-6">
+            Commencez par uploader des photos pour créer votre premier brouillon
+          </p>
+          <button
+            onClick={() => navigate('/upload')}
+            className="bg-gradient-to-r from-brand-600 to-purple-600 text-white text-lg px-8 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all inline-flex items-center gap-2"
           >
-            {filteredDrafts.map((draft, index) => (
-              <motion.div
-                key={draft.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05, duration: 0.3 }}
-              >
-                <DraftCard
-                  draft={draft}
-                  onPublish={draft.status !== 'published' ? handlePublish : undefined}
-                  onDelete={handleDelete}
-                  isSelected={selectedIds.has(draft.id)}
-                  onToggleSelect={() => toggleSelection(draft.id)}
-                />
-              </motion.div>
-            ))}
-          </motion.div>
-
-          {/* Bulk Action Bar */}
-          <AnimatePresence>
-            {selectedIds.size > 0 && (
-              <motion.div
-                initial={{ y: 100, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: 100, opacity: 0 }}
-                transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shadow-lg z-50"
-              >
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-4">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">
-                      {selectedIds.size} draft{selectedIds.size > 1 ? 's' : ''} selected
-                    </p>
-                    <button
-                      onClick={() => setSelectedIds(new Set())}
-                      className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-                    >
-                      Clear selection
-                    </button>
-                  </div>
-
-                  <div className="flex gap-3">
-                    <button
-                      onClick={handleBulkDelete}
-                      disabled={bulkProcessing}
-                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium"
-                    >
-                      {bulkProcessing ? (
-                        <LoadingSpinner size="small" />
-                      ) : (
-                        <Trash2 className="w-4 h-4" />
-                      )}
-                      Delete Selected
-                    </button>
-                    <button
-                      onClick={handleBulkPublish}
-                      disabled={bulkProcessing}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium"
-                    >
-                      {bulkProcessing ? (
-                        <LoadingSpinner size="small" />
-                      ) : (
-                        <Send className="w-4 h-4" />
-                      )}
-                      Publish Selected
-                    </button>
-                  </div>
-                </div>
-              </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+            <Plus className="w-5 h-5" />
+            Créer mon premier brouillon
+          </button>
         </>
       )}
-    </div>
+    </motion.div>
   );
 }
