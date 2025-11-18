@@ -1,10 +1,29 @@
 import { useState, useEffect } from 'react';
-import { Plus, Users, Check, Eye, EyeOff, Sparkles } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Plus,
+  Users,
+  TrendingUp,
+  Eye,
+  Package,
+  DollarSign,
+  CheckCircle2,
+  XCircle,
+  MoreVertical,
+  Settings,
+  Trash2,
+  RefreshCw,
+  AlertCircle,
+  Zap,
+  Sparkles,
+  EyeOff
+} from 'lucide-react';
 import { accountsAPI } from '../api/client';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
 import type { VintedAccount } from '../types';
 import { logger } from '../utils/logger';
+import { formatPrice, formatNumber, cn } from '../lib/utils';
 
 export default function Accounts() {
   const [accounts, setAccounts] = useState<VintedAccount[]>([]);
@@ -13,6 +32,7 @@ export default function Accounts() {
   const [addMode, setAddMode] = useState<'auto' | 'manual'>('auto');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [activeMenu, setActiveMenu] = useState<string | null>(null);
 
   // Auto login form
   const [autoLogin, setAutoLogin] = useState({ email: '', password: '', nickname: 'Mon Compte Vinted' });
@@ -85,96 +105,114 @@ export default function Accounts() {
     }
   };
 
+  // Calculate global stats from accounts
+  const globalStats = {
+    total_listings: accounts.reduce((sum, acc) => sum + (acc.listings_count || 0), 0),
+    total_sold: accounts.reduce((sum, acc) => sum + (acc.sold_count || 0), 0),
+    total_revenue: accounts.reduce((sum, acc) => sum + (acc.revenue || 0), 0),
+    total_views: accounts.reduce((sum, acc) => sum + (acc.views || 0), 0),
+  };
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex items-center justify-center min-h-screen">
         <LoadingSpinner size="large" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Multi-Account Management</h1>
-          <p className="text-gray-600 mt-2">
-            PREMIUM FEATURE - Manage multiple Vinted accounts
-          </p>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-gradient-to-br from-brand-600 via-brand-500 to-purple-600 text-white">
+        <div className="max-w-7xl mx-auto px-6 py-12">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <Users className="w-10 h-10" />
+              <h1 className="text-4xl font-bold">Comptes Vinted</h1>
+            </div>
+            <p className="text-brand-100 text-lg max-w-2xl">
+              Gérez plusieurs comptes Vinted depuis une seule interface.
+              Synchronisez vos statistiques et optimisez vos ventes.
+            </p>
+          </motion.div>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowAddModal(true)}
-          className="btn-primary flex items-center gap-2"
-        >
-          <Plus className="w-5 h-5" />
-          Add Account
-        </button>
       </div>
 
-      {accounts.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {accounts.map((account) => (
-            <div key={account.id} className="card">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className={`p-3 rounded-lg ${account.is_active ? 'bg-green-100' : 'bg-gray-100'}`}>
-                    <Users className={`w-6 h-6 ${account.is_active ? 'text-green-600' : 'text-gray-600'}`} />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">{account.name}</h3>
-                    {account.email && (
-                      <p className="text-sm text-gray-600">{account.email}</p>
-                    )}
-                  </div>
-                </div>
-                {account.is_active && (
-                  <Check className="w-5 h-5 text-green-600" />
-                )}
-              </div>
-
-              <div className="text-sm text-gray-600 mb-4">
-                <p>Created: {new Date(account.created_at).toLocaleDateString()}</p>
-                {account.last_used && (
-                  <p>Last used: {new Date(account.last_used).toLocaleDateString()}</p>
-                )}
-              </div>
-
-              <div className="flex gap-2">
-                {!account.is_active && (
-                  <button
-                    type="button"
-                    onClick={() => handleSwitch(account.id)}
-                    className="flex-1 px-3 py-2 bg-primary-50 text-primary-700 rounded-lg hover:bg-primary-100 text-sm font-medium"
-                  >
-                    Switch
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => handleDelete(account.id)}
-                  className="px-3 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 text-sm font-medium"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          ))}
+      <div className="max-w-7xl mx-auto px-6 -mt-6">
+        {/* Global Stats */}
+        <div className="grid md:grid-cols-4 gap-6 mb-8">
+          <StatsCard
+            icon={Package}
+            label="Total Annonces"
+            value={formatNumber(globalStats.total_listings)}
+            color="blue"
+            delay={0}
+          />
+          <StatsCard
+            icon={CheckCircle2}
+            label="Articles Vendus"
+            value={formatNumber(globalStats.total_sold)}
+            color="green"
+            delay={0.1}
+          />
+          <StatsCard
+            icon={DollarSign}
+            label="Revenus Total"
+            value={formatPrice(globalStats.total_revenue)}
+            color="purple"
+            delay={0.2}
+          />
+          <StatsCard
+            icon={Eye}
+            label="Vues Totales"
+            value={formatNumber(globalStats.total_views)}
+            color="orange"
+            delay={0.3}
+          />
         </div>
-      ) : (
-        <div className="card text-center py-12">
-          <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600">No accounts added yet</p>
-          <button
-            type="button"
-            onClick={() => setShowAddModal(true)}
-            className="btn-primary mt-4"
-          >
-            Add Your First Account
-          </button>
-        </div>
-      )}
 
+        {/* Accounts Grid */}
+        <div className="pb-12">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Add Account Card */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              whileHover={{ scale: 1.02 }}
+              onClick={() => setShowAddModal(true)}
+              className="bg-gradient-to-br from-brand-500 to-purple-600 rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer hover:shadow-2xl transition-all text-white min-h-[280px]"
+            >
+              <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mb-4 backdrop-blur-sm">
+                <Plus className="w-10 h-10" />
+              </div>
+              <h3 className="text-2xl font-bold mb-2">Ajouter un compte</h3>
+              <p className="text-brand-100 text-center text-sm">
+                Connectez un nouveau compte Vinted
+              </p>
+            </motion.div>
+
+            {/* Account Cards */}
+            {accounts.map((account, index) => (
+              <AccountCard
+                key={account.id}
+                account={account}
+                index={index + 1}
+                activeMenu={activeMenu}
+                onToggleMenu={(id) => setActiveMenu(activeMenu === id ? null : id)}
+                onSync={() => toast.success('Synchronisation en cours...')}
+                onSwitch={() => handleSwitch(account.id)}
+                onDelete={() => handleDelete(account.id)}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Add Account Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-white rounded-lg max-w-md w-full my-8 max-h-[90vh] flex flex-col">
@@ -409,5 +447,172 @@ export default function Accounts() {
         </div>
       )}
     </div>
+  );
+}
+
+function StatsCard({ icon: Icon, label, value, color, delay }: any) {
+  const colorClasses = {
+    blue: 'from-blue-50 to-blue-100 text-blue-600',
+    green: 'from-green-50 to-green-100 text-green-600',
+    purple: 'from-purple-50 to-purple-100 text-purple-600',
+    orange: 'from-orange-50 to-orange-100 text-orange-600',
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay }}
+      className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow"
+    >
+      <div className={cn(
+        "w-14 h-14 rounded-2xl flex items-center justify-center mb-4 bg-gradient-to-br",
+        colorClasses[color as keyof typeof colorClasses]
+      )}>
+        <Icon className="w-7 h-7" />
+      </div>
+      <p className="text-sm text-gray-600 mb-1">{label}</p>
+      <p className="text-2xl font-bold text-gray-900">{value}</p>
+    </motion.div>
+  );
+}
+
+function AccountCard({ account, index, activeMenu, onToggleMenu, onSync, onSwitch, onDelete }: any) {
+  const getAccountStatus = (account: any) => {
+    if (account.is_active) {
+      return { color: 'bg-green-100 text-green-700', icon: CheckCircle2, label: 'Actif' };
+    }
+    return { color: 'bg-gray-100 text-gray-700', icon: AlertCircle, label: 'Inactif' };
+  };
+
+  const config = getAccountStatus(account);
+  const StatusIcon = config.icon;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.1 }}
+      whileHover={{ y: -4 }}
+      className="bg-white rounded-2xl border-2 border-gray-200 p-6 hover:border-brand-300 hover:shadow-xl transition-all relative"
+    >
+      {/* Header */}
+      <div className="flex items-start justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
+            {account.name?.[0]?.toUpperCase() || 'V'}
+          </div>
+          <div>
+            <h3 className="font-semibold text-gray-900">{account.name}</h3>
+            {account.email && (
+              <p className="text-sm text-gray-500">{account.email}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Menu Button */}
+        <div className="relative">
+          <button
+            onClick={() => onToggleMenu(account.id)}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <MoreVertical className="w-5 h-5 text-gray-600" />
+          </button>
+
+          <AnimatePresence>
+            {activeMenu === account.id && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-200 py-2 z-10"
+              >
+                <button
+                  onClick={() => {
+                    onSync();
+                    onToggleMenu(account.id);
+                  }}
+                  className="w-full px-4 py-2 text-left flex items-center gap-2 hover:bg-gray-50 transition-colors text-gray-700"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Synchroniser
+                </button>
+                {!account.is_active && (
+                  <button
+                    onClick={() => {
+                      onSwitch();
+                      onToggleMenu(account.id);
+                    }}
+                    className="w-full px-4 py-2 text-left flex items-center gap-2 hover:bg-gray-50 transition-colors text-gray-700"
+                  >
+                    <Settings className="w-4 h-4" />
+                    Activer
+                  </button>
+                )}
+                <div className="my-1 border-t border-gray-100" />
+                <button
+                  onClick={() => {
+                    onDelete();
+                    onToggleMenu(account.id);
+                  }}
+                  className="w-full px-4 py-2 text-left flex items-center gap-2 hover:bg-error-50 transition-colors text-error-600"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Supprimer
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+
+      {/* Status Badge */}
+      <div className="mb-4">
+        <span className={cn(
+          "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold",
+          config.color
+        )}>
+          <StatusIcon className="w-3.5 h-3.5" />
+          {config.label}
+        </span>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="bg-gray-50 rounded-xl p-3">
+          <p className="text-xs text-gray-600 mb-1">Annonces</p>
+          <p className="text-lg font-bold text-gray-900">{account.listings_count || 0}</p>
+        </div>
+        <div className="bg-gray-50 rounded-xl p-3">
+          <p className="text-xs text-gray-600 mb-1">Vendus</p>
+          <p className="text-lg font-bold text-gray-900">{account.sold_count || 0}</p>
+        </div>
+        <div className="bg-gray-50 rounded-xl p-3">
+          <p className="text-xs text-gray-600 mb-1">Revenus</p>
+          <p className="text-lg font-bold text-gray-900">{formatPrice(account.revenue || 0)}</p>
+        </div>
+        <div className="bg-gray-50 rounded-xl p-3">
+          <p className="text-xs text-gray-600 mb-1">Vues</p>
+          <p className="text-lg font-bold text-gray-900">{formatNumber(account.views || 0)}</p>
+        </div>
+      </div>
+
+      {/* Last Sync */}
+      {account.last_used && (
+        <div className="flex items-center justify-between text-xs text-gray-500 pt-4 border-t border-gray-100">
+          <span className="flex items-center gap-1">
+            <RefreshCw className="w-3 h-3" />
+            Sync: {new Date(account.last_used).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+          </span>
+          <button
+            onClick={onSync}
+            className="flex items-center gap-1 text-brand-600 hover:text-brand-700 font-medium transition-colors"
+          >
+            <Zap className="w-3 h-3" />
+            Sync now
+          </button>
+        </div>
+      )}
+    </motion.div>
   );
 }

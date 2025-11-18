@@ -1,17 +1,52 @@
 import { useState } from 'react';
-import { CreditCard, User as UserIcon, Shield, Globe, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  CreditCard,
+  User as UserIcon,
+  Shield,
+  Globe,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Bell,
+  Lock,
+  Settings as SettingsIcon,
+  Moon,
+  Sun,
+  Languages
+} from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import QuotaCard from '../components/common/QuotaCard';
 import { vintedAPI } from '../api/client';
 import toast from 'react-hot-toast';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import { cn } from '../lib/utils';
+
+type SettingsTab = 'profile' | 'notifications' | 'security' | 'billing' | 'preferences';
 
 export default function Settings() {
   const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
   const [vintedCookie, setVintedCookie] = useState('');
   const [sessionStatus, setSessionStatus] = useState<'unknown' | 'missing' | 'valid' | 'expired'>('unknown');
   const [isSaving, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
+
+  // Notification settings
+  const [emailNotifications, setEmailNotifications] = useState(true);
+  const [pushNotifications, setPushNotifications] = useState(false);
+
+  // Preferences
+  const [language, setLanguage] = useState('fr');
+  const [darkMode, setDarkMode] = useState(false);
+
+  const tabs = [
+    { id: 'profile' as SettingsTab, label: 'Profil', icon: UserIcon },
+    { id: 'notifications' as SettingsTab, label: 'Notifications', icon: Bell },
+    { id: 'security' as SettingsTab, label: 'Sécurité', icon: Lock },
+    { id: 'billing' as SettingsTab, label: 'Facturation', icon: CreditCard },
+    { id: 'preferences' as SettingsTab, label: 'Préférences', icon: SettingsIcon },
+  ];
 
   const plans = [
     { name: 'Free', price: 0, features: ['20 AI analyses/month', '50 drafts', '10 publications/month', '500 MB storage'] },
@@ -95,230 +130,399 @@ export default function Settings() {
   };
 
   return (
-    <div className="space-y-8 max-w-4xl">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
-        <p className="text-gray-600 mt-2">Manage your account and subscription</p>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-gradient-to-br from-brand-600 via-brand-500 to-purple-600 text-white">
+        <div className="max-w-7xl mx-auto px-6 py-12">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <SettingsIcon className="w-10 h-10" />
+              <h1 className="text-4xl font-bold">Paramètres</h1>
+            </div>
+            <p className="text-brand-100 text-lg max-w-2xl">
+              Gérez votre profil, vos notifications et vos préférences
+            </p>
+          </motion.div>
+        </div>
       </div>
 
-      <div className="card">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="p-3 bg-primary-50 rounded-lg">
-            <UserIcon className="w-6 h-6 text-primary-600" />
-          </div>
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">Profile Information</h2>
-          </div>
-        </div>
+      <div className="max-w-7xl mx-auto px-6 -mt-6">
+        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+          <div className="flex flex-col md:flex-row">
+            {/* Sidebar Tabs */}
+            <div className="md:w-64 bg-gray-50 border-r border-gray-200">
+              <nav className="p-4 space-y-1">
+                {tabs.map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = activeTab === tab.id;
 
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Full Name
-            </label>
-            <input type="text" value={user?.name} className="input" disabled />
-          </div>
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left relative",
+                        isActive
+                          ? "bg-brand-600 text-white shadow-md"
+                          : "text-gray-700 hover:bg-gray-100"
+                      )}
+                    >
+                      <Icon className="w-5 h-5 flex-shrink-0" />
+                      <span className="font-medium">{tab.label}</span>
+                      {isActive && (
+                        <motion.div
+                          layoutId="activeTab"
+                          className="absolute inset-0 bg-brand-600 rounded-xl -z-10"
+                          transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                        />
+                      )}
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Email
-            </label>
-            <input type="email" value={user?.email} className="input" disabled />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Current Plan
-            </label>
-            <div className="flex items-center gap-2">
-              <span className="px-3 py-1 bg-primary-100 text-primary-700 rounded-full text-sm font-medium">
-                {user?.plan?.toUpperCase() || 'FREE'}
-              </span>
-              <span className="text-sm text-gray-600">
-                Active since {new Date(user?.created_at || '').toLocaleDateString()}
-              </span>
+            {/* Content Area */}
+            <div className="flex-1 p-8">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeTab}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {activeTab === 'profile' && <ProfileTab user={user} />}
+                  {activeTab === 'notifications' && (
+                    <NotificationsTab
+                      emailNotifications={emailNotifications}
+                      setEmailNotifications={setEmailNotifications}
+                      pushNotifications={pushNotifications}
+                      setPushNotifications={setPushNotifications}
+                    />
+                  )}
+                  {activeTab === 'security' && (
+                    <SecurityTab
+                      vintedCookie={vintedCookie}
+                      setVintedCookie={setVintedCookie}
+                      sessionStatus={sessionStatus}
+                      isSaving={isSaving}
+                      isTesting={isTesting}
+                      handleSaveSession={handleSaveSession}
+                      handleTestSession={handleTestSession}
+                      getSessionStatusDisplay={getSessionStatusDisplay}
+                    />
+                  )}
+                  {activeTab === 'billing' && <BillingTab user={user} plans={plans} />}
+                  {activeTab === 'preferences' && (
+                    <PreferencesTab
+                      language={language}
+                      setLanguage={setLanguage}
+                      darkMode={darkMode}
+                      setDarkMode={setDarkMode}
+                    />
+                  )}
+                </motion.div>
+              </AnimatePresence>
             </div>
           </div>
         </div>
       </div>
+    </div>
+  );
+}
 
-      <div className="card">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="p-3 bg-purple-50 rounded-lg">
-            <Shield className="w-6 h-6 text-purple-600" />
-          </div>
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">Current Usage</h2>
-          </div>
+// Profile Tab Component
+function ProfileTab({ user }: any) {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Informations du profil</h2>
+        <p className="text-gray-600">Gérez vos informations personnelles</p>
+      </div>
+
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Nom complet
+          </label>
+          <input type="text" value={user?.name} className="input" disabled />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Email
+          </label>
+          <input type="email" value={user?.email} className="input" disabled />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Plan actuel
+          </label>
+          <div className="flex items-center gap-2">
+            <span className="px-3 py-1 bg-primary-100 text-primary-700 rounded-full text-sm font-medium">
+              {user?.plan?.toUpperCase() || 'FREE'}
+            </span>
+            <span className="text-sm text-gray-600">
+              Actif depuis {new Date(user?.created_at || '').toLocaleDateString()}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Usage Section */}
+      <div className="mt-8">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Utilisation actuelle</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <QuotaCard
             label="AI Analyses"
-            used={user?.quotas_used.ai_analyses_month || 0}
-            limit={user?.quotas_limit.ai_analyses_month || 0}
+            used={user?.quotas_used?.ai_analyses_month || 0}
+            limit={user?.quotas_limit?.ai_analyses_month || 0}
             unit="this month"
           />
           <QuotaCard
             label="Drafts"
-            used={user?.quotas_used.drafts || 0}
-            limit={user?.quotas_limit.drafts || 0}
+            used={user?.quotas_used?.drafts || 0}
+            limit={user?.quotas_limit?.drafts || 0}
           />
           <QuotaCard
             label="Publications"
-            used={user?.quotas_used.publications_month || 0}
-            limit={user?.quotas_limit.publications_month || 0}
+            used={user?.quotas_used?.publications_month || 0}
+            limit={user?.quotas_limit?.publications_month || 0}
             unit="this month"
           />
           <QuotaCard
             label="Storage"
-            used={Math.round(user?.quotas_used.photos_storage_mb || 0)}
-            limit={user?.quotas_limit.photos_storage_mb || 0}
+            used={Math.round(user?.quotas_used?.photos_storage_mb || 0)}
+            limit={user?.quotas_limit?.photos_storage_mb || 0}
             unit="MB"
           />
         </div>
       </div>
+    </div>
+  );
+}
 
-      <div className="card">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-            <Globe className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-          </div>
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Vinted Configuration</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Configure your Vinted session to publish listings</p>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Vinted Cookie
-            </label>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-              Extract your Vinted cookies from your browser (F12 → Application → Cookies → vinted.fr)
-            </p>
-            <textarea
-              value={vintedCookie}
-              onChange={(e) => setVintedCookie(e.target.value)}
-              placeholder="_vinted_fr_session=abc123; anon_id=xyz789; _gcl_au=123; ..."
-              rows={4}
-              className="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm font-mono text-gray-900 dark:text-white"
-            />
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-3">
-            <button
-              onClick={handleSaveSession}
-              disabled={isSaving || !vintedCookie.trim()}
-              className="flex-1 px-4 py-2 bg-primary-600 hover:bg-primary-700 disabled:bg-gray-400 text-white rounded-lg font-medium flex items-center justify-center gap-2 transition-colors"
-            >
-              {isSaving ? (
-                <>
-                  <LoadingSpinner size="small" />
-                  Saving...
-                </>
-              ) : (
-                'Save Session'
-              )}
-            </button>
-            <button
-              onClick={handleTestSession}
-              disabled={isTesting}
-              className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg font-medium flex items-center justify-center gap-2 transition-colors"
-            >
-              {isTesting ? (
-                <>
-                  <LoadingSpinner size="small" />
-                  Testing...
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="w-4 h-4" />
-                  Test Session
-                </>
-              )}
-            </button>
-          </div>
-
-          {sessionStatus !== 'unknown' && (
-            <div className="mt-4">
-              {getSessionStatusDisplay()}
-            </div>
-          )}
-
-          <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg">
-            <p className="text-sm text-blue-800 dark:text-blue-300 font-medium mb-2">
-              📚 How to get your Vinted cookie:
-            </p>
-            <ol className="text-xs text-blue-700 dark:text-blue-400 space-y-1 list-decimal list-inside">
-              <li>Open Chrome/Edge and go to <strong>vinted.fr</strong></li>
-              <li>Log into your Vinted account</li>
-              <li>Press <strong>F12</strong> to open DevTools</li>
-              <li>Go to the <strong>Application</strong> tab</li>
-              <li>In the left menu: Click <strong>Cookies</strong> → <strong>https://www.vinted.fr</strong></li>
-              <li>Copy all cookies in the format shown above</li>
-              <li>Paste here and click <strong>Save Session</strong></li>
-              <li>Click <strong>Test Session</strong> to verify it works</li>
-            </ol>
-          </div>
-        </div>
+// Notifications Tab Component
+function NotificationsTab({ emailNotifications, setEmailNotifications, pushNotifications, setPushNotifications }: any) {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Notifications</h2>
+        <p className="text-gray-600">Gérez vos préférences de notification</p>
       </div>
 
-      <div className="card">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-            <CreditCard className="w-6 h-6 text-green-600 dark:text-green-400" />
-          </div>
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Upgrade Your Plan</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Get more features and higher limits</p>
-          </div>
+      <div className="space-y-4">
+        <ToggleSwitch
+          label="Notifications par email"
+          description="Recevez des notifications par email pour les nouvelles ventes et messages"
+          enabled={emailNotifications}
+          onChange={setEmailNotifications}
+        />
+
+        <ToggleSwitch
+          label="Notifications push"
+          description="Recevez des notifications push sur votre navigateur"
+          enabled={pushNotifications}
+          onChange={setPushNotifications}
+        />
+      </div>
+    </div>
+  );
+}
+
+// Security Tab Component
+function SecurityTab({ vintedCookie, setVintedCookie, sessionStatus, isSaving, isTesting, handleSaveSession, handleTestSession, getSessionStatusDisplay }: any) {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Sécurité</h2>
+        <p className="text-gray-600">Gérez votre session Vinted et vos paramètres de sécurité</p>
+      </div>
+
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Cookie Vinted
+          </label>
+          <p className="text-xs text-gray-500 mb-2">
+            Extraire vos cookies Vinted depuis votre navigateur (F12 → Application → Cookies → vinted.fr)
+          </p>
+          <textarea
+            value={vintedCookie}
+            onChange={(e) => setVintedCookie(e.target.value)}
+            placeholder="_vinted_fr_session=abc123; anon_id=xyz789; _gcl_au=123; ..."
+            rows={4}
+            className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm font-mono text-gray-900"
+          />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {plans.map((plan) => (
-            <div
-              key={plan.name}
-              className={`p-6 rounded-lg border-2 ${
-                user?.plan.toLowerCase() === plan.name.toLowerCase()
-                  ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                  : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{plan.name}</h3>
-                <div className="text-right">
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">${plan.price}</p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">per month</p>
-                </div>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button
+            onClick={handleSaveSession}
+            disabled={isSaving || !vintedCookie.trim()}
+            className="flex-1 px-4 py-2 bg-primary-600 hover:bg-primary-700 disabled:bg-gray-400 text-white rounded-lg font-medium flex items-center justify-center gap-2 transition-colors"
+          >
+            {isSaving ? (
+              <>
+                <LoadingSpinner size="small" />
+                Enregistrement...
+              </>
+            ) : (
+              'Enregistrer la session'
+            )}
+          </button>
+          <button
+            onClick={handleTestSession}
+            disabled={isTesting}
+            className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg font-medium flex items-center justify-center gap-2 transition-colors"
+          >
+            {isTesting ? (
+              <>
+                <LoadingSpinner size="small" />
+                Test en cours...
+              </>
+            ) : (
+              <>
+                <CheckCircle className="w-4 h-4" />
+                Tester la session
+              </>
+            )}
+          </button>
+        </div>
+
+        {sessionStatus !== 'unknown' && (
+          <div className="mt-4">
+            {getSessionStatusDisplay()}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Billing Tab Component
+function BillingTab({ user, plans }: any) {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Facturation</h2>
+        <p className="text-gray-600">Gérez votre abonnement et vos paiements</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {plans.map((plan: any) => (
+          <div
+            key={plan.name}
+            className={cn(
+              "p-6 rounded-xl border-2 transition-all",
+              user?.plan?.toLowerCase() === plan.name.toLowerCase()
+                ? 'border-primary-500 bg-primary-50'
+                : 'border-gray-200 bg-white hover:border-primary-200'
+            )}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">{plan.name}</h3>
+              <div className="text-right">
+                <p className="text-2xl font-bold text-gray-900">{plan.price}€</p>
+                <p className="text-xs text-gray-600">par mois</p>
               </div>
-
-              <ul className="space-y-2 mb-6">
-                {plan.features.map((feature, index) => (
-                  <li key={index} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                    <Shield className="w-4 h-4 text-green-600 dark:text-green-400" />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-
-              {user?.plan.toLowerCase() === plan.name.toLowerCase() ? (
-                <div className="px-4 py-2 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-lg text-center font-medium">
-                  Current Plan
-                </div>
-              ) : (
-                <button
-                  onClick={() => alert('Stripe integration coming soon!')}
-                  className="w-full btn-primary"
-                >
-                  {plan.price === 0 ? 'Downgrade' : 'Upgrade'}
-                </button>
-              )}
             </div>
-          ))}
+
+            <ul className="space-y-2 mb-6">
+              {plan.features.map((feature: string, index: number) => (
+                <li key={index} className="flex items-center gap-2 text-sm text-gray-700">
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                  {feature}
+                </li>
+              ))}
+            </ul>
+
+            {user?.plan?.toLowerCase() === plan.name.toLowerCase() ? (
+              <div className="px-4 py-2 bg-primary-100 text-primary-700 rounded-lg text-center font-medium">
+                Plan actuel
+              </div>
+            ) : (
+              <button
+                onClick={() => toast.success('Intégration Stripe bientôt disponible!')}
+                className="w-full btn-primary"
+              >
+                {plan.price === 0 ? 'Rétrograder' : 'Mettre à niveau'}
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Preferences Tab Component
+function PreferencesTab({ language, setLanguage, darkMode, setDarkMode }: any) {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Préférences</h2>
+        <p className="text-gray-600">Personnalisez votre expérience</p>
+      </div>
+
+      <div className="space-y-6">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Langue
+          </label>
+          <select
+            value={language}
+            onChange={(e) => setLanguage(e.target.value)}
+            className="input"
+          >
+            <option value="fr">Français</option>
+            <option value="en">English</option>
+            <option value="es">Español</option>
+          </select>
+        </div>
+
+        <ToggleSwitch
+          label="Mode sombre"
+          description="Activer le thème sombre pour une meilleure expérience visuelle"
+          enabled={darkMode}
+          onChange={setDarkMode}
+          icon={darkMode ? Moon : Sun}
+        />
+      </div>
+    </div>
+  );
+}
+
+// Toggle Switch Component
+function ToggleSwitch({ label, description, enabled, onChange, icon: Icon }: any) {
+  return (
+    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+      <div className="flex items-center gap-3">
+        {Icon && <Icon className="w-5 h-5 text-gray-600" />}
+        <div>
+          <p className="font-medium text-gray-900">{label}</p>
+          <p className="text-sm text-gray-600">{description}</p>
         </div>
       </div>
+      <button
+        onClick={() => onChange(!enabled)}
+        className={cn(
+          "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+          enabled ? "bg-primary-600" : "bg-gray-300"
+        )}
+      >
+        <span
+          className={cn(
+            "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+            enabled ? "translate-x-6" : "translate-x-1"
+          )}
+        />
+      </button>
     </div>
   );
 }
