@@ -100,26 +100,42 @@ export default function Drafts() {
       if (!confirm(`Supprimer ${selectedDrafts.length} brouillon(s) ?`)) return;
 
       try {
-        for (const id of selectedDrafts) {
-          await bulkAPI.deleteDraft(id);
+        // Use Promise.allSettled to handle partial failures
+        const results = await Promise.allSettled(
+          selectedDrafts.map(id => bulkAPI.deleteDraft(id))
+        );
+
+        const failed = results.filter(r => r.status === 'rejected').length;
+        const succeeded = results.length - failed;
+
+        if (failed > 0) {
+          toast.error(`${failed} brouillon(s) non supprimé(s), ${succeeded} supprimé(s)`);
+        } else {
+          toast.success(`${selectedDrafts.length} brouillon(s) supprimé(s)`);
         }
-        toast.success(`${selectedDrafts.length} brouillon(s) supprimé(s)`);
+
         setSelectedDrafts([]);
-        loadDrafts();
+        await loadDrafts(); // Wait for reload
       } catch (error) {
         toast.error('Erreur lors de la suppression');
       }
     } else if (action === 'publish') {
-      toast.promise(
-        Promise.all(selectedDrafts.map(id => bulkAPI.publishDraftDirect(id, 'auto'))),
-        {
-          loading: `Publication de ${selectedDrafts.length} brouillon(s)...`,
-          success: `${selectedDrafts.length} brouillon(s) publié(s) !`,
-          error: 'Erreur lors de la publication'
-        }
-      );
-      setSelectedDrafts([]);
-      loadDrafts();
+      try {
+        // Wait for the promise to complete before clearing selection
+        await toast.promise(
+          Promise.all(selectedDrafts.map(id => bulkAPI.publishDraftDirect(id, 'auto'))),
+          {
+            loading: `Publication de ${selectedDrafts.length} brouillon(s)...`,
+            success: `${selectedDrafts.length} brouillon(s) publié(s) !`,
+            error: 'Erreur lors de la publication'
+          }
+        );
+        setSelectedDrafts([]);
+        await loadDrafts(); // Wait for reload
+      } catch (error) {
+        // Error already handled by toast.promise
+        logger.error('Bulk publish failed', error);
+      }
     }
   };
 

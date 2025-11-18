@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   TrendingUp,
@@ -102,11 +102,7 @@ export default function Dashboard() {
     ]
   });
 
-  useEffect(() => {
-    loadStats();
-  }, [timeRange]);
-
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     try {
       setIsLoading(true);
       // Load real stats from API
@@ -123,7 +119,11 @@ export default function Dashboard() {
     } finally {
       setTimeout(() => setIsLoading(false), 500);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadStats();
+  }, [timeRange, loadStats]);
 
   if (isLoading) {
     return <DashboardSkeleton />;

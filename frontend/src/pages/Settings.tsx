@@ -132,7 +132,7 @@ export default function Settings() {
             </label>
             <div className="flex items-center gap-2">
               <span className="px-3 py-1 bg-primary-100 text-primary-700 rounded-full text-sm font-medium">
-                {user?.plan.toUpperCase()}
+                {user?.plan?.toUpperCase() || 'FREE'}
               </span>
               <span className="text-sm text-gray-600">
                 Active since {new Date(user?.created_at || '').toLocaleDateString()}

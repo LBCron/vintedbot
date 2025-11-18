@@ -64,21 +64,22 @@ export default function Accounts() {
   const handleSwitch = async (accountId: string) => {
     try {
       await accountsAPI.switchAccount(accountId);
-      alert('Account switched successfully!');
+      toast.success('Compte changé avec succès !');
       loadAccounts();
     } catch (error) {
-      alert('Failed to switch account');
+      toast.error('Erreur lors du changement de compte');
     }
   };
 
   const handleDelete = async (accountId: string) => {
-    if (!confirm('Delete this account?')) return;
-    
+    if (!confirm('Supprimer ce compte ?')) return;
+
     try {
       await accountsAPI.deleteAccount(accountId);
+      toast.success('Compte supprimé');
       loadAccounts();
     } catch (error) {
-      alert('Failed to delete account');
+      toast.error('Erreur lors de la suppression');
     }
   };
 
