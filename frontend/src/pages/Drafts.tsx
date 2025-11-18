@@ -40,7 +40,7 @@ export default function Drafts() {
 
   const handlePublish = async (id: string) => {
     // Show confirmation dialog with enhanced messaging
-    if (!confirm('🚀 Publier cet article sur Vinted maintenant ?\n\nCette action utilisera la nouvelle publication directe optimisée avec anti-détection.')) return;
+    if (!confirm('Publier cet article sur Vinted maintenant ?\n\nCette action utilisera la nouvelle publication directe optimisée avec anti-détection.')) return;
 
     setPublishingId(id);
 
@@ -58,7 +58,7 @@ export default function Drafts() {
       if (response.data.listing_url) {
         toast.success(
           <div>
-            <strong>✅ Annonce publiée avec succès !</strong>
+            <strong>Annonce publiée avec succès !</strong>
             <br />
             <a
               href={response.data.listing_url}
@@ -72,7 +72,7 @@ export default function Drafts() {
           { duration: 5000 }
         );
       } else {
-        toast.success(response.data.message || 'Annonce publiée avec succès ! 🎉');
+        toast.success(response.data.message || 'Annonce publiée avec succès !');
       }
 
       // Reload drafts to update status
@@ -88,7 +88,7 @@ export default function Drafts() {
       if (errorReason?.includes('Session expirée') || errorReason?.includes('cookie')) {
         toast.error(
           <div>
-            <strong>❌ Session Vinted expirée</strong>
+            <strong>Session Vinted expirée</strong>
             <br />
             <span className="text-sm">Veuillez actualiser vos cookies Vinted dans les paramètres</span>
           </div>,
@@ -97,7 +97,7 @@ export default function Drafts() {
       } else if (errorReason?.includes('Captcha')) {
         toast.error(
           <div>
-            <strong>⚠️ Captcha détecté</strong>
+            <strong>Captcha détecté</strong>
             <br />
             <span className="text-sm">Vinted demande une vérification. Réessayez dans quelques minutes.</span>
           </div>,
@@ -106,7 +106,7 @@ export default function Drafts() {
       } else if (errorReason?.includes('photo')) {
         toast.error(
           <div>
-            <strong>❌ Erreur photos</strong>
+            <strong>Erreur photos</strong>
             <br />
             <span className="text-sm">{errorReason}</span>
           </div>,
@@ -290,7 +290,7 @@ export default function Drafts() {
       <div className="flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">📋 Drafts</h1>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Drafts</h1>
             <p className="text-gray-600 dark:text-gray-400 mt-2">
               {filteredDrafts.length} of {drafts.length} draft{drafts.length !== 1 ? 's' : ''}
               {selectedIds.size > 0 && (

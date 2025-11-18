@@ -58,88 +58,30 @@ interface AISuggestion {
   context: string;
 }
 
-const mockConversations: Conversation[] = [
-  {
-    id: '1',
-    user: { name: 'Marie Dupont', avatar: 'https://via.placeholder.com/40', isOnline: true },
-    lastMessage: 'Bonjour, est-ce que l\'article est toujours disponible ?',
-    timestamp: new Date(Date.now() - 5 * 60000),
-    unread: 2,
-    isPinned: true,
-    item: { name: 'Nike Air Max 90', price: 89.99, thumbnail: 'https://via.placeholder.com/60' },
-  },
-  {
-    id: '2',
-    user: { name: 'Lucas Martin', avatar: 'https://via.placeholder.com/40', isOnline: false },
-    lastMessage: 'Merci pour la réponse rapide !',
-    timestamp: new Date(Date.now() - 2 * 3600000),
-    unread: 0,
-    isPinned: false,
-    item: { name: 'Adidas Hoodie', price: 45.00, thumbnail: 'https://via.placeholder.com/60' },
-  },
-  {
-    id: '3',
-    user: { name: 'Sophie Bernard', avatar: 'https://via.placeholder.com/40', isOnline: true },
-    lastMessage: 'Quel est l\'état exact du produit ?',
-    timestamp: new Date(Date.now() - 24 * 3600000),
-    unread: 1,
-    isPinned: false,
-    item: { name: 'Levi\'s 501 Jeans', price: 65.00, thumbnail: 'https://via.placeholder.com/60' },
-  },
-];
-
-const mockMessages: Message[] = [
-  {
-    id: '1',
-    text: 'Bonjour ! Je suis intéressée par votre article. Est-ce qu\'il est toujours disponible ?',
-    timestamp: new Date(Date.now() - 10 * 60000),
-    isOwn: false,
-  },
-  {
-    id: '2',
-    text: 'Oui bien sûr ! L\'article est toujours disponible 😊',
-    timestamp: new Date(Date.now() - 8 * 60000),
-    isOwn: true,
-    status: 'read',
-  },
-  {
-    id: '3',
-    text: 'Super ! Pourriez-vous me donner plus de détails sur l\'état ?',
-    timestamp: new Date(Date.now() - 5 * 60000),
-    isOwn: false,
-  },
-];
-
-const aiSuggestions: AISuggestion[] = [
-  {
-    id: '1',
-    text: 'L\'article est en excellent état, porté seulement 2-3 fois. Aucun défaut visible !',
-    tone: 'friendly',
-    context: 'Réponse détaillée sur l\'état',
-  },
-  {
-    id: '2',
-    text: 'État: comme neuf. Porté occasionnellement, pas de signes d\'usure.',
-    tone: 'professional',
-    context: 'Réponse concise professionnelle',
-  },
-  {
-    id: '3',
-    text: 'Excellent état ! Vous pouvez voir tous les détails sur les photos. N\'hésitez pas si vous avez d\'autres questions 😊',
-    tone: 'friendly',
-    context: 'Réponse amicale avec encouragement',
-  },
-];
+// Real conversations will be fetched from API
+// TODO: Implement API integration for messages
 
 export default function Messages() {
-  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(
-    mockConversations[0]
-  );
-  const [messages, setMessages] = useState<Message[]>(mockMessages);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([]);
   const [messageInput, setMessageInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showAISuggestions, setShowAISuggestions] = useState(true);
+  const [showAISuggestions, setShowAISuggestions] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // TODO: Fetch conversations from API
+  useEffect(() => {
+    // fetchConversations().then(setConversations);
+  }, []);
+
+  // TODO: Fetch AI suggestions based on context
+  useEffect(() => {
+    if (selectedConversation && showAISuggestions) {
+      // fetchAISuggestions(selectedConversation.id).then(setAiSuggestions);
+    }
+  }, [selectedConversation, showAISuggestions]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -170,7 +112,7 @@ export default function Messages() {
     setShowAISuggestions(false);
   };
 
-  const filteredConversations = mockConversations.filter(conv =>
+  const filteredConversations = conversations.filter(conv =>
     conv.user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     conv.lastMessage.toLowerCase().includes(searchQuery.toLowerCase()) ||
     conv.item.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -201,7 +143,7 @@ export default function Messages() {
           {/* Sidebar Header */}
           <div className="p-4 border-b border-gray-200 dark:border-gray-700">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-              💬 Messages
+              Messages
             </h2>
 
             {/* Search */}
@@ -232,7 +174,20 @@ export default function Messages() {
 
           {/* Conversations List */}
           <div className="flex-1 overflow-y-auto">
-            {filteredConversations.map((conv) => (
+            {filteredConversations.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+                <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+                  <Search className="w-8 h-8 text-gray-400" />
+                </div>
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
+                  No conversations yet
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Your conversations with buyers will appear here
+                </p>
+              </div>
+            ) : (
+              filteredConversations.map((conv) => (
               <motion.div
                 key={conv.id}
                 whileHover={{ backgroundColor: 'rgba(0,0,0,0.02)' }}
@@ -298,7 +253,7 @@ export default function Messages() {
                   </div>
                 </div>
               </motion.div>
-            ))}
+            )))}
           </div>
         </div>
 

@@ -347,7 +347,7 @@ export default function Dashboard() {
               <div className="space-y-4">
                 <div className="p-4 rounded-lg bg-primary-50 dark:bg-primary-900/20">
                   <p className="text-sm font-medium text-gray-900 dark:text-white mb-2">
-                    ⚡ Meilleur moment pour publier
+                    <Zap className="w-4 h-4 inline mr-1" /> Meilleur moment pour publier
                   </p>
                   <p className="text-xs text-gray-600 dark:text-gray-400">
                     Publiez entre 18h-20h pour +35% de vues
@@ -356,7 +356,7 @@ export default function Dashboard() {
 
                 <div className="p-4 rounded-lg bg-success-50 dark:bg-success-900/20">
                   <p className="text-sm font-medium text-gray-900 dark:text-white mb-2">
-                    📈 Catégorie en hausse
+                    <TrendingUp className="w-4 h-4 inline mr-1" /> Catégorie en hausse
                   </p>
                   <p className="text-xs text-gray-600 dark:text-gray-400">
                     Les sneakers se vendent 2x plus vite
@@ -365,7 +365,7 @@ export default function Dashboard() {
 
                 <div className="p-4 rounded-lg bg-warning-50 dark:bg-warning-900/20">
                   <p className="text-sm font-medium text-gray-900 dark:text-white mb-2">
-                    💡 Optimisez vos prix
+                    <Sparkles className="w-4 h-4 inline mr-1" /> Optimisez vos prix
                   </p>
                   <p className="text-xs text-gray-600 dark:text-gray-400">
                     Baissez de 10% pour vendre 3 articles

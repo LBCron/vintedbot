@@ -181,7 +181,7 @@ export function UploadRequired({ onUpload }: { onUpload: () => void }) {
     >
       <div className="mb-6 p-4 bg-primary-50 dark:bg-primary-900/20 rounded-lg max-w-md mx-auto">
         <p className="text-sm text-primary-700 dark:text-primary-400">
-          💡 <strong>Tip:</strong> Take clear photos in good lighting for best AI results
+          <strong>Tip:</strong> Take clear photos in good lighting for best AI results
         </p>
       </div>
       <motion.button
@@ -231,7 +231,7 @@ export function WelcomeState({ onGetStarted }: { onGetStarted: () => void }) {
           <ShoppingBag className="w-10 h-10 text-white" />
         </div>
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
-          Welcome to VintedBot! 👋
+          Welcome to VintedBot!
         </h1>
         <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
           Automate your Vinted selling with AI-powered photo analysis, smart pricing, and bulk publishing

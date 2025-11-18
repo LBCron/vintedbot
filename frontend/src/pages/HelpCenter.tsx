@@ -125,7 +125,7 @@ export default function HelpCenter() {
         className="text-center"
       >
         <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-          💁 How can we help you?
+          How can we help you?
         </h1>
         <p className="text-lg text-gray-600 dark:text-gray-400">
           Search our knowledge base or contact support
@@ -195,7 +195,7 @@ export default function HelpCenter() {
         transition={{ delay: 0.3 }}
       >
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-          🔥 Frequently Asked Questions
+          Frequently Asked Questions
         </h2>
 
         {/* Category Filter */}
@@ -278,7 +278,7 @@ export default function HelpCenter() {
       >
         <div className="text-center max-w-2xl mx-auto">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-            💬 Still need help?
+            Still need help?
           </h2>
           <p className="text-gray-600 dark:text-gray-400 mb-6">
             Our support team is here to help you succeed

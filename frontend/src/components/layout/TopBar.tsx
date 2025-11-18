@@ -69,12 +69,8 @@ export default function TopBar({ onOpenCommandPalette }: TopBarProps) {
   };
 
   const getNotificationIcon = (type: Notification['type']) => {
-    switch (type) {
-      case 'success': return '✅';
-      case 'info': return 'ℹ️';
-      case 'warning': return '⚠️';
-      case 'error': return '❌';
-    }
+    // Icons are now handled by Lucide icons in the UI
+    return null;
   };
 
   return (
@@ -156,7 +152,6 @@ export default function TopBar({ onOpenCommandPalette }: TopBarProps) {
                           } ${!notification.read ? 'bg-primary-50/30 dark:bg-primary-900/10' : ''}`}
                         >
                           <div className="flex items-start gap-3">
-                            <span className="text-xl">{getNotificationIcon(notification.type)}</span>
                             <div className="flex-1 min-w-0">
                               <p className="font-medium text-sm text-gray-900 dark:text-white">
                                 {notification.title}

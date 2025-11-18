@@ -114,7 +114,7 @@ export default function Upload() {
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
       >
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">📤 Upload Photos</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Upload Photos</h1>
         <p className="text-gray-600 dark:text-gray-400 mt-2">
           Upload photos of your items and let AI create drafts automatically
         </p>
@@ -144,7 +144,7 @@ export default function Upload() {
 
             {isDragActive ? (
               <p className="text-xl font-semibold text-primary-600 dark:text-primary-400">
-                Déposez vos photos ici ! 🎯
+                Déposez vos photos ici !
               </p>
             ) : (
               <div>

@@ -128,17 +128,17 @@ export default function DraftCard({ draft, onPublish, onDelete, isSelected, onTo
           <div className="flex flex-wrap gap-2">
             {draft.brand && (
               <Badge variant="outline" size="sm" className="font-medium">
-                🏷️ {draft.brand}
+                {draft.brand}
               </Badge>
             )}
             {draft.size && (
               <Badge variant="outline" size="sm" className="font-medium">
-                📏 {draft.size}
+                {draft.size}
               </Badge>
             )}
             {draft.color && (
               <Badge variant="outline" size="sm" className="font-medium">
-                🎨 {draft.color}
+                {draft.color}
               </Badge>
             )}
           </div>

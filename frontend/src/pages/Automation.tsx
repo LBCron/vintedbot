@@ -95,10 +95,10 @@ export default function Automation() {
     setSaveMessage('');
     try {
       await automationAPI.configureBump(bumpConfig);
-      setSaveMessage('✅ Auto-Bump configuration saved!');
+      setSaveMessage('Auto-Bump configuration saved!');
       loadRules();
     } catch (error: any) {
-      setSaveMessage('❌ Error: ' + (error.response?.data?.detail || 'Failed to save'));
+      setSaveMessage('Error: ' + (error.response?.data?.detail || 'Failed to save'));
     } finally {
       setSaving(false);
     }
@@ -109,10 +109,10 @@ export default function Automation() {
     setSaveMessage('');
     try {
       await automationAPI.configureFollow(followConfig);
-      setSaveMessage('✅ Auto-Follow configuration saved!');
+      setSaveMessage('Auto-Follow configuration saved!');
       loadRules();
     } catch (error: any) {
-      setSaveMessage('❌ Error: ' + (error.response?.data?.detail || 'Failed to save'));
+      setSaveMessage('Error: ' + (error.response?.data?.detail || 'Failed to save'));
     } finally {
       setSaving(false);
     }
@@ -123,10 +123,10 @@ export default function Automation() {
     setSaveMessage('');
     try {
       await automationAPI.configureMessages(messageConfig);
-      setSaveMessage('✅ Auto-Messages configuration saved!');
+      setSaveMessage('Auto-Messages configuration saved!');
       loadRules();
     } catch (error: any) {
-      setSaveMessage('❌ Error: ' + (error.response?.data?.detail || 'Failed to save'));
+      setSaveMessage('Error: ' + (error.response?.data?.detail || 'Failed to save'));
     } finally {
       setSaving(false);
     }
@@ -159,7 +159,7 @@ export default function Automation() {
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Automation</h1>
         <p className="text-gray-600 mt-2">
-          🤖 PREMIUM FEATURE - Automate your Vinted activities
+          PREMIUM FEATURE - Automate your Vinted activities
         </p>
       </div>
 
@@ -200,7 +200,7 @@ export default function Automation() {
       </div>
 
       {saveMessage && (
-        <div className={`p-4 rounded-lg ${saveMessage.includes('✅') ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+        <div className={`p-4 rounded-lg ${saveMessage.includes('saved') ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
           {saveMessage}
         </div>
       )}

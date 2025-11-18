@@ -382,11 +382,7 @@ export default function StorageStatsPage() {
                   key={index}
                   className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg"
                 >
-                  {rec.includes('✅') ? (
-                    <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
-                  ) : (
-                    <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                  )}
+                  <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
                   <p className="text-sm text-gray-700">{rec}</p>
                 </div>
               ))}
@@ -446,7 +442,7 @@ export default function StorageStatsPage() {
               </span>
             </div>
             <p className="text-sm text-green-600 mt-1">
-              ✓ Économie de {formatCost(stats.savings_vs_all_hot)} vs. stockage HOT seul
+              Économie de {formatCost(stats.savings_vs_all_hot)} vs. stockage HOT seul
             </p>
           </div>
         </Card>

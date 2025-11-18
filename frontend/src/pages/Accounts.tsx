@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Users, Check, Eye, EyeOff } from 'lucide-react';
+import { Plus, Users, Check, Eye, EyeOff, Sparkles } from 'lucide-react';
 import { accountsAPI } from '../api/client';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
@@ -46,7 +46,7 @@ export default function Accounts() {
       };
 
       await accountsAPI.addAccount(payload);
-      toast.success('✅ Compte Vinted ajouté avec succès !');
+      toast.success('Compte Vinted ajouté avec succès !');
 
       setShowAddModal(false);
       setAutoLogin({ email: '', password: '', nickname: 'Mon Compte Vinted' });
@@ -96,7 +96,7 @@ export default function Accounts() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Multi-Account Management</h1>
           <p className="text-gray-600 mt-2">
-            👥 PREMIUM FEATURE - Manage multiple Vinted accounts
+            PREMIUM FEATURE - Manage multiple Vinted accounts
           </p>
         </div>
         <button
@@ -205,7 +205,7 @@ export default function Accounts() {
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                ✨ Mode Guidé
+                <Sparkles className="w-4 h-4 inline mr-1" /> Mode Guidé
               </button>
               <button
                 type="button"
@@ -216,7 +216,7 @@ export default function Accounts() {
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                🔧 Mode Avancé
+                Mode Avancé
               </button>
             </div>
 
@@ -224,7 +224,7 @@ export default function Accounts() {
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <h3 className="font-semibold text-blue-900 mb-2 text-sm">💻 Ordinateur</h3>
+                    <h3 className="font-semibold text-blue-900 mb-2 text-sm">Ordinateur</h3>
                     <p className="text-xs text-blue-800 mb-3">
                       Extension Chrome - Capture automatique en 1 clic
                     </p>
@@ -233,12 +233,12 @@ export default function Accounts() {
                       target="_blank"
                       className="inline-block w-full text-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm transition-colors"
                     >
-                      📦 Extension Chrome
+                      Extension Chrome
                     </a>
                   </div>
 
                   <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                    <h3 className="font-semibold text-purple-900 mb-2 text-sm">📱 iPhone/Android</h3>
+                    <h3 className="font-semibold text-purple-900 mb-2 text-sm">iPhone/Android</h3>
                     <p className="text-xs text-purple-800 mb-3">
                       Bookmarklet mobile - Capture en 1 tap
                     </p>
@@ -247,13 +247,13 @@ export default function Accounts() {
                       target="_blank"
                       className="inline-block w-full text-center px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium text-sm transition-colors"
                     >
-                      📱 Version Mobile
+                      Version Mobile
                     </a>
                   </div>
                 </div>
 
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-                  <h3 className="font-semibold text-green-900 mb-2">📋 Méthode Manuelle - 3 étapes simples</h3>
+                  <h3 className="font-semibold text-green-900 mb-2">Méthode Manuelle - 3 étapes simples</h3>
                   <ol className="text-sm text-green-800 space-y-2">
                     <li className="flex items-start gap-2">
                       <span className="font-bold min-w-[20px]">1.</span>
@@ -295,10 +295,10 @@ export default function Accounts() {
                   />
                   <div className="mt-2 space-y-1">
                     <p className="text-xs text-gray-500">
-                      💡 Le cookie ressemble à: BAh7CEkiD3Nlc3Npb25faWQGOgZF...
+                      Le cookie ressemble à: BAh7CEkiD3Nlc3Npb25faWQGOgZF...
                     </p>
                     <p className="text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded p-2">
-                      ⚠️ <strong>Important:</strong> Copiez UNIQUEMENT la valeur du cookie nommé <code className="bg-yellow-100 px-1 rounded font-semibold">_vinted_fr_session</code> (pas les autres cookies comme v-udt, etc.)
+                      <strong>Important:</strong> Copiez UNIQUEMENT la valeur du cookie nommé <code className="bg-yellow-100 px-1 rounded font-semibold">_vinted_fr_session</code> (pas les autres cookies comme v-udt, etc.)
                     </p>
                   </div>
                 </div>
@@ -320,7 +320,7 @@ export default function Accounts() {
               <div className="space-y-4">
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
                   <p className="text-sm text-yellow-800">
-                    ⚙️ Pour les utilisateurs avancés - entrez manuellement vos cookies
+                    Pour les utilisateurs avancés - entrez manuellement vos cookies
                   </p>
                 </div>
 
@@ -348,7 +348,7 @@ export default function Accounts() {
                     placeholder="Collez uniquement la valeur du cookie _vinted_fr_session..."
                   />
                   <p className="text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded p-2 mt-2">
-                    ⚠️ <strong>Important:</strong> Uniquement le cookie <code className="bg-yellow-100 px-1 rounded font-semibold">_vinted_fr_session</code>
+                    <strong>Important:</strong> Uniquement le cookie <code className="bg-yellow-100 px-1 rounded font-semibold">_vinted_fr_session</code>
                   </p>
                 </div>
 

@@ -620,17 +620,16 @@ export default function Settings() {
           <TabsContent value="integrations">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {[
-                { name: 'Telegram', description: 'Receive notifications on Telegram', status: 'connected', icon: '📱' },
-                { name: 'Google Sheets', description: 'Export your data automatically', status: 'not-connected', icon: '📊' },
-                { name: 'Notion', description: 'Sync your drafts with Notion', status: 'not-connected', icon: '📝' },
-                { name: 'Zapier', description: 'Automate with 5000+ apps', status: 'not-connected', icon: '⚡' },
-                { name: 'Discord', description: 'Notifications in your Discord server', status: 'not-connected', icon: '🔔' },
-                { name: 'Webhooks', description: 'Custom webhooks integration', status: 'not-connected', icon: '🔗' },
+                { name: 'Telegram', description: 'Receive notifications on Telegram', status: 'connected' },
+                { name: 'Google Sheets', description: 'Export your data automatically', status: 'not-connected' },
+                { name: 'Notion', description: 'Sync your drafts with Notion', status: 'not-connected' },
+                { name: 'Zapier', description: 'Automate with 5000+ apps', status: 'not-connected' },
+                { name: 'Discord', description: 'Notifications in your Discord server', status: 'not-connected' },
+                { name: 'Webhooks', description: 'Custom webhooks integration', status: 'not-connected' },
               ].map((integration) => (
                 <div key={integration.name} className="card p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
-                      <div className="text-3xl">{integration.icon}</div>
                       <div>
                         <h3 className="font-semibold text-gray-900 dark:text-white">
                           {integration.name}

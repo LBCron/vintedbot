@@ -54,7 +54,7 @@ export default function Register() {
 
     try {
       await register({ email, password, name });
-      toast.success('Compte créé avec succès ! 🎉');
+      toast.success('Compte créé avec succès !');
       navigate('/dashboard');
     } catch (err: any) {
       const errorMessage = err.response?.data?.detail;

@@ -69,7 +69,7 @@ export default function Templates() {
       >
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            📝 Description Templates
+            Description Templates
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-2">
             Create and manage reusable templates for your listings

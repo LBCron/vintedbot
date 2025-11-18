@@ -41,7 +41,7 @@ export default function Login() {
         localStorage.setItem('remember_me', 'true');
       }
 
-      toast.success('Connexion réussie ! 🎉');
+      toast.success('Connexion réussie !');
       navigate('/dashboard');
     } catch (err: any) {
       const errorMessage = err.response?.data?.detail;

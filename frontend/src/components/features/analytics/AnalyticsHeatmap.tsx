@@ -83,13 +83,8 @@ const getMetricLabel = (metric: string): string => {
 };
 
 const getMetricIcon = (metric: string): string => {
-  const icons: Record<string, string> = {
-    views: '👁️',
-    likes: '❤️',
-    messages: '💬',
-    sales: '💰',
-  };
-  return icons[metric] || '📊';
+  // Icons are now handled by Lucide icons in the UI
+  return '';
 };
 
 export default function AnalyticsHeatmap({
@@ -142,7 +137,6 @@ export default function AnalyticsHeatmap({
           className="mb-6 p-4 bg-gradient-to-r from-primary-50 to-purple-50 dark:from-primary-900/20 dark:to-purple-900/20 border border-primary-200 dark:border-primary-800 rounded-lg"
         >
           <div className="flex items-center gap-2">
-            <span className="text-2xl">{getMetricIcon(metric)}</span>
             <div>
               <p className="text-sm font-semibold text-gray-900 dark:text-white">
                 Peak Time: {peakData.day} at {peakData.hour}:00
@@ -248,7 +242,7 @@ export default function AnalyticsHeatmap({
           {/* Best Times Suggestion */}
           <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
             <p className="text-sm font-medium text-gray-900 dark:text-white mb-2">
-              💡 Publishing Tips
+              Publishing Tips
             </p>
             <ul className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
               <li>• Weekdays: Best during lunch (12-2pm) and evening (6-10pm)</li>
