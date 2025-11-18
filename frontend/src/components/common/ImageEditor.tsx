@@ -82,7 +82,9 @@ export default function ImageEditor({ image, onSave, onClose }: ImageEditorProps
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const imageRef = useRef<HTMLImageElement>(null);
+  // HIGH BUG FIX #6: Use separate ref for Image object (not DOM element)
+  // Prevents memory leaks from direct assignment to ref.current
+  const loadedImageRef = useRef<HTMLImageElement | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [history, setHistory] = useState<string[]>([image]);
@@ -97,16 +99,15 @@ export default function ImageEditor({ image, onSave, onClose }: ImageEditorProps
     img.crossOrigin = 'anonymous';
     img.src = image;
     img.onload = () => {
-      if (imageRef.current) {
-        imageRef.current = img;
-        applyTransformations();
-      }
+      // Store loaded image in ref (not direct assignment to prevent memory leaks)
+      loadedImageRef.current = img;
+      applyTransformations();
     };
   };
 
   const applyTransformations = () => {
     const canvas = canvasRef.current;
-    const img = imageRef.current;
+    const img = loadedImageRef.current;
     if (!canvas || !img) return;
 
     const ctx = canvas.getContext('2d');
@@ -255,7 +256,7 @@ export default function ImageEditor({ image, onSave, onClose }: ImageEditorProps
       const img = new Image();
       img.src = history[historyIndex - 1];
       img.onload = () => {
-        imageRef.current = img;
+        loadedImageRef.current = img;
         applyTransformations();
       };
     }
@@ -267,7 +268,7 @@ export default function ImageEditor({ image, onSave, onClose }: ImageEditorProps
       const img = new Image();
       img.src = history[historyIndex + 1];
       img.onload = () => {
-        imageRef.current = img;
+        loadedImageRef.current = img;
         applyTransformations();
       };
     }

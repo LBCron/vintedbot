@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../../contexts/AuthContext';
 import {
   LayoutDashboard,
   Upload,
@@ -60,6 +61,8 @@ const secondaryNavItems: NavItem[] = [
 
 export default function Sidebar({ collapsed = false, onToggleCollapse }: SidebarProps) {
   const location = useLocation();
+  // HIGH BUG FIX #8: Use AuthContext for user data instead of hardcoded values
+  const { user } = useAuth();
 
   const isActive = (path: string) => {
     if (path === '/') {
@@ -223,7 +226,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }: Sidebar
           className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group relative"
         >
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-purple-500 flex items-center justify-center flex-shrink-0 text-white font-semibold">
-            A
+            {user?.name?.[0]?.toUpperCase() || 'U'}
           </div>
 
           <AnimatePresence>
@@ -236,10 +239,10 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }: Sidebar
                 className="flex-1 min-w-0 overflow-hidden"
               >
                 <p className="font-medium text-gray-900 dark:text-white text-sm truncate">
-                  Admin User
+                  {user?.name || 'User'}
                 </p>
                 <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
-                  admin@vintedbot.com
+                  {user?.email || 'user@vintedbot.com'}
                 </p>
               </motion.div>
             )}
@@ -247,8 +250,8 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }: Sidebar
 
           {collapsed && (
             <div className="absolute left-full ml-2 px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
-              <p className="font-medium">Admin User</p>
-              <p className="text-xs opacity-75">admin@vintedbot.com</p>
+              <p className="font-medium">{user?.name || 'User'}</p>
+              <p className="text-xs opacity-75">{user?.email || 'user@vintedbot.com'}</p>
             </div>
           )}
         </Link>
