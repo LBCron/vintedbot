@@ -53,7 +53,8 @@ async def lifespan(app: FastAPI):
 
     # Initialize databases
     create_tables()  # Legacy JSON database
-    init_db()  # PostgreSQL database
+    # init_db()  # PostgreSQL database - DISABLED: causes MissingGreenlet error in async context
+    # Tables should be created via migrations or manually
 
     # Start scheduler
     start_scheduler()
