@@ -19,7 +19,7 @@ router = APIRouter(prefix="/storage", tags=["storage"])
 # Initialize storage manager
 storage_manager = StorageManager()
 storage_metrics = StorageMetrics()
-lifecycle_manager = StorageLifecycleManager()
+lifecycle_manager = StorageLifecycleManager(storage_manager)
 
 
 # Pydantic models
