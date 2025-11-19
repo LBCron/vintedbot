@@ -3,6 +3,10 @@ Admin API Router
 Platform administration and statistics (admin-only)
 
 SECURITY: SQL injection protected + DB-based roles
+
+NOTE: This module is currently disabled due to migration from asyncpg to SQLAlchemy.
+The get_db_pool() function no longer exists. This needs to be refactored to use
+get_db() and SQLAlchemy ORM instead of raw SQL queries.
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -11,11 +15,27 @@ from loguru import logger
 from datetime import datetime, timedelta
 
 from backend.core.auth import get_current_user
-from backend.core.database import get_db_pool
-from backend.models.user import User
+# from backend.core.database import get_db_pool  # DISABLED: Function no longer exists
+from backend.models import User
 
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+# TODO: Refactor all endpoints below to use SQLAlchemy instead of asyncpg
+# All get_db_pool() calls need to be replaced with get_db() from database.py
+
+# Temporary stub to prevent crashes during migration
+def get_db_pool():
+    """
+    DEPRECATED: This function is no longer available.
+    The application has migrated from asyncpg to SQLAlchemy.
+    Admin endpoints need to be refactored.
+    """
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail="Admin endpoints are temporarily disabled during database migration. Please use the main API."
+    )
 
 
 # Response Models
