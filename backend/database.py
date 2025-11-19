@@ -22,6 +22,11 @@ DATABASE_URL = os.environ.get("DATABASE_URL")
 if not DATABASE_URL:
     raise RuntimeError("DATABASE_URL environment variable not set")
 
+# Convert asyncpg URL to psycopg2 for synchronous operations
+# asyncpg is for async operations, but init_db() is synchronous
+if "postgresql+asyncpg://" in DATABASE_URL:
+    DATABASE_URL = DATABASE_URL.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
+
 # Create engine
 engine = create_engine(
     DATABASE_URL,
