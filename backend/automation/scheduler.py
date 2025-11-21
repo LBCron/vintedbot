@@ -329,7 +329,7 @@ class PublicationScheduler:
             self.schedules[schedule_id] = schedule
             scheduled.append(schedule.to_dict())
 
-            logger.info(f"✅ Scheduled {draft_id} for {times[i]}")
+            logger.info(f"[OK] Scheduled {draft_id} for {times[i]}")
 
         return {
             'success': True,
@@ -427,7 +427,7 @@ class PublicationScheduler:
                     self.daily_publication_count += 1
                     self.last_publication_time = datetime.now()
 
-                    logger.info(f"✅ Published {schedule.draft_id} successfully!")
+                    logger.info(f"[OK] Published {schedule.draft_id} successfully!")
                     return (True, None)
 
                 else:
@@ -447,7 +447,7 @@ class PublicationScheduler:
                         schedule.status = PublicationStatus.SCHEDULED
                         logger.warning(f"Publication failed, retrying in 30min (attempt {schedule.retry_count}/{schedule.max_retries})")
 
-                    logger.error(f"❌ Publication failed: {error}")
+                    logger.error(f"[ERROR] Publication failed: {error}")
                     return (False, error)
 
         except Exception as e:
@@ -463,7 +463,7 @@ class PublicationScheduler:
         Usage:
             asyncio.create_task(scheduler.run_scheduler())
         """
-        logger.info(f"🚀 Publication scheduler started for user {self.user_id}")
+        logger.info(f"[START] Publication scheduler started for user {self.user_id}")
         self.running = True
 
         while self.running:

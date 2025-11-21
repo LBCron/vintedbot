@@ -74,7 +74,7 @@ async def configure_auto_bump(
     current_user: User = Depends(get_current_user)
 ):
     """
-    🔄 AUTO-BUMP: Automatically repost listings to top
+    [PROCESS] AUTO-BUMP: Automatically repost listings to top
     
     Feature from Dotb, VatBot - saves money vs Vinted's paid bumps!
     - Rotates listings intelligently
@@ -234,7 +234,7 @@ async def execute_bump_now(
     current_user: User = Depends(get_current_user)
 ):
     """
-    🚀 INSTANT BUMP: Manually trigger REAL bump for specific listings
+    [START] INSTANT BUMP: Manually trigger REAL bump for specific listings
     Uses HTTP API (10x faster than Playwright!)
     """
     store = get_store()
@@ -264,7 +264,7 @@ async def execute_bump_now(
 
             try:
                 # Execute REAL bump via HTTP API
-                print(f"🔄 Executing REAL bump for listing {listing_id} via HTTP API...")
+                print(f"[PROCESS] Executing REAL bump for listing {listing_id} via HTTP API...")
                 success, error_msg = await client.bump_item(listing_id)
 
                 # Anti-detection delay (shorter because HTTP is faster)
@@ -287,7 +287,7 @@ async def execute_bump_now(
                     )
                     
                     bumped_listings.append(listing_id)
-                    print(f"✅ Successfully bumped listing {listing_id}")
+                    print(f"[OK] Successfully bumped listing {listing_id}")
                 else:
                     # Update job as failed
                     store.update_automation_job(
@@ -296,10 +296,10 @@ async def execute_bump_now(
                         error=error_msg or "Unknown error"
                     )
                     failed_listings.append(listing_id)
-                    print(f"❌ Failed to bump listing {listing_id}: {error_msg}")
+                    print(f"[ERROR] Failed to bump listing {listing_id}: {error_msg}")
                     
             except Exception as e:
-                print(f"❌ Exception bumping listing {listing_id}: {e}")
+                print(f"[ERROR] Exception bumping listing {listing_id}: {e}")
                 store.update_automation_job(
                     job_id=job_id,
                     status="failed",
@@ -379,7 +379,7 @@ async def execute_follow_now(
                     )
 
                     followed_users.append(vinted_user_id)
-                    print(f"✅ Successfully followed user {vinted_user_id}")
+                    print(f"[OK] Successfully followed user {vinted_user_id}")
                 else:
                     # Update job as failed
                     store.update_automation_job(
@@ -388,10 +388,10 @@ async def execute_follow_now(
                         error=error_msg or "Unknown error"
                     )
                     failed_users.append(vinted_user_id)
-                    print(f"❌ Failed to follow user {vinted_user_id}: {error_msg}")
+                    print(f"[ERROR] Failed to follow user {vinted_user_id}: {error_msg}")
 
             except Exception as e:
-                print(f"❌ Exception following user {vinted_user_id}: {e}")
+                print(f"[ERROR] Exception following user {vinted_user_id}: {e}")
                 store.update_automation_job(
                     job_id=job_id,
                     status="failed",
@@ -465,7 +465,7 @@ async def execute_unfollow_now(
                     )
 
                     unfollowed_users.append(vinted_user_id)
-                    print(f"✅ Successfully unfollowed user {vinted_user_id}")
+                    print(f"[OK] Successfully unfollowed user {vinted_user_id}")
                 else:
                     # Update job as failed
                     store.update_automation_job(
@@ -474,10 +474,10 @@ async def execute_unfollow_now(
                         error=error_msg or "Unknown error"
                     )
                     failed_users.append(vinted_user_id)
-                    print(f"❌ Failed to unfollow user {vinted_user_id}: {error_msg}")
+                    print(f"[ERROR] Failed to unfollow user {vinted_user_id}: {error_msg}")
 
             except Exception as e:
-                print(f"❌ Exception unfollowing user {vinted_user_id}: {e}")
+                print(f"[ERROR] Exception unfollowing user {vinted_user_id}: {e}")
                 store.update_automation_job(
                     job_id=job_id,
                     status="failed",
@@ -585,7 +585,7 @@ async def send_message(
                     }
                 )
 
-                print(f"✅ Successfully sent message to conversation {request.conversation_id}")
+                print(f"[OK] Successfully sent message to conversation {request.conversation_id}")
 
                 return {
                     "ok": True,
@@ -601,7 +601,7 @@ async def send_message(
                     error=error_msg or "Unknown error"
                 )
 
-                print(f"❌ Failed to send message: {error_msg}")
+                print(f"[ERROR] Failed to send message: {error_msg}")
 
                 return {
                     "ok": False,
@@ -610,7 +610,7 @@ async def send_message(
                 }
     
     except Exception as e:
-        print(f"❌ Exception sending message: {e}")
+        print(f"[ERROR] Exception sending message: {e}")
         store.update_automation_job(
             job_id=job_id,
             status="failed",
@@ -800,7 +800,7 @@ async def get_upsell_templates(current_user: User = Depends(get_current_user)):
         {
             "id": "enthusiastic",
             "name": "Enthousiaste",
-            "template": "Salut ! Yes il est encore là ! Tu veux d'autres photos ou des infos ? Je suis dispo ✨",
+            "template": "Salut ! Yes il est encore là ! Tu veux d'autres photos ou des infos ? Je suis dispo [QUALITY]",
             "delay_days": 0,
             "is_default": False
         },
@@ -863,7 +863,7 @@ async def suggest_reply(
         suggestions = [
             f"Salut ! Il est nickel, porté 2-3 fois max 😊 Aucun défaut visible",
             f"Hello ! Il est en super état, vraiment comme neuf 👌",
-            f"Hey ! Il est impeccable, aucun soucis niveau état ✨"
+            f"Hey ! Il est impeccable, aucun soucis niveau état [QUALITY]"
         ]
 
     elif any(word in incoming_message for word in ["prix", "prix", "combien", "réduction", "reduction", "offre"]):
@@ -877,12 +877,12 @@ async def suggest_reply(
         suggestions = [
             f"Salut ! Oui il est toujours dispo 😊",
             f"Hey ! Yes il est encore là, tu le veux ? 👍",
-            f"Hello ! Il est bien disponible, je peux te l'envoyer rapidement ✨"
+            f"Hello ! Il est bien disponible, je peux te l'envoyer rapidement [QUALITY]"
         ]
 
     elif any(word in incoming_message for word in ["photo", "photos", "voir", "image"]):
         suggestions = [
-            f"Bien sûr ! Je t'envoie d'autres photos tout de suite 📸",
+            f"Bien sûr ! Je t'envoie d'autres photos tout de suite [PHOTO]",
             f"Pas de souci ! Tu veux des photos de quel côté ? 😊",
             f"Oui carrément ! Je te fais ça dans 5 min 👍"
         ]
@@ -897,8 +897,8 @@ async def suggest_reply(
     elif any(word in incoming_message for word in ["merci", "intéressé", "interesse", "prends", "achète"]):
         suggestions = [
             f"Super ! Je te fais un colis nickel 😊",
-            f"Cool ! Je t'envoie ça rapidement 📦",
-            f"Top ! Merci à toi, je prépare ton colis ✨"
+            f"Cool ! Je t'envoie ça rapidement [PACKAGE]",
+            f"Top ! Merci à toi, je prépare ton colis [QUALITY]"
         ]
 
     else:
@@ -906,7 +906,7 @@ async def suggest_reply(
         suggestions = [
             f"Salut ! Merci pour ton message 😊 {item_title} est encore dispo !",
             f"Hello ! N'hésite pas si tu as des questions sur {item_title} 👍",
-            f"Hey ! Je suis là si tu veux plus d'infos ✨"
+            f"Hey ! Je suis là si tu veux plus d'infos [QUALITY]"
         ]
 
     # Shuffle and return 3 suggestions

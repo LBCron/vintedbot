@@ -19,7 +19,7 @@ def send_discord_webhook(feedback_text: str):
         payload = {
             "embeds": [
                 {
-                    "title": "New Bot Feedback Received! 🚀",
+                    "title": "New Bot Feedback Received! [START]",
                     "description": feedback_text,
                     "color": 5814783, # Hex color #58b9ff
                     "footer": {

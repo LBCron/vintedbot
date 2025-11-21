@@ -86,7 +86,7 @@ class TestImageCompressor:
 
     @pytest.mark.asyncio
     async def test_compress_rgba_to_rgb(self):
-        """Test conversion RGBA → RGB pour JPEG"""
+        """Test conversion RGBA -> RGB pour JPEG"""
         compressor = ImageCompressor()
 
         from PIL import Image
@@ -299,5 +299,5 @@ class TestCostCalculations:
 
 # Script pour exécuter tous les tests
 if __name__ == "__main__":
-    print("🧪 Running storage system tests...\n")
+    print("[TEST] Running storage system tests...\n")
     pytest.main([__file__, "-v", "--tb=short"])

@@ -1,7 +1,7 @@
 """
 Redis caching layer for AI analysis results
 Reduces OpenAI API costs by caching photo analysis results
-Cache key strategy: hash(photo_content) → analysis_result
+Cache key strategy: hash(photo_content) -> analysis_result
 """
 import os
 import json
@@ -34,11 +34,11 @@ try:
     # Test connection
     redis_client.ping()
     REDIS_AVAILABLE = True
-    print(f"✅ Redis cache connected: {REDIS_HOST}:{REDIS_PORT}")
+    print(f"[OK] Redis cache connected: {REDIS_HOST}:{REDIS_PORT}")
 except Exception as e:
     redis_client = None
     REDIS_AVAILABLE = False
-    print(f"⚠️  Redis cache unavailable (running without cache): {e}")
+    print(f"[WARN] Redis cache unavailable (running without cache): {e}")
 
 
 def _compute_photo_hash(photo_paths: List[str]) -> str:
@@ -108,7 +108,7 @@ def get_cached_analysis(photo_paths: List[str]) -> Optional[Dict[str, Any]]:
             return None
 
     except Exception as e:
-        print(f"⚠️  Cache read error: {e}")
+        print(f"[WARN]  Cache read error: {e}")
         return None
 
 
@@ -145,7 +145,7 @@ def cache_analysis_result(photo_paths: List[str], result: Dict[str, Any]) -> boo
         return True
 
     except Exception as e:
-        print(f"⚠️  Cache write error: {e}")
+        print(f"[WARN]  Cache write error: {e}")
         return False
 
 
@@ -177,7 +177,7 @@ def get_cache_stats() -> Dict[str, int]:
         }
 
     except Exception as e:
-        print(f"⚠️  Cache stats error: {e}")
+        print(f"[WARN]  Cache stats error: {e}")
         return {"hits": 0, "misses": 0, "saves": 0, "hit_rate": 0.0}
 
 
@@ -203,7 +203,7 @@ def clear_cache(pattern: str = "ai_analysis:*") -> int:
         return 0
 
     except Exception as e:
-        print(f"⚠️  Cache clear error: {e}")
+        print(f"[WARN]  Cache clear error: {e}")
         return 0
 
 
@@ -241,7 +241,7 @@ def track_ai_quality_metrics(result: Dict[str, Any], validation_passed: bool):
             redis_client.hincrby("ai_metrics:quality", "fallback_used", 1)
 
     except Exception as e:
-        print(f"⚠️  Metrics tracking error: {e}")
+        print(f"[WARN]  Metrics tracking error: {e}")
 
 
 def get_quality_metrics() -> Dict[str, Any]:
@@ -288,7 +288,7 @@ def get_quality_metrics() -> Dict[str, Any]:
         }
 
     except Exception as e:
-        print(f"⚠️  Quality metrics error: {e}")
+        print(f"[WARN]  Quality metrics error: {e}")
         return {
             "total": 0,
             "passed": 0,

@@ -30,7 +30,7 @@ def init_sentry():
     - Custom tags
     """
     if not SENTRY_DSN:
-        logger.info("⚠️ Sentry DSN not configured - error tracking disabled")
+        logger.info("[WARN] Sentry DSN not configured - error tracking disabled")
         return
 
     try:
@@ -66,10 +66,10 @@ def init_sentry():
             before_send_transaction=before_send_transaction_filter,
         )
 
-        logger.info(f"✅ Sentry initialized: env={SENTRY_ENVIRONMENT}, sample_rate={SENTRY_TRACES_SAMPLE_RATE}")
+        logger.info(f"[OK] Sentry initialized: env={SENTRY_ENVIRONMENT}, sample_rate={SENTRY_TRACES_SAMPLE_RATE}")
 
     except Exception as e:
-        logger.error(f"❌ Sentry initialization failed: {e}")
+        logger.error(f"[ERROR] Sentry initialization failed: {e}")
 
 
 def before_send_filter(event, hint):

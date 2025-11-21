@@ -41,7 +41,7 @@ class MonitoringOrchestrator:
         Returns:
             Exit code (0 = success, 1 = failure)
         """
-        logger.info("🚀 Starting Vinted Monitoring Orchestrator...")
+        logger.info("[START] Starting Vinted Monitoring Orchestrator...")
 
         try:
             # Step 1: Run monitoring tests
@@ -69,7 +69,7 @@ class MonitoringOrchestrator:
                     analysis = self.auto_fix.analyze_monitoring_results(results)
 
                     if analysis:
-                        logger.info("✅ Claude analysis complete")
+                        logger.info("[OK] Claude analysis complete")
 
                         # Send analysis via Telegram
                         if self.notifier:
@@ -80,7 +80,7 @@ class MonitoringOrchestrator:
                         logger.info("💡 Review Claude's suggestions in: backend/monitoring/analyses/")
 
                 except Exception as e:
-                    logger.error(f"❌ Claude analysis failed: {e}")
+                    logger.error(f"[ERROR] Claude analysis failed: {e}")
                     if self.notifier:
                         self.notifier.send_custom_alert(
                             "Claude Analysis Error",
@@ -90,20 +90,20 @@ class MonitoringOrchestrator:
 
             # Step 4: Determine exit code
             if status == "healthy":
-                logger.info("✅ All systems operational")
+                logger.info("[OK] All systems operational")
                 return 0
             elif status == "warning":
-                logger.warning("⚠️ Minor issues detected - review recommended")
+                logger.warning("[WARN] Minor issues detected - review recommended")
                 return 0  # Don't fail CI for warnings
             elif status == "critical":
                 logger.error("🚨 Critical issues detected - immediate action required")
                 return 1  # Fail CI for critical issues
             else:
-                logger.error("❌ Monitoring failed")
+                logger.error("[ERROR] Monitoring failed")
                 return 1
 
         except Exception as e:
-            logger.error(f"❌ Orchestrator exception: {e}")
+            logger.error(f"[ERROR] Orchestrator exception: {e}")
 
             if self.notifier:
                 self.notifier.send_custom_alert(
@@ -152,7 +152,7 @@ async def main():
     enable_telegram = os.getenv("ENABLE_TELEGRAM", "true").lower() == "true"
 
     if not cookie:
-        logger.error("❌ VINTED_COOKIE environment variable required")
+        logger.error("[ERROR] VINTED_COOKIE environment variable required")
         sys.exit(1)
 
     # Run orchestrator

@@ -60,8 +60,8 @@ def optimize_image_for_ai(image_path: str, output_path: Optional[str] = None) ->
         Path to optimized image
 
     Cost savings example:
-        Original: 4032x3024 (12MP) → ~25 tiles → $0.32 per image
-        Optimized: 1536x1152 (1.7MP) → ~6 tiles → $0.08 per image
+        Original: 4032x3024 (12MP) -> ~25 tiles -> $0.32 per image
+        Optimized: 1536x1152 (1.7MP) -> ~6 tiles -> $0.08 per image
         **Savings: 75% cost reduction**
     """
     try:
@@ -81,7 +81,7 @@ def optimize_image_for_ai(image_path: str, output_path: Optional[str] = None) ->
         # Resize if needed
         if (new_width, new_height) != (width, height):
             img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
-            print(f"[OPTIMIZE] Resized: {width}x{height} → {new_width}x{new_height}")
+            print(f"[OPTIMIZE] Resized: {width}x{height} -> {new_width}x{new_height}")
         else:
             print(f"[OPTIMIZE] No resize needed: {width}x{height}")
 
@@ -104,12 +104,12 @@ def optimize_image_for_ai(image_path: str, output_path: Optional[str] = None) ->
         optimized_size = Path(output_path).stat().st_size / 1024 / 1024  # MB
         reduction = ((original_size - optimized_size) / original_size * 100) if original_size > 0 else 0
 
-        print(f"[OPTIMIZE] Size: {original_size:.2f}MB → {optimized_size:.2f}MB ({reduction:.1f}% reduction)")
+        print(f"[OPTIMIZE] Size: {original_size:.2f}MB -> {optimized_size:.2f}MB ({reduction:.1f}% reduction)")
 
         return output_path
 
     except Exception as e:
-        print(f"⚠️  Image optimization failed for {image_path}: {e}")
+        print(f"[WARN] Image optimization failed for {image_path}: {e}")
         # Return original path as fallback
         return image_path
 
@@ -134,7 +134,7 @@ def batch_optimize_images(image_paths: list[str]) -> list[str]:
     total_optimized = sum(Path(p).stat().st_size for p in optimized_paths) / 1024 / 1024
     reduction = ((total_original - total_optimized) / total_original * 100) if total_original > 0 else 0
 
-    print(f"\n[BATCH OPTIMIZE] Total: {total_original:.2f}MB → {total_optimized:.2f}MB ({reduction:.1f}% reduction)")
+    print(f"\n[BATCH OPTIMIZE] Total: {total_original:.2f}MB -> {total_optimized:.2f}MB ({reduction:.1f}% reduction)")
     print(f"[COST SAVINGS] Estimated API cost reduction: ~{reduction * 0.75:.1f}%")
 
     return optimized_paths
@@ -179,7 +179,7 @@ def estimate_api_cost(image_paths: list[str]) -> dict:
             total_cost_after += cost_after
 
         except Exception as e:
-            print(f"⚠️  Cost estimation failed for {path}: {e}")
+            print(f"[WARN]  Cost estimation failed for {path}: {e}")
 
     savings = total_cost_before - total_cost_after
     savings_percent = (savings / total_cost_before * 100) if total_cost_before > 0 else 0

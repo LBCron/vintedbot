@@ -84,7 +84,7 @@ async def chat_with_assistant(request: ChatRequest):
         assistant_message = response.choices[0].message.content or ""
         tokens_used = response.usage.total_tokens if response.usage else 0
         
-        print(f"✅ AI Response generated ({tokens_used} tokens)")
+        print(f"[OK] AI Response generated ({tokens_used} tokens)")
         
         return ChatResponse(
             response=assistant_message,
@@ -92,7 +92,7 @@ async def chat_with_assistant(request: ChatRequest):
         )
         
     except Exception as e:
-        print(f"❌ AI Chat error: {e}")
+        print(f"[ERROR] AI Chat error: {e}")
         raise HTTPException(
             status_code=500,
             detail=f"AI chat failed: {str(e)}"

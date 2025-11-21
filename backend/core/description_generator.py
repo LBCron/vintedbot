@@ -174,9 +174,9 @@ class DescriptionGenerator:
 
         # Condition
         if "neuf" in condition.lower():
-            parts.append(f"État : {condition} - jamais porté, encore avec l'étiquette ! 🏷️")
+            parts.append(f"État : {condition} - jamais porté, encore avec l'étiquette ! [TAG]")
         elif "comme neuf" in condition.lower():
-            parts.append(f"État : {condition} - quasi neuf, porté une ou deux fois max ! ✨")
+            parts.append(f"État : {condition} - quasi neuf, porté une ou deux fois max ! [QUALITY]")
         else:
             parts.append(f"État : {condition} - en super condition ! 👌")
 
@@ -195,7 +195,7 @@ class DescriptionGenerator:
         # Call to action
         parts.extend([
             "N'hésite pas si tu as des questions ! 💬",
-            "Envoi rapide et soigné 📦",
+            "Envoi rapide et soigné [PACKAGE]",
             "",
             "À bientôt ! 😊"
         ])
@@ -276,7 +276,7 @@ class DescriptionGenerator:
 
         parts.append(condition)
         parts.append("")
-        parts.append("Envoi rapide 📦")
+        parts.append("Envoi rapide [PACKAGE]")
 
         return "\n".join(parts)
 
@@ -298,7 +298,7 @@ class DescriptionGenerator:
             story = "Cet article unique a fait partie de ma garde-robe, mais je souhaite maintenant lui offrir une nouvelle vie. "
 
         parts = [
-            f"✨ {title} ✨",
+            f"[QUALITY] {title} [QUALITY]",
             "",
             story,
             "",
@@ -318,7 +318,7 @@ class DescriptionGenerator:
             "",
             "Donnez-lui une seconde chance d'être aimé ! 💚",
             "",
-            "Envoi avec soin et rapidité. 📦"
+            "Envoi avec soin et rapidité. [PACKAGE]"
         ])
 
         return "\n".join(parts)
@@ -354,12 +354,12 @@ class DescriptionGenerator:
 
         parts.extend([
             "Pourquoi craquer maintenant :",
-            "✓ Article très demandé",
-            "✓ Stock limité (dernier exemplaire)",
-            "✓ Prix imbattable",
-            "✓ Envoi immédiat dès réception du paiement",
+            "[OK] Article très demandé",
+            "[OK] Stock limité (dernier exemplaire)",
+            "[OK] Prix imbattable",
+            "[OK] Envoi immédiat dès réception du paiement",
             "",
-            "🚀 Premier arrivé, premier servi !",
+            "[START] Premier arrivé, premier servi !",
             "",
             "Les articles de cette qualité partent vite...",
             "Faites vite avant qu'il ne soit trop tard ! ⚡",

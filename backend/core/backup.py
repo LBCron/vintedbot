@@ -68,7 +68,7 @@ class BackupManager:
 
             backup_size_mb = backup_path.stat().st_size / (1024 * 1024)
 
-            logger.info(f"✅ Database backup created: {backup_size_mb:.2f} MB")
+            logger.info(f"[OK] Database backup created: {backup_size_mb:.2f} MB")
 
             # Cleanup old backups
             self._cleanup_old_backups()
@@ -143,7 +143,7 @@ class BackupManager:
                     'error': f'Restored database is corrupted. Rolled back. Error: {e}'
                 }
 
-            logger.info("✅ Database restored successfully")
+            logger.info("[OK] Database restored successfully")
 
             return {
                 'success': True,
@@ -285,7 +285,7 @@ class DataExporter:
 
             size_mb = output_file.stat().st_size / (1024 * 1024)
 
-            logger.info(f"✅ Export completed: {size_mb:.2f} MB")
+            logger.info(f"[OK] Export completed: {size_mb:.2f} MB")
 
             return {
                 'success': True,
@@ -333,7 +333,7 @@ class DataExporter:
 
             size_mb = output_file.stat().st_size / (1024 * 1024)
 
-            logger.info(f"✅ SQL export completed: {size_mb:.2f} MB")
+            logger.info(f"[OK] SQL export completed: {size_mb:.2f} MB")
 
             return {
                 'success': True,

@@ -73,7 +73,7 @@ async def create_session(data: SessionCreate):
         db.commit()
         db.refresh(session)
         
-        logger.info(f"✅ Session {session.id} created and validated")
+        logger.info(f"[OK] Session {session.id} created and validated")
         
         return SessionResponse(
             session_id=session.id,

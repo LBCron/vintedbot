@@ -13,7 +13,7 @@ init(autoreset=True)
 def print_status(check_name: str, passed: bool, message: str = ""):
     """Print colored status"""
     if passed:
-        print(f"{Fore.GREEN}✓{Style.RESET_ALL} {check_name}")
+        print(f"{Fore.GREEN}[OK]{Style.RESET_ALL} {check_name}")
         if message:
             print(f"  {Fore.CYAN}{message}{Style.RESET_ALL}")
     else:
@@ -24,7 +24,7 @@ def print_status(check_name: str, passed: bool, message: str = ""):
 def main():
     """Run setup validation"""
     print(f"\n{Fore.CYAN}{'='*60}{Style.RESET_ALL}")
-    print(f"{Fore.CYAN}🔍 Vinted Monitoring - Setup Validation{Style.RESET_ALL}")
+    print(f"{Fore.CYAN}[SEARCH] Vinted Monitoring - Setup Validation{Style.RESET_ALL}")
     print(f"{Fore.CYAN}{'='*60}{Style.RESET_ALL}\n")
 
     all_passed = True
@@ -155,7 +155,7 @@ def main():
     # Summary
     print(f"\n{Fore.CYAN}{'='*60}{Style.RESET_ALL}")
     if all_passed:
-        print(f"{Fore.GREEN}✓ All checks passed!{Style.RESET_ALL}")
+        print(f"{Fore.GREEN}[OK] All checks passed!{Style.RESET_ALL}")
         print(f"\n{Fore.CYAN}Next steps:{Style.RESET_ALL}")
         print(f"  1. Test monitoring: {Fore.WHITE}python backend/monitoring/run_monitor.py{Style.RESET_ALL}")
         print(f"  2. Test Telegram: {Fore.WHITE}python backend/monitoring/telegram_notifier.py{Style.RESET_ALL}")

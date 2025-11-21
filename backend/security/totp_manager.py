@@ -263,7 +263,7 @@ class TOTPStorage:
     """In-memory storage for 2FA data (use database in production)"""
 
     def __init__(self):
-        # user_id → {secret, backup_codes, enabled}
+        # user_id -> {secret, backup_codes, enabled}
         self.user_2fa: Dict[int, Dict[str, Any]] = {}
 
     def enable_2fa(
@@ -414,4 +414,4 @@ if __name__ == "__main__":
     backup_valid, used = manager.verify_backup_code(setup.backup_codes[0], setup.backup_codes)
     print(f"Backup Code Valid: {backup_valid}, Used: {used}")
 
-    print("\n✅ TOTP manager test passed!")
+    print("\n[OK] TOTP manager test passed!")

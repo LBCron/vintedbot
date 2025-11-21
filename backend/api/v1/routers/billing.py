@@ -165,7 +165,7 @@ async def stripe_webhook(
             quotas = get_plan_quotas(plan)
             storage.update_user_quotas(user_id, quotas)
             
-            logger.info(f"✅ Subscription created: user={user_id}, plan={plan}")
+            logger.info(f"[OK] Subscription created: user={user_id}, plan={plan}")
         
         elif event_type == "customer.subscription.updated":
             # Plan changed or subscription updated
@@ -193,7 +193,7 @@ async def stripe_webhook(
                     quotas = get_plan_quotas(new_plan)
                     storage.update_user_quotas(user["id"], quotas)
                     
-                    logger.info(f"✅ Subscription updated: user={user['id']}, plan={new_plan}")
+                    logger.info(f"[OK] Subscription updated: user={user['id']}, plan={new_plan}")
         
         elif event_type == "customer.subscription.deleted":
             # Subscription cancelled
@@ -212,7 +212,7 @@ async def stripe_webhook(
                 quotas = get_plan_quotas("free")
                 storage.update_user_quotas(user["id"], quotas)
                 
-                logger.info(f"✅ Subscription cancelled: user={user['id']} → free plan")
+                logger.info(f"[OK] Subscription cancelled: user={user['id']} -> free plan")
         
         return JSONResponse({"status": "success"})
     

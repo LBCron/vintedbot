@@ -492,7 +492,7 @@ class SQLiteStore:
             try:
                 # Skip if photo doesn't exist
                 if not Path(photo_path).exists():
-                    print(f"⚠️ Photo not found: {photo_path}")
+                    print(f"[WARN] Photo not found: {photo_path}")
                     continue
                 
                 # Compute perceptual hash
@@ -507,13 +507,13 @@ class SQLiteStore:
                     print(f"🗑️ Duplicate photo detected: {Path(photo_path).name}")
             
             except Exception as e:
-                print(f"⚠️ Error processing photo {photo_path}: {e}")
+                print(f"[WARN] Error processing photo {photo_path}: {e}")
                 # Keep photo anyway (conservative approach)
                 unique_photos.append(photo_path)
         
         removed_count = len(photos) - len(unique_photos)
         if removed_count > 0:
-            print(f"✅ Removed {removed_count} duplicate photo(s)")
+            print(f"[OK] Removed {removed_count} duplicate photo(s)")
         
         return unique_photos
     
@@ -560,7 +560,7 @@ class SQLiteStore:
                 
                 # If titles are >85% similar, consider it a duplicate
                 if similarity >= 85:
-                    print(f"🔍 Duplicate found via similarity: {similarity}% match")
+                    print(f"[SEARCH] Duplicate found via similarity: {similarity}% match")
                     print(f"   New: '{title}'")
                     print(f"   Existing: '{existing_title}'")
                     return self._row_to_draft(row)
@@ -590,7 +590,7 @@ class SQLiteStore:
         """
         Save a new draft after quality gate validation
         
-        If duplicate detected → MERGE photos (deduplicated) instead of rejecting
+        If duplicate detected -> MERGE photos (deduplicated) instead of rejecting
         
         Args:
             skip_duplicate_check: If True, skip duplicate detection (default: False)
@@ -602,7 +602,7 @@ class SQLiteStore:
         if not skip_duplicate_check:
             existing = self.find_duplicate_draft(title, brand, size, category, user_id)
             if existing:
-                print(f"🔄 Duplicate draft detected: {title}")
+                print(f"[PROCESS] Duplicate draft detected: {title}")
                 print(f"   Existing ID: {existing['id'][:8]}...")
                 
                 # Extract existing JSON data (fallback to empty dicts) - CORRECT KEYS!
@@ -640,10 +640,10 @@ class SQLiteStore:
                     ))
                     conn.commit()
                 
-                print(f"✅ Draft merged successfully (item_json + listing_json synced)!")
+                print(f"[OK] Draft merged successfully (item_json + listing_json synced)!")
                 return self.get_draft(existing["id"]) or existing
         
-        # No duplicate → create new draft
+        # No duplicate -> create new draft
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
@@ -816,7 +816,7 @@ class SQLiteStore:
     
     def _row_to_draft(self, row: sqlite3.Row) -> Dict[str, Any]:
         """Convert SQLite row to draft dict"""
-        # ✅ FIXED: Convert sqlite3.Row to dict to use .get() for optional fields
+        # [OK] FIXED: Convert sqlite3.Row to dict to use .get() for optional fields
         row_dict = dict(row)
         return {
             "id": row_dict["id"],
@@ -999,7 +999,7 @@ class SQLiteStore:
             if not row:
                 return None
             
-            # ✅ FIXED: Convert sqlite3.Row to dict to use .get()
+            # [OK] FIXED: Convert sqlite3.Row to dict to use .get()
             row_dict = dict(row)
             
             return {

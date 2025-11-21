@@ -11,16 +11,17 @@ import tempfile
 from PIL import Image
 import pillow_heif
 
-# the newest OpenAI model is "gpt-4o" 
+# the newest OpenAI model is "gpt-4o"
 from openai import OpenAI
+from backend.settings import settings
 
-# Use user's personal OpenAI API key (from Replit Secrets)
+# Use user's personal OpenAI API key from settings
 openai_client = OpenAI(
-    api_key=os.getenv("OPENAI_API_KEY"),
+    api_key=settings.OPENAI_API_KEY,
     timeout=60.0,  # 60 second timeout for API calls
     max_retries=2  # Retry failed requests twice
 )
-print("Using personal OpenAI API key with timeout=60s, retries=2")
+print(f"[OK] OpenAI client initialized (timeout=60s, retries=2, key={'configured' if settings.OPENAI_API_KEY else 'MISSING'})")
 
 # Register HEIF opener with PIL
 pillow_heif.register_heif_opener()
@@ -51,11 +52,11 @@ def convert_heic_to_jpeg(heic_path: str) -> str:
         # Save as JPEG
         image.save(jpeg_path, 'JPEG', quality=90)
         
-        print(f"✅ Converted HEIC → JPEG: {Path(heic_path).name}")
+        print(f"[OK] Converted HEIC -> JPEG: {Path(heic_path).name}")
         return jpeg_path
         
     except Exception as e:
-        print(f"❌ HEIC conversion error for {heic_path}: {e}")
+        print(f"[ERROR] HEIC conversion error for {heic_path}: {e}")
         # Return original path as fallback
         return heic_path
 
@@ -96,7 +97,7 @@ def analyze_clothing_photos(photo_paths: List[str]) -> Dict[str, Any]:
         from backend.services.redis_cache import get_cached_analysis, cache_analysis_result
         from backend.services.image_optimizer import batch_optimize_images
     except ImportError as e:
-        print(f"⚠️  Service import failed: {e}, running without optimization")
+        print(f"[WARN]  Service import failed: {e}, running without optimization")
         get_cached_analysis = lambda x: None
         cache_analysis_result = lambda x, y: False
         batch_optimize_images = lambda x: x
@@ -105,7 +106,7 @@ def analyze_clothing_photos(photo_paths: List[str]) -> Dict[str, Any]:
         # STEP 1: Check Redis cache first (huge cost savings!)
         cached_result = get_cached_analysis(photo_paths[:6])
         if cached_result:
-            print(f"[CACHE HIT] Returning cached analysis ✅")
+            print(f"[CACHE HIT] Returning cached analysis [OK]")
             return cached_result
 
         # STEP 2: Optimize images before API call (75% cost reduction!)
@@ -116,7 +117,7 @@ def analyze_clothing_photos(photo_paths: List[str]) -> Dict[str, Any]:
         image_contents = []
         for path in optimized_paths:
             if not Path(path).exists():
-                print(f"⚠️ Photo not found: {path}")
+                print(f"[WARN] Photo not found: {path}")
                 continue
 
             # Encode image to base64
@@ -261,12 +262,12 @@ Analyse les photos et génère le JSON avec ce format EXACT :"""
             is_valid, errors = validate_ai_result(result)
             track_ai_quality_metrics(result, is_valid)
         except Exception as e:
-            print(f"⚠️  Metrics tracking failed: {e}")
+            print(f"[WARN]  Metrics tracking failed: {e}")
 
         return result
 
     except json.JSONDecodeError as e:
-        print(f"❌ JSON parse error: {e}")
+        print(f"[ERROR] JSON parse error: {e}")
         # Return fallback result
         fallback = generate_fallback_analysis(photo_paths)
 
@@ -280,7 +281,7 @@ Analyse les photos et génère le JSON avec ce format EXACT :"""
         return fallback
 
     except Exception as e:
-        print(f"❌ AI analysis error: {e}")
+        print(f"[ERROR] AI analysis error: {e}")
         # Return fallback result
         fallback = generate_fallback_analysis(photo_paths)
 
@@ -387,7 +388,7 @@ def batch_analyze_photos(photo_groups: List[List[str]]) -> List[Dict[str, Any]]:
             result['photos'] = group  # CRITICAL: Attach photos to result for draft creation
             results.append(result)
         except Exception as e:
-            print(f"❌ Group {i+1} failed: {e}")
+            print(f"[ERROR] Group {i+1} failed: {e}")
             fallback = generate_fallback_analysis(group)
             fallback['group_index'] = i
             fallback['photos'] = group  # CRITICAL: Attach photos to fallback result
@@ -427,7 +428,7 @@ def smart_group_photos(photo_paths: List[str], max_per_group: int = 7) -> List[L
                 'phash': phash
             })
         except Exception as e:
-            print(f"⚠️ Metadata extraction failed for {path}: {e}")
+            print(f"[WARN] Metadata extraction failed for {path}: {e}")
             # Fallback metadata
             photo_metadata.append({
                 'path': path,
@@ -508,7 +509,7 @@ def smart_analyze_and_group_photos(
         return _analyze_single_batch(photo_paths, style)
     
     # If >25 photos, split into batches and analyze each
-    print(f"[PACKAGE] Auto-batching: {total_photos} photos → splitting into batches of {BATCH_SIZE}")
+    print(f"[PACKAGE] Auto-batching: {total_photos} photos -> splitting into batches of {BATCH_SIZE}")
     
     all_items = []
     offset = 0
@@ -522,9 +523,9 @@ def smart_analyze_and_group_photos(
         try:
             batch_items = _analyze_single_batch(batch_photos, style, offset)
             all_items.extend(batch_items)
-            print(f"✅ Batch {batch_num} complete: {len(batch_items)} items detected")
+            print(f"[OK] Batch {batch_num} complete: {len(batch_items)} items detected")
         except Exception as e:
-            print(f"❌ Batch {batch_num} failed: {e}, using fallback")
+            print(f"[ERROR] Batch {batch_num} failed: {e}, using fallback")
             # Fallback: group batch photos by 7 photos per item
             fallback_groups = smart_group_photos(batch_photos, max_per_group=7)
             fallback_items = batch_analyze_photos(fallback_groups)
@@ -533,7 +534,7 @@ def smart_analyze_and_group_photos(
         offset += BATCH_SIZE
         batch_num += 1
     
-    print(f"\n✅ Auto-batching complete: {len(all_items)} total items from {total_photos} photos")
+    print(f"\n[OK] Auto-batching complete: {len(all_items)} total items from {total_photos} photos")
     return all_items
 
 
@@ -542,10 +543,10 @@ def _normalize_size_field(size: str) -> str:
     [FIX] NORMALISATION TAILLE - Extrait UNIQUEMENT la taille adulte finale
     
     Exemples:
-    - "16Y / 165 cm (≈ XS)" → "XS"
-    - "XS (≈ 16Y)" → "XS"  
-    - "12 ans (≈ S)" → "S"
-    - "M" → "M"
+    - "16Y / 165 cm (≈ XS)" -> "XS"
+    - "XS (≈ 16Y)" -> "XS"  
+    - "12 ans (≈ S)" -> "S"
+    - "M" -> "M"
     
     Returns:
         Taille adulte simple (XS/S/M/L/XL/XXL) ou fallback
@@ -594,7 +595,7 @@ def _normalize_condition_field(condition: str) -> str:
     
     condition_lower = condition.lower().strip()
     
-    # Mapping anglais → français
+    # Mapping anglais -> français
     if condition_lower in ["new with tags", "neuf avec étiquette", "neuf avec étiquettes"]:
         return "Neuf avec étiquette"
     elif condition_lower in ["new", "neuf", "neuf sans étiquette"]:
@@ -669,7 +670,7 @@ def _auto_polish_draft(draft: Dict[str, Any]) -> Dict[str, Any]:
     # 2.5 VALIDER VOCABULAIRE PAR CATÉGORIE (CRITIQUE - MATCHING FLEXIBLE)
     category = draft.get("category", "").lower()
     
-    # Mapping catégories → groupes (matching par sous-chaîne pour robustesse)
+    # Mapping catégories -> groupes (matching par sous-chaîne pour robustesse)
     TOPS_KEYWORDS = ["hoodie", "sweat", "pull", "t-shirt", "tshirt", "tee", "chemise", 
                      "blouse", "veste", "blouson", "manteau", "doudoune", "parka", "cardigan",
                      "top", "débardeur", "gilet"]
@@ -703,7 +704,7 @@ def _auto_polish_draft(draft: Dict[str, Any]) -> Dict[str, Any]:
             if re.search(pattern, description_lower):
                 match_text = re.search(pattern, description_lower)
                 if match_text:
-                    print(f"[ALERT] VOCABULAIRE INCORRECT '{match_text.group()}' dans {category} (BAS) → '{replacement or 'supprimé'}'")
+                    print(f"[ALERT] VOCABULAIRE INCORRECT '{match_text.group()}' dans {category} (BAS) -> '{replacement or 'supprimé'}'")
                 if replacement:
                     description = re.sub(pattern, replacement, description, flags=re.IGNORECASE)
                 else:
@@ -740,7 +741,7 @@ def _auto_polish_draft(draft: Dict[str, Any]) -> Dict[str, Any]:
             if re.search(pattern, description_lower):
                 match_text = re.search(pattern, description_lower)
                 if match_text:
-                    print(f"[ALERT] VOCABULAIRE INCORRECT '{match_text.group()}' dans {category} (HAUT) → '{replacement or 'supprimé'}'")
+                    print(f"[ALERT] VOCABULAIRE INCORRECT '{match_text.group()}' dans {category} (HAUT) -> '{replacement or 'supprimé'}'")
                 if replacement:
                     description = re.sub(pattern, replacement, description, flags=re.IGNORECASE)
                 else:
@@ -758,7 +759,7 @@ def _auto_polish_draft(draft: Dict[str, Any]) -> Dict[str, Any]:
         for pattern in final_check:
             if re.search(pattern, description.lower()):
                 # Dernier filet de sécurité : supprimer brutalement
-                print(f"⚠️  ALERTE : terme interdit '{pattern}' détecté après corrections → suppression forcée")
+                print(f"[WARN]  ALERTE : terme interdit '{pattern}' détecté après corrections -> suppression forcée")
                 description = re.sub(pattern, '', description, flags=re.IGNORECASE)
                 description = re.sub(r'\s+', ' ', description).strip()
     
@@ -775,15 +776,15 @@ def _auto_polish_draft(draft: Dict[str, Any]) -> Dict[str, Any]:
         ]
         for pattern in final_check:
             if re.search(pattern, description.lower()):
-                print(f"⚠️  ALERTE : terme interdit '{pattern}' détecté après corrections → suppression forcée")
+                print(f"[WARN]  ALERTE : terme interdit '{pattern}' détecté après corrections -> suppression forcée")
                 description = re.sub(pattern, '', description, flags=re.IGNORECASE)
                 description = re.sub(r'\s+', ' ', description).strip()
     
     else:
         # FALLBACK CONSERVATEUR pour catégories non gérées (robes, jupes, accessoires)
-        # → Appliquer règles TOPS par défaut (plus sûr que de ne rien faire)
+        # -> Appliquer règles TOPS par défaut (plus sûr que de ne rien faire)
         if category and category not in ["vêtement", "", "autre"]:
-            print(f"ℹ️  Catégorie '{category}' non classée → application des règles TOPS par défaut")
+            print(f"[INFO]  Catégorie '{category}' non classée -> application des règles TOPS par défaut")
             # Supprimer vocabulaire BAS évident (entrejambe, cuisses)
             description = re.sub(r'\bentrejambe\b', '', description, flags=re.IGNORECASE)
             description = re.sub(r'\bcuisses?\b', '', description, flags=re.IGNORECASE)
@@ -795,14 +796,14 @@ def _auto_polish_draft(draft: Dict[str, Any]) -> Dict[str, Any]:
     original_condition = draft.get("condition", "").strip()
     condition = _normalize_condition_field(original_condition)
     if condition != original_condition:
-        print(f"[FIX] Condition normalisée : '{original_condition}' → '{condition}'")
+        print(f"[FIX] Condition normalisée : '{original_condition}' -> '{condition}'")
     draft["condition"] = condition
     
     # size (JAMAIS vide + extraction taille adulte simple)
     original_size = draft.get("size", "").strip()
     size = _normalize_size_field(original_size)
     if size != original_size:
-        print(f"[FIX] Taille simplifiée : '{original_size}' → '{size}'")
+        print(f"[FIX] Taille simplifiée : '{original_size}' -> '{size}'")
     draft["size"] = size
     
     # brand (fallback si vide)
@@ -827,7 +828,7 @@ def _auto_polish_draft(draft: Dict[str, Any]) -> Dict[str, Any]:
     hashtags = re.findall(r'#\w+', description)
     
     if len(hashtags) < 3:
-        print(f"⚠️  Pas assez de hashtags ({len(hashtags)}), ajout automatique")
+        print(f"[WARN]  Pas assez de hashtags ({len(hashtags)}), ajout automatique")
         # Générer hashtags manquants
         missing_count = 3 - len(hashtags)
         auto_hashtags = []
@@ -846,7 +847,7 @@ def _auto_polish_draft(draft: Dict[str, Any]) -> Dict[str, Any]:
         hashtags.extend(auto_hashtags[:missing_count])
     
     if len(hashtags) > 5:
-        print(f"⚠️  Trop de hashtags ({len(hashtags)}), réduction à 5")
+        print(f"[WARN]  Trop de hashtags ({len(hashtags)}), réduction à 5")
         hashtags = hashtags[:5]
     
     # Supprimer hashtags de la description, puis les remettre à la fin
@@ -859,7 +860,7 @@ def _auto_polish_draft(draft: Dict[str, Any]) -> Dict[str, Any]:
     
     # 5. RACCOURCIR TITRE SI TROP LONG (≤70 chars)
     if len(title) > 70:
-        print(f"⚠️  Titre trop long ({len(title)} chars), réduction à 70")
+        print(f"[WARN]  Titre trop long ({len(title)} chars), réduction à 70")
         # Garder début + état
         title = title[:67] + "..."
     
@@ -867,7 +868,7 @@ def _auto_polish_draft(draft: Dict[str, Any]) -> Dict[str, Any]:
     original_price = draft.get("price", 20)
     adjusted_price = _adjust_price_if_needed(draft)
     if adjusted_price != original_price:
-        print(f"[PRICE] Prix ajusté : {original_price}€ → {adjusted_price}€")
+        print(f"[PRICE] Prix ajusté : {original_price}€ -> {adjusted_price}€")
         draft["price"] = adjusted_price
     
     # 7. METTRE À JOUR LE DRAFT
@@ -996,7 +997,7 @@ def _analyze_single_batch(
         
         for path in photo_paths:  # Already limited to BATCH_SIZE
             if not Path(path).exists():
-                print(f"⚠️ Photo not found: {path}")
+                print(f"[WARN] Photo not found: {path}")
                 continue
                 
             # Encode image to base64
@@ -1020,11 +1021,11 @@ RÈGLES DE GROUPEMENT CRITIQUES (anti-saucisson ET anti-mélange):
 
 2. **PLUSIEURS PIÈCES = PLUSIEURS GROUPES SÉPARÉS** (RÈGLE ABSOLUE):
    Tu DOIS créer des groupes séparés si tu détectes :
-   • Marques DIFFÉRENTES (ex: Burberry ≠ Ralph Lauren → 2 groupes)
-   • Couleurs DIFFÉRENTES (ex: t-shirt noir ≠ t-shirt blanc → 2 groupes)  
-   • Coupes/styles DIFFÉRENTS (ex: hoodie ≠ t-shirt → 2 groupes)
-   • Logos/motifs DIFFÉRENTS (ex: logo Lacoste ≠ logo Polo → 2 groupes)
-   • Tailles adultes DIFFÉRENTES (ex: XS ≠ M → 2 groupes)
+   • Marques DIFFÉRENTES (ex: Burberry ≠ Ralph Lauren -> 2 groupes)
+   • Couleurs DIFFÉRENTES (ex: t-shirt noir ≠ t-shirt blanc -> 2 groupes)  
+   • Coupes/styles DIFFÉRENTS (ex: hoodie ≠ t-shirt -> 2 groupes)
+   • Logos/motifs DIFFÉRENTS (ex: logo Lacoste ≠ logo Polo -> 2 groupes)
+   • Tailles adultes DIFFÉRENTES (ex: XS ≠ M -> 2 groupes)
    
    [RULE] INTERDIT ABSOLU : Mélanger des vêtements différents dans le même groupe (ex: t-shirt noir + t-shirt blanc = ERREUR GRAVE)
 
@@ -1039,7 +1040,7 @@ RÈGLES DE GROUPEMENT CRITIQUES (anti-saucisson ET anti-mélange):
 CHAMPS OBLIGATOIRES (NE JAMAIS LAISSER VIDE):
 
 **condition** (OBLIGATOIRE - JAMAIS NULL/VIDE):
-  ⚠️ CE CHAMP NE DOIT JAMAIS ÊTRE null, undefined, ou vide ⚠️
+  [WARN] CE CHAMP NE DOIT JAMAIS ÊTRE null, undefined, ou vide [WARN]
   Déterminer l'état selon les photos. TOUJOURS remplir ce champ.
   Valeurs autorisées UNIQUEMENT:
   • "Neuf avec étiquette" : étiquette visible sur la photo
@@ -1052,58 +1053,58 @@ CHAMPS OBLIGATOIRES (NE JAMAIS LAISSER VIDE):
   [RULE] INTERDIT ABSOLU : Retourner null, undefined, "", ou omettre ce champ. Le JSON sera REJETÉ.
 
 **size** (OBLIGATOIRE - JAMAIS NULL/VIDE):
-  ⚠️ CE CHAMP NE DOIT JAMAIS ÊTRE null, undefined, ou vide ⚠️
-  ⚠️ RETOURNER UNIQUEMENT LA TAILLE ADULTE NORMALISÉE (XS/S/M/L/XL/XXL) ⚠️
+  [WARN] CE CHAMP NE DOIT JAMAIS ÊTRE null, undefined, ou vide [WARN]
+  [WARN] RETOURNER UNIQUEMENT LA TAILLE ADULTE NORMALISÉE (XS/S/M/L/XL/XXL) [WARN]
   
   [RULE] RÈGLES CRITIQUES - LIS EXACTEMENT L'ÉTIQUETTE (PRIORITÉ ABSOLUE):
   
   1️⃣ Si l'étiquette montre UNE TAILLE ADULTE (XS, S, M, L, XL, XXL) :
-     → Retourne CETTE taille directement : "L", "M", "XS", etc.
-     → PAS de conversion, PAS d'équivalence
-     → Exemple : étiquette dit "L" → size: "L" (JAMAIS "XS" !)
+     -> Retourne CETTE taille directement : "L", "M", "XS", etc.
+     -> PAS de conversion, PAS d'équivalence
+     -> Exemple : étiquette dit "L" -> size: "L" (JAMAIS "XS" !)
   
   2️⃣ Si l'étiquette montre UNIQUEMENT une taille enfant (16Y, 14 ans, 165cm) :
-     → Estime la taille adulte PRUDEMMENT (16Y peut être S, M ou L selon marque!)
-     → Exemple : "16Y" seul → size: "M" (estimation moyenne prudente)
-     → ATTENTION : NE PAS supposer automatiquement que 16Y = XS !
+     -> Estime la taille adulte PRUDEMMENT (16Y peut être S, M ou L selon marque!)
+     -> Exemple : "16Y" seul -> size: "M" (estimation moyenne prudente)
+     -> ATTENTION : NE PAS supposer automatiquement que 16Y = XS !
   
   3️⃣ Si l'étiquette montre LES DEUX (ex: "16Y / L" ou "165cm / M") :
-     → PRIVILÉGIE TOUJOURS la taille adulte : size: "L"
-     → Ignore la taille enfant dans le champ size
+     -> PRIVILÉGIE TOUJOURS la taille adulte : size: "L"
+     -> Ignore la taille enfant dans le champ size
   
   4️⃣ Si AUCUNE taille visible sur les photos :
-     → size: "Taille non visible"
+     -> size: "Taille non visible"
   
   ESTIMATIONS PRUDENTES (si UNIQUEMENT taille enfant visible):
-  • 14Y / 152-158cm → "S" ou "XS" (prudent: "S")
-  • 16Y / 165cm → "M" ou "L" (prudent: "M") ⚠️ PAS automatiquement "XS" !
-  • 18Y / 170-176cm → "L" ou "M" (prudent: "L")
-  • Si doute → "M" (taille moyenne par défaut)
+  • 14Y / 152-158cm -> "S" ou "XS" (prudent: "S")
+  • 16Y / 165cm -> "M" ou "L" (prudent: "M") [WARN] PAS automatiquement "XS" !
+  • 18Y / 170-176cm -> "L" ou "M" (prudent: "L")
+  • Si doute -> "M" (taille moyenne par défaut)
   
   FORMAT À RESPECTER ABSOLUMENT:
-  ✅ BON : "L" (si étiquette montre "L")
-  ✅ BON : "M" (si étiquette montre "M" ou estimation 16Y)
-  ✅ BON : "XS" (si étiquette montre "XS")
-  ❌ MAUVAIS : "16Y / 165 cm (≈ XS)" (NE JAMAIS inclure taille d'origine)
-  ❌ MAUVAIS : "XS (≈ 16Y)" (PAS de parenthèses ni équivalences)
-  ❌ MAUVAIS : "XS" si l'étiquette montre "L" (ERREUR GRAVE !)
+  [OK] BON : "L" (si étiquette montre "L")
+  [OK] BON : "M" (si étiquette montre "M" ou estimation 16Y)
+  [OK] BON : "XS" (si étiquette montre "XS")
+  [ERROR] MAUVAIS : "16Y / 165 cm (≈ XS)" (NE JAMAIS inclure taille d'origine)
+  [ERROR] MAUVAIS : "XS (≈ 16Y)" (PAS de parenthèses ni équivalences)
+  [ERROR] MAUVAIS : "XS" si l'étiquette montre "L" (ERREUR GRAVE !)
   
-  [RULE] RÈGLE ABSOLUE : Si aucune taille n'est visible → retourner "Taille non visible" (texte exact)
+  [RULE] RÈGLE ABSOLUE : Si aucune taille n'est visible -> retourner "Taille non visible" (texte exact)
   [RULE] INTERDIT ABSOLU : Retourner null, undefined, "", ou omettre ce champ. Le JSON sera REJETÉ.
 
 LISTING POUR CHAQUE GROUPE:
 
 title (≤70 chars, format SIMPLE « {{Catégorie}} {{Couleur}} {{Marque?}} {{Taille}} – {{État}} »)
-  ⚠️ FORMAT SIMPLIFIÉ - PAS de parenthèses, PAS d'équivalences, PAS de mesures
+  [WARN] FORMAT SIMPLIFIÉ - PAS de parenthèses, PAS d'équivalences, PAS de mesures
   
   Exemples CORRECTS:
-  ✅ "T-shirt noir Burberry XS – très bon état"
-  ✅ "Jogging noir Burberry XS – bon état"
-  ✅ "Hoodie Karl Lagerfeld noir M – très bon état"
+  [OK] "T-shirt noir Burberry XS – très bon état"
+  [OK] "Jogging noir Burberry XS – bon état"
+  [OK] "Hoodie Karl Lagerfeld noir M – très bon état"
   
   Exemples INTERDITS:
-  ❌ "T-shirt noir Burberry XS (≈ 16Y/165 cm) – très bon état" (PAS de parenthèses)
-  ❌ "Jogging Burberry 16Y / 165 cm – bon état" (utiliser taille adulte)
+  [ERROR] "T-shirt noir Burberry XS (≈ 16Y/165 cm) – très bon état" (PAS de parenthèses)
+  [ERROR] "Jogging Burberry 16Y / 165 cm – bon état" (utiliser taille adulte)
   
   INTERDITS: emojis, superlatifs ("magnifique", "parfait"), marketing ("découvrez", "idéal pour"), parenthèses avec équivalences
 
@@ -1151,15 +1152,15 @@ price (suggéré en euros, bases réalistes Vinted 2025)
   - Satisfaisant: ×0.55
   
   ARRONDIS PSYCHOLOGIQUES:
-  - <40€ → finit par 9 (ex: 19€, 29€, 39€)
-  - 40–99€ → 49/59/69/79/89/99€
-  - ≥100€ → 99/119/129/149/199€
+  - <40€ -> finit par 9 (ex: 19€, 29€, 39€)
+  - 40–99€ -> 49/59/69/79/89/99€
+  - ≥100€ -> 99/119/129/149/199€
   
   EXEMPLES CONCRETS:
-  - Short Ralph Lauren bon état: 25€ × 2.0 × 0.70 = 35€ → 39€
-  - Hoodie Karl Lagerfeld très bon: 38€ × 2.2 × 0.85 = 71€ → 69€
-  - T-shirt Burberry satisfaisant: 18€ × 3.5 × 0.55 = 35€ → 39€
-  - Veste Essentials bon état: 55€ × 2.8 × 0.70 = 108€ → 99€
+  - Short Ralph Lauren bon état: 25€ × 2.0 × 0.70 = 35€ -> 39€
+  - Hoodie Karl Lagerfeld très bon: 38€ × 2.2 × 0.85 = 71€ -> 69€
+  - T-shirt Burberry satisfaisant: 18€ × 3.5 × 0.55 = 35€ -> 39€
+  - Veste Essentials bon état: 55€ × 2.8 × 0.70 = 108€ -> 99€
 
 STYLE (adapte selon "{style}"):
 - minimal: Ton sobre, descriptions factuelles courtes
@@ -1242,7 +1243,7 @@ Analyse les photos et génère le JSON:"""
             # [FIX] POLISSAGE AUTOMATIQUE 100% (Garantit brouillons parfaits)
             group = _auto_polish_draft(group)
             
-            # ✅ VALIDATION FINALE (après polissage)
+            # [OK] VALIDATION FINALE (après polissage)
             validation_errors = []
             
             # 1. Vérifier nombre minimum de photos (≥3 photos obligatoire)
@@ -1263,7 +1264,7 @@ Analyse les photos et génère le JSON:"""
             
             # Si validation échoue après polissage, REJETER
             if validation_errors:
-                print(f"❌ Article REJETÉ (après polissage) : {title[:50]}")
+                print(f"[ERROR] Article REJETÉ (après polissage) : {title[:50]}")
                 for error in validation_errors:
                     print(f"   • {error}")
                 continue  # Skip this article
@@ -1271,7 +1272,7 @@ Analyse les photos et génère le JSON:"""
             validated_groups.append(group)
         
         print(f"\n{'='*80}")
-        print(f"✅ VALIDATION FINALE : {len(validated_groups)}/{len(groups)} articles validés")
+        print(f"[OK] VALIDATION FINALE : {len(validated_groups)}/{len(groups)} articles validés")
         print(f"{'='*80}")
         for i, group in enumerate(validated_groups, 1):
             title = group.get('title', 'N/A')
@@ -1288,5 +1289,5 @@ Analyse les photos et génère le JSON:"""
         return validated_groups
         
     except Exception as e:
-        print(f"❌ Batch analysis error: {e}")
+        print(f"[ERROR] Batch analysis error: {e}")
         raise  # Let the caller handle the fallback

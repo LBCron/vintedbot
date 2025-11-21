@@ -17,7 +17,7 @@ class TelegramNotifier:
         self.chat_id = chat_id or os.getenv("TELEGRAM_CHAT_ID")
 
         if not self.bot_token or not self.chat_id:
-            logger.warning("⚠️ Telegram credentials not configured")
+            logger.warning("[WARN] Telegram credentials not configured")
 
     def send_message(self, message: str, parse_mode: str = "HTML") -> bool:
         """
@@ -31,7 +31,7 @@ class TelegramNotifier:
             True if sent successfully
         """
         if not self.bot_token or not self.chat_id:
-            logger.error("❌ Telegram not configured")
+            logger.error("[ERROR] Telegram not configured")
             return False
 
         try:
@@ -45,11 +45,11 @@ class TelegramNotifier:
             response = requests.post(url, json=payload, timeout=10)
             response.raise_for_status()
 
-            logger.info("✅ Telegram notification sent")
+            logger.info("[OK] Telegram notification sent")
             return True
 
         except Exception as e:
-            logger.error(f"❌ Failed to send Telegram notification: {e}")
+            logger.error(f"[ERROR] Failed to send Telegram notification: {e}")
             return False
 
     def send_photo(self, photo_path: str, caption: str = "") -> bool:
@@ -64,7 +64,7 @@ class TelegramNotifier:
             True if sent successfully
         """
         if not self.bot_token or not self.chat_id:
-            logger.error("❌ Telegram not configured")
+            logger.error("[ERROR] Telegram not configured")
             return False
 
         try:
@@ -76,11 +76,11 @@ class TelegramNotifier:
                 response = requests.post(url, data=payload, files=files, timeout=30)
                 response.raise_for_status()
 
-            logger.info("✅ Telegram photo sent")
+            logger.info("[OK] Telegram photo sent")
             return True
 
         except Exception as e:
-            logger.error(f"❌ Failed to send Telegram photo: {e}")
+            logger.error(f"[ERROR] Failed to send Telegram photo: {e}")
             return False
 
     def send_monitoring_alert(self, results: Dict[str, Any]) -> bool:
@@ -102,10 +102,10 @@ class TelegramNotifier:
             emoji = "🚨"
             title = "ALERTE CRITIQUE - Vinted Bot"
         elif status == "warning":
-            emoji = "⚠️"
+            emoji = "[WARN]"
             title = "AVERTISSEMENT - Vinted Bot"
         else:
-            emoji = "✅"
+            emoji = "[OK]"
             title = "Vinted Bot - Tout fonctionne"
 
         message = f"{emoji} <b>{title}</b>\n\n"
@@ -113,7 +113,7 @@ class TelegramNotifier:
         message += f"📊 <b>Status:</b> {status.upper()}\n\n"
 
         if changes:
-            message += f"<b>🔍 Changements détectés ({len(changes)}):</b>\n"
+            message += f"<b>[SEARCH] Changements détectés ({len(changes)}):</b>\n"
             for i, change in enumerate(changes[:5], 1):  # Limit to 5 changes
                 severity = change.get("severity", "unknown")
                 msg = change.get("message", "Unknown")
@@ -123,7 +123,7 @@ class TelegramNotifier:
                 message += f"\n... et {len(changes) - 5} autres changements\n"
 
         if failed_tests:
-            message += f"\n<b>❌ Tests échoués ({len(failed_tests)}):</b>\n"
+            message += f"\n<b>[ERROR] Tests échoués ({len(failed_tests)}):</b>\n"
             for test in failed_tests[:3]:  # Limit to 3 tests
                 test_name = test.get("name", "unknown")
                 error = test.get("error", test.get("message", "Unknown error"))
@@ -164,8 +164,8 @@ class TelegramNotifier:
         """
         emoji_map = {
             "critical": "🚨",
-            "warning": "⚠️",
-            "info": "ℹ️"
+            "warning": "[WARN]",
+            "info": "[INFO]"
         }
 
         emoji = emoji_map.get(severity, "📢")
@@ -206,7 +206,7 @@ if __name__ == "__main__":
     notifier = TelegramNotifier()
 
     if notifier.test_connection():
-        print("✅ Telegram connection successful!")
+        print("[OK] Telegram connection successful!")
 
         # Test with sample monitoring data
         sample_results = {
@@ -227,4 +227,4 @@ if __name__ == "__main__":
 
         notifier.send_monitoring_alert(sample_results)
     else:
-        print("❌ Telegram connection failed. Check your credentials.")
+        print("[ERROR] Telegram connection failed. Check your credentials.")

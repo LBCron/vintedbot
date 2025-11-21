@@ -204,7 +204,7 @@ def _generate_description(
         parts.append(style_text)
 
     # === PARAGRAPHE 5 : CONCLUSION & ENVOI ===
-    parts.append("Envoi soigné sous 24-48h 📦")
+    parts.append("Envoi soigné sous 24-48h [PACKAGE]")
     parts.append("N'hésitez pas si vous avez des questions !")
 
     # Assemblage

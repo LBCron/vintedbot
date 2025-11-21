@@ -29,12 +29,12 @@ class ProxyManager:
             try:
                 with open(self.proxy_file, 'r') as f:
                     self.proxies = json.load(f)
-                logger.info(f"✅ Loaded {len(self.proxies)} proxies")
+                logger.info(f"[OK] Loaded {len(self.proxies)} proxies")
             except Exception as e:
-                logger.error(f"❌ Failed to load proxies: {e}")
+                logger.error(f"[ERROR] Failed to load proxies: {e}")
                 self.proxies = []
         else:
-            logger.warning("⚠️ No proxy file found - running without proxies")
+            logger.warning("[WARN] No proxy file found - running without proxies")
             self.proxies = []
 
     def save_proxies(self):
@@ -44,7 +44,7 @@ class ProxyManager:
             with open(self.proxy_file, 'w') as f:
                 json.dump(self.proxies, f, indent=2)
         except Exception as e:
-            logger.error(f"❌ Failed to save proxies: {e}")
+            logger.error(f"[ERROR] Failed to save proxies: {e}")
 
     def add_proxy(
         self,
@@ -68,7 +68,7 @@ class ProxyManager:
         }
         self.proxies.append(proxy)
         self.save_proxies()
-        logger.info(f"✅ Added proxy: {host}:{port}")
+        logger.info(f"[OK] Added proxy: {host}:{port}")
 
     def get_next_proxy(self, country: Optional[str] = None) -> Optional[Dict]:
         """Get next working proxy"""
@@ -81,7 +81,7 @@ class ProxyManager:
             available = [p for p in available if p.get("country") == country]
 
         if not available:
-            logger.warning("⚠️ No available proxies")
+            logger.warning("[WARN] No available proxies")
             return None
 
         # Get next in rotation
@@ -111,7 +111,7 @@ class ProxyManager:
             for p in self.proxies:
                 if p['host'] == proxy['host'] and p['port'] == proxy['port']:
                     p['status'] = 'failed'
-                    logger.warning(f"⚠️ Proxy disabled: {proxy_id}")
+                    logger.warning(f"[WARN] Proxy disabled: {proxy_id}")
                     break
             self.save_proxies()
 
@@ -129,16 +129,16 @@ class ProxyManager:
                 ) as response:
                     if response.status == 200:
                         data = await response.json()
-                        logger.info(f"✅ Proxy working: {proxy['host']} (IP: {data.get('ip')})")
+                        logger.info(f"[OK] Proxy working: {proxy['host']} (IP: {data.get('ip')})")
                         return True
                     return False
         except Exception as e:
-            logger.error(f"❌ Proxy check failed: {proxy['host']} - {e}")
+            logger.error(f"[ERROR] Proxy check failed: {proxy['host']} - {e}")
             return False
 
     async def check_all_proxies(self):
         """Check all proxies health"""
-        logger.info("🔍 Checking all proxies...")
+        logger.info("[SEARCH] Checking all proxies...")
         tasks = [self.check_proxy(proxy) for proxy in self.proxies]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -149,7 +149,7 @@ class ProxyManager:
 
         self.save_proxies()
         active_count = sum(1 for p in self.proxies if p['status'] == 'active')
-        logger.info(f"✅ Health check complete: {active_count}/{len(self.proxies)} proxies active")
+        logger.info(f"[OK] Health check complete: {active_count}/{len(self.proxies)} proxies active")
 
     @staticmethod
     def format_proxy_url(proxy: Dict) -> str:
@@ -218,7 +218,7 @@ class VPNManager:
         """
         config_file = self.config_dir / f"{config_name}.ovpn"
         if not config_file.exists():
-            logger.error(f"❌ VPN config not found: {config_name}")
+            logger.error(f"[ERROR] VPN config not found: {config_name}")
             return False
 
         try:
@@ -231,10 +231,10 @@ class VPNManager:
             #     stderr=asyncio.subprocess.PIPE
             # )
             # self.current_vpn = proc
-            logger.warning("⚠️ VPN connection requires manual setup with OpenVPN/WireGuard")
+            logger.warning("[WARN] VPN connection requires manual setup with OpenVPN/WireGuard")
             return False
         except Exception as e:
-            logger.error(f"❌ VPN connection failed: {e}")
+            logger.error(f"[ERROR] VPN connection failed: {e}")
             return False
 
     async def disconnect_vpn(self):
@@ -266,7 +266,7 @@ class IPRotator:
                     data = await response.json()
                     return data.get("ip")
         except Exception as e:
-            logger.error(f"❌ Failed to get IP: {e}")
+            logger.error(f"[ERROR] Failed to get IP: {e}")
             return None
 
     def should_rotate(self) -> bool:
@@ -277,14 +277,14 @@ class IPRotator:
     async def rotate_ip(self):
         """Rotate IP address"""
         if self.rotation_strategy == "proxy":
-            logger.info("🔄 Rotating proxy...")
+            logger.info("[PROCESS] Rotating proxy...")
             new_proxy = self.proxy_manager.get_next_proxy()
             if new_proxy:
-                logger.info(f"✅ Switched to proxy: {new_proxy['host']}")
+                logger.info(f"[OK] Switched to proxy: {new_proxy['host']}")
             return new_proxy
 
         elif self.rotation_strategy == "vpn":
-            logger.info("🔄 Rotating VPN...")
+            logger.info("[PROCESS] Rotating VPN...")
             # VPN rotation logic here
             pass
 
@@ -330,9 +330,9 @@ if __name__ == "__main__":
         # Get next proxy
         proxy = manager.get_next_proxy()
         if proxy:
-            print(f"✅ Current proxy: {proxy['host']}:{proxy['port']}")
+            print(f"[OK] Current proxy: {proxy['host']}:{proxy['port']}")
         else:
-            print("⚠️ No proxies configured")
+            print("[WARN] No proxies configured")
 
         # Test IP rotator
         rotator = IPRotator()

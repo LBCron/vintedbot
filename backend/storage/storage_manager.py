@@ -2,11 +2,11 @@
 Storage Manager - Orchestrateur principal du système multi-tier
 
 Gère le cycle de vie complet des photos :
-1. Upload → TIER 1 (temp, 48h)
-2. Si publié Vinted → suppression après 7j
-3. Si non publié → TIER 2 (hot, R2)
-4. Après 90j sans accès → TIER 3 (cold, B2)
-5. Après 365j → suppression définitive
+1. Upload -> TIER 1 (temp, 48h)
+2. Si publié Vinted -> suppression après 7j
+3. Si non publié -> TIER 2 (hot, R2)
+4. Après 90j sans accès -> TIER 3 (cold, B2)
+5. Après 365j -> suppression définitive
 """
 from enum import Enum
 from datetime import datetime, timedelta
@@ -60,12 +60,12 @@ class StorageManager:
     - TIER 3 (COLD) : Backblaze B2 - $0.006/GB/mois, archive
 
     Workflow :
-    1. Upload → TEMP
-    2. Analyse IA → génération draft
-    3. Si publié → garder 7j puis supprimer
-    4. Si non publié → promouvoir HOT
-    5. Après 90j sans accès → archiver COLD
-    6. Après 365j → supprimer définitivement
+    1. Upload -> TEMP
+    2. Analyse IA -> génération draft
+    3. Si publié -> garder 7j puis supprimer
+    4. Si non publié -> promouvoir HOT
+    5. Après 90j sans accès -> archiver COLD
+    6. Après 365j -> supprimer définitivement
     """
 
     def __init__(self):
@@ -79,7 +79,7 @@ class StorageManager:
         self.tier3 = BackblazeB2Storage()
         self.compressor = ImageCompressor()
 
-        logger.info("✅ StorageManager initialized with 3 tiers")
+        logger.info("[OK] StorageManager initialized with 3 tiers")
 
     async def upload_photo(
         self,
@@ -120,11 +120,11 @@ class StorageManager:
         )
 
         compression_ratio = (1 - len(compressed_data) / len(file_data)) * 100
-        logger.info(f"✅ Compressed: {len(compressed_data)} bytes ({compression_ratio:.1f}% reduction)")
+        logger.info(f"[OK] Compressed: {len(compressed_data)} bytes ({compression_ratio:.1f}% reduction)")
 
         # 2. Upload TIER 1
         await self.tier1.upload(photo_id, compressed_data)
-        logger.info(f"✅ Uploaded to TIER 1 (temp)")
+        logger.info(f"[OK] Uploaded to TIER 1 (temp)")
 
         # 3. Metadata
         metadata = PhotoMetadata(
@@ -145,14 +145,14 @@ class StorageManager:
         # 4. Sauvegarder metadata en DB
         await self._save_metadata(metadata)
 
-        logger.info(f"✅ Photo {photo_id} uploaded successfully (scheduled deletion: 48h)")
+        logger.info(f"[OK] Photo {photo_id} uploaded successfully (scheduled deletion: 48h)")
 
         return metadata
 
     async def mark_published_to_vinted(self, photo_id: str):
         """
         Marque photo comme publiée sur Vinted
-        → Schedule suppression dans 7 jours
+        -> Schedule suppression dans 7 jours
 
         Logique : Une fois publiée sur Vinted, la photo est déjà hébergée
         par Vinted, donc on peut la supprimer de notre stockage après 7j
@@ -170,11 +170,11 @@ class StorageManager:
 
         await self._save_metadata(metadata)
 
-        logger.info(f"✅ Photo {photo_id} marked as published (will be deleted in 7 days)")
+        logger.info(f"[OK] Photo {photo_id} marked as published (will be deleted in 7 days)")
 
     async def promote_to_hot_storage(self, photo_id: str):
         """
-        Déplace photo de TIER 1 → TIER 2 (Cloudflare R2)
+        Déplace photo de TIER 1 -> TIER 2 (Cloudflare R2)
 
         Appelé quand :
         - Draft reste non publié après 24-48h
@@ -209,11 +209,11 @@ class StorageManager:
         metadata.scheduled_deletion = None  # Plus de suppression auto
         await self._save_metadata(metadata)
 
-        logger.info(f"✅ Photo {photo_id} promoted to HOT storage (R2)")
+        logger.info(f"[OK] Photo {photo_id} promoted to HOT storage (R2)")
 
     async def archive_to_cold_storage(self, photo_id: str):
         """
-        Déplace photo de TIER 2 → TIER 3 (Backblaze B2)
+        Déplace photo de TIER 2 -> TIER 3 (Backblaze B2)
 
         Appelé automatiquement par lifecycle_manager
         après 90 jours sans accès
@@ -231,7 +231,7 @@ class StorageManager:
             logger.info(f"Photo {photo_id} not in HOT tier, skipping")
             return
 
-        logger.info(f"📦 Archiving photo {photo_id} from HOT to COLD storage")
+        logger.info(f"[PACKAGE] Archiving photo {photo_id} from HOT to COLD storage")
 
         # 1. Télécharger depuis TIER 2
         photo_data = await self.tier2.download(photo_id)
@@ -246,7 +246,7 @@ class StorageManager:
         metadata.tier = StorageTier.COLD
         await self._save_metadata(metadata)
 
-        logger.info(f"✅ Photo {photo_id} archived to COLD storage (B2)")
+        logger.info(f"[OK] Photo {photo_id} archived to COLD storage (B2)")
 
     async def get_photo_url(self, photo_id: str) -> str:
         """
@@ -329,7 +329,7 @@ class StorageManager:
         # Supprimer metadata
         await self._delete_metadata(photo_id)
 
-        logger.info(f"✅ Photo {photo_id} deleted")
+        logger.info(f"[OK] Photo {photo_id} deleted")
 
     async def get_photos_by_draft(self, draft_id: str) -> List[PhotoMetadata]:
         """

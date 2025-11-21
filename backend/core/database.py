@@ -71,16 +71,16 @@ async def init_db():
     try:
         async with engine.begin() as conn:
             await conn.run_sync(SQLModel.metadata.create_all)
-        logger.info("✅ Database schema initialized")
+        logger.info("[OK] Database schema initialized")
     except Exception as e:
-        logger.error(f"❌ Database initialization failed: {e}")
+        logger.error(f"[ERROR] Database initialization failed: {e}")
         raise
 
 
 async def close_db():
     """Close database connections"""
     await engine.dispose()
-    logger.info("✅ Database connections closed")
+    logger.info("[OK] Database connections closed")
 
 
 @asynccontextmanager

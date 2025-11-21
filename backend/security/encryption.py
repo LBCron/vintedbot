@@ -267,7 +267,7 @@ def generate_master_key() -> str:
     print("=" * 80)
     print(key_b64)
     print("=" * 80)
-    print("⚠️ WARNING: If you lose this key, all encrypted data will be unrecoverable!")
+    print("[WARN] WARNING: If you lose this key, all encrypted data will be unrecoverable!")
     print("=" * 80)
 
     return key_b64
@@ -291,4 +291,4 @@ if __name__ == "__main__":
     print(f"Decrypted: {decrypted}")
 
     assert test_data == decrypted, "Encryption/decryption failed"
-    print("\n✅ Encryption test passed!")
+    print("\n[OK] Encryption test passed!")

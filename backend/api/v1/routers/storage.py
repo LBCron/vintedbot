@@ -69,18 +69,18 @@ async def upload_photo(
     - Scheduled for promotion/deletion based on lifecycle rules
 
     Lifecycle:
-    1. Upload → TIER 1 (TEMP) - 48h
-    2. If published → delete after 7 days
-    3. If not published → promote to TIER 2 (HOT) after 48h
-    4. After 90 days → archive to TIER 3 (COLD)
-    5. After 365 days → delete permanently
+    1. Upload -> TIER 1 (TEMP) - 48h
+    2. If published -> delete after 7 days
+    3. If not published -> promote to TIER 2 (HOT) after 48h
+    4. After 90 days -> archive to TIER 3 (COLD)
+    5. After 365 days -> delete permanently
     """
     try:
         # Read file data
         file_data = await file.read()
         original_size = len(file_data)
 
-        logger.info(f"📸 Uploading photo: {file.filename} ({original_size} bytes) for user {current_user.user_id}")
+        logger.info(f"[PHOTO] Uploading photo: {file.filename} ({original_size} bytes) for user {current_user.user_id}")
 
         # Upload to storage manager (auto-compresses and saves to TIER 1)
         metadata = await storage_manager.upload_photo(
@@ -99,7 +99,7 @@ async def upload_photo(
 
         compression_ratio = (1 - (metadata.compressed_size_bytes / original_size)) * 100 if original_size > 0 else 0
 
-        logger.success(f"✅ Photo uploaded: {metadata.photo_id} (tier: {metadata.tier.value}, compressed: {compression_ratio:.1f}%)")
+        logger.success(f"[OK] Photo uploaded: {metadata.photo_id} (tier: {metadata.tier.value}, compressed: {compression_ratio:.1f}%)")
 
         return PhotoUploadResponse(
             photo_id=metadata.photo_id,
@@ -112,7 +112,7 @@ async def upload_photo(
         )
 
     except Exception as e:
-        logger.error(f"❌ Photo upload failed: {e}")
+        logger.error(f"[ERROR] Photo upload failed: {e}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Photo upload failed: {str(e)}")
 
@@ -146,15 +146,15 @@ async def publish_draft(
             try:
                 await storage_manager.mark_published_to_vinted(photo_id)
                 results["updated_count"] += 1
-                logger.debug(f"✅ Marked photo {photo_id} as published")
+                logger.debug(f"[OK] Marked photo {photo_id} as published")
             except Exception as e:
-                logger.error(f"❌ Failed to mark photo {photo_id} as published: {e}")
+                logger.error(f"[ERROR] Failed to mark photo {photo_id} as published: {e}")
                 results["failed"].append({
                     "photo_id": photo_id,
                     "error": str(e)
                 })
 
-        logger.success(f"✅ Draft published: {results['updated_count']}/{len(request.photo_ids)} photos updated")
+        logger.success(f"[OK] Draft published: {results['updated_count']}/{len(request.photo_ids)} photos updated")
 
         return {
             "ok": True,
@@ -163,7 +163,7 @@ async def publish_draft(
         }
 
     except Exception as e:
-        logger.error(f"❌ Failed to publish draft: {e}")
+        logger.error(f"[ERROR] Failed to publish draft: {e}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to publish draft: {str(e)}")
 
@@ -186,7 +186,7 @@ async def get_storage_stats(current_user: User = Depends(get_current_user)):
         return StorageStatsResponse(**stats)
 
     except Exception as e:
-        logger.error(f"❌ Failed to get storage stats: {e}")
+        logger.error(f"[ERROR] Failed to get storage stats: {e}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to get storage stats: {str(e)}")
 
@@ -201,7 +201,7 @@ async def get_cost_breakdown(current_user: User = Depends(get_current_user)):
     try:
         breakdown = await storage_metrics.get_cost_breakdown()
 
-        logger.info(f"💰 Cost breakdown: ${breakdown['total']}/mo (HOT: {breakdown['hot']['percentage']}%, COLD: {breakdown['cold']['percentage']}%)")
+        logger.info(f"[PRICE] Cost breakdown: ${breakdown['total']}/mo (HOT: {breakdown['hot']['percentage']}%, COLD: {breakdown['cold']['percentage']}%)")
 
         return {
             "ok": True,
@@ -209,7 +209,7 @@ async def get_cost_breakdown(current_user: User = Depends(get_current_user)):
         }
 
     except Exception as e:
-        logger.error(f"❌ Failed to get cost breakdown: {e}")
+        logger.error(f"[ERROR] Failed to get cost breakdown: {e}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to get cost breakdown: {str(e)}")
 
@@ -224,8 +224,8 @@ async def get_lifecycle_metrics(
 
     Shows how photos move through the tiers:
     - Photos uploaded
-    - Photos promoted (TEMP → HOT)
-    - Photos archived (HOT → COLD)
+    - Photos promoted (TEMP -> HOT)
+    - Photos archived (HOT -> COLD)
     - Photos deleted
     """
     try:
@@ -240,7 +240,7 @@ async def get_lifecycle_metrics(
         }
 
     except Exception as e:
-        logger.error(f"❌ Failed to get lifecycle metrics: {e}")
+        logger.error(f"[ERROR] Failed to get lifecycle metrics: {e}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to get lifecycle metrics: {str(e)}")
 
@@ -267,7 +267,7 @@ async def get_optimization_recommendations(current_user: User = Depends(get_curr
         }
 
     except Exception as e:
-        logger.error(f"❌ Failed to get recommendations: {e}")
+        logger.error(f"[ERROR] Failed to get recommendations: {e}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to get recommendations: {str(e)}")
 
@@ -288,7 +288,7 @@ async def get_photo_url(
     try:
         url = await storage_manager.get_photo_url(photo_id)
 
-        logger.debug(f"🔗 Photo URL: {photo_id} → {url}")
+        logger.debug(f"🔗 Photo URL: {photo_id} -> {url}")
 
         return {
             "ok": True,
@@ -299,7 +299,7 @@ async def get_photo_url(
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Photo {photo_id} not found")
     except Exception as e:
-        logger.error(f"❌ Failed to get photo URL: {e}")
+        logger.error(f"[ERROR] Failed to get photo URL: {e}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to get photo URL: {str(e)}")
 
@@ -345,7 +345,7 @@ async def get_photo_metadata(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"❌ Failed to get photo metadata: {e}")
+        logger.error(f"[ERROR] Failed to get photo metadata: {e}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to get photo metadata: {str(e)}")
 
@@ -366,7 +366,7 @@ async def delete_photo(
 
         await storage_manager.delete_photo(photo_id)
 
-        logger.success(f"✅ Photo deleted: {photo_id}")
+        logger.success(f"[OK] Photo deleted: {photo_id}")
 
         return {
             "ok": True,
@@ -377,7 +377,7 @@ async def delete_photo(
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Photo {photo_id} not found")
     except Exception as e:
-        logger.error(f"❌ Failed to delete photo: {e}")
+        logger.error(f"[ERROR] Failed to delete photo: {e}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to delete photo: {str(e)}")
 
@@ -404,7 +404,7 @@ async def get_user_storage_usage(current_user: User = Depends(get_current_user))
         }
 
     except Exception as e:
-        logger.error(f"❌ Failed to get user storage usage: {e}")
+        logger.error(f"[ERROR] Failed to get user storage usage: {e}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to get user storage usage: {str(e)}")
 
@@ -417,9 +417,9 @@ async def run_lifecycle_now(current_user: User = Depends(get_current_user)):
     Runs all lifecycle rules:
     1. Delete expired TEMP photos (>48h)
     2. Delete published photos (>7 days)
-    3. Promote TEMP → HOT (>48h, not published)
-    4. Archive HOT → COLD (>90 days)
-    5. Delete COLD → permanent (>365 days)
+    3. Promote TEMP -> HOT (>48h, not published)
+    4. Archive HOT -> COLD (>90 days)
+    5. Delete COLD -> permanent (>365 days)
 
     Normally runs automatically at 3 AM daily.
     """
@@ -428,11 +428,11 @@ async def run_lifecycle_now(current_user: User = Depends(get_current_user)):
         # if not current_user.is_admin:
         #     raise HTTPException(status_code=403, detail="Admin access required")
 
-        logger.info(f"🔄 Running lifecycle job manually (triggered by {current_user.user_id})")
+        logger.info(f"[PROCESS] Running lifecycle job manually (triggered by {current_user.user_id})")
 
         stats = await lifecycle_manager.run_daily_lifecycle()
 
-        logger.success(f"✅ Lifecycle job completed: {stats}")
+        logger.success(f"[OK] Lifecycle job completed: {stats}")
 
         return {
             "ok": True,
@@ -441,7 +441,7 @@ async def run_lifecycle_now(current_user: User = Depends(get_current_user)):
         }
 
     except Exception as e:
-        logger.error(f"❌ Lifecycle job failed: {e}")
+        logger.error(f"[ERROR] Lifecycle job failed: {e}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Lifecycle job failed: {str(e)}")
 
@@ -499,9 +499,9 @@ async def get_tier_info(current_user: User = Depends(get_current_user)):
         "ok": True,
         "tiers": tiers,
         "lifecycle_summary": {
-            "upload": "Photo → TEMP (48h)",
-            "published": "Published → delete after 7 days (saves 80% cost)",
-            "draft": "Draft → TEMP (48h) → HOT (90 days) → COLD (365 days) → delete",
+            "upload": "Photo -> TEMP (48h)",
+            "published": "Published -> delete after 7 days (saves 80% cost)",
+            "draft": "Draft -> TEMP (48h) -> HOT (90 days) -> COLD (365 days) -> delete",
             "total_lifecycle": "Max 365 days retention"
         }
     }

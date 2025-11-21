@@ -17,14 +17,14 @@ from loguru import logger
 
 async def main():
     """Main monitoring function"""
-    logger.info("🚀 Starting Vinted platform monitoring...")
+    logger.info("[START] Starting Vinted platform monitoring...")
 
     # Get credentials from environment
     cookie = os.getenv("VINTED_COOKIE")
     user_agent = os.getenv("VINTED_USER_AGENT", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
 
     if not cookie:
-        logger.error("❌ VINTED_COOKIE environment variable required")
+        logger.error("[ERROR] VINTED_COOKIE environment variable required")
         sys.exit(1)
 
     # Run monitoring
@@ -35,12 +35,12 @@ async def main():
         notifier = TelegramNotifier()
 
         if results["status"] == "healthy":
-            logger.info("✅ All tests passed - No changes detected")
+            logger.info("[OK] All tests passed - No changes detected")
             # Only send notification if you want daily "all good" messages
-            # notifier.send_custom_alert("Vinted Bot Status", "Tous les tests sont passés ✅", "info")
+            # notifier.send_custom_alert("Vinted Bot Status", "Tous les tests sont passés [OK]", "info")
 
         elif results["status"] == "warning":
-            logger.warning("⚠️ Minor issues detected")
+            logger.warning("[WARN] Minor issues detected")
             notifier.send_monitoring_alert(results)
 
         elif results["status"] == "critical":
@@ -51,7 +51,7 @@ async def main():
             sys.exit(1)
 
         else:
-            logger.error("❌ Monitoring failed")
+            logger.error("[ERROR] Monitoring failed")
             notifier.send_custom_alert(
                 "Vinted Bot Monitor Error",
                 f"Le monitoring a échoué avec le statut: {results['status']}",
@@ -60,7 +60,7 @@ async def main():
             sys.exit(1)
 
     except Exception as e:
-        logger.error(f"❌ Monitoring exception: {e}")
+        logger.error(f"[ERROR] Monitoring exception: {e}")
 
         # Send error notification
         notifier = TelegramNotifier()

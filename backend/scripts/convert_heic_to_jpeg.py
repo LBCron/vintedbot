@@ -16,7 +16,7 @@ def convert_heic_to_jpeg_batch():
     temp_photos_dir = Path("backend/data/temp_photos")
     
     if not temp_photos_dir.exists():
-        print(f"❌ Directory not found: {temp_photos_dir}")
+        print(f"[ERROR] Directory not found: {temp_photos_dir}")
         return
     
     heic_files = list(temp_photos_dir.rglob("*.HEIC"))
@@ -25,10 +25,10 @@ def convert_heic_to_jpeg_batch():
     heic_files.extend(list(temp_photos_dir.rglob("*.heif")))
     
     total = len(heic_files)
-    print(f"\n🔍 Found {total} HEIC files to convert")
+    print(f"\n[SEARCH] Found {total} HEIC files to convert")
     
     if total == 0:
-        print("✅ No HEIC files found - all done!")
+        print("[OK] No HEIC files found - all done!")
         return
     
     converted = 0
@@ -59,15 +59,15 @@ def convert_heic_to_jpeg_batch():
             
             converted += 1
             if i % 100 == 0:
-                print(f"[{i}/{total}] ✅ Converted {converted} files...")
+                print(f"[{i}/{total}] [OK] Converted {converted} files...")
             
         except Exception as e:
             failed += 1
-            print(f"[{i}/{total}] ❌ Failed to convert {heic_path.name}: {e}")
+            print(f"[{i}/{total}] [ERROR] Failed to convert {heic_path.name}: {e}")
     
     print(f"\n🎉 Conversion complete!")
-    print(f"   ✅ Converted: {converted}")
-    print(f"   ❌ Failed: {failed}")
+    print(f"   [OK] Converted: {converted}")
+    print(f"   [ERROR] Failed: {failed}")
     print(f"   📊 Total: {total}")
 
 if __name__ == "__main__":

@@ -347,4 +347,4 @@ if __name__ == "__main__":
     for i in range(5):
         print(f"   Request {i+1}: {rotator.get_next_proxy()}")
 
-    print("\n✅ All tests passed!")
+    print("\n[OK] All tests passed!")

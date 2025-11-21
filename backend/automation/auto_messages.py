@@ -144,17 +144,17 @@ class TemplateLibrary:
         MessageType.AVAILABILITY: [
             "Oui, l'article est toujours disponible ! 😊 N'hésite pas si tu as des questions.",
             "Hello ! Oui c'est encore dispo, tu peux l'acheter directement.",
-            "Oui disponible ! Je peux l'envoyer dès demain si tu commandes aujourd'hui. 📦"
+            "Oui disponible ! Je peux l'envoyer dès demain si tu commandes aujourd'hui. [PACKAGE]"
         ],
 
         MessageType.PRICE_QUESTION: [
             "Le prix affiché est déjà le meilleur que je peux faire pour cet article. 😊",
-            "Désolé(e), le prix est ferme pour le moment. Mais je fais des envois rapides ! 📦",
+            "Désolé(e), le prix est ferme pour le moment. Mais je fais des envois rapides ! [PACKAGE]",
             "C'est déjà un bon prix pour la qualité, mais si tu prends plusieurs articles je peux voir ! 😉"
         ],
 
         MessageType.SHIPPING_QUESTION: [
-            "Les frais de livraison sont calculés automatiquement par Vinted selon ton adresse. 📦",
+            "Les frais de livraison sont calculés automatiquement par Vinted selon ton adresse. [PACKAGE]",
             "Vinted calcule les frais d'envoi en fonction de ta localisation ! Tu verras le montant avant de valider.",
             "La livraison est gérée par Vinted, tu verras le prix exact au moment de l'achat. 😊"
         ],
@@ -168,7 +168,7 @@ class TemplateLibrary:
         MessageType.CONDITION_QUESTION: [
             "L'état est indiqué dans l'annonce ({condition}). Les photos montrent bien l'article !",
             "L'article est en {condition}. Tu peux zoomer sur les photos pour voir tous les détails. 😊",
-            "Comme indiqué : {condition}. Si tu veux des photos supplémentaires, dis-moi ! 📸"
+            "Comme indiqué : {condition}. Si tu veux des photos supplémentaires, dis-moi ! [PHOTO]"
         ],
 
         MessageType.THANK_YOU: [
@@ -339,7 +339,7 @@ class AutoMessagesService:
         self.tone = tone
         self.use_ai = use_ai
 
-        logger.info(f"✅ Auto-messages enabled (tone: {tone.value}, AI: {use_ai})")
+        logger.info(f"[OK] Auto-messages enabled (tone: {tone.value}, AI: {use_ai})")
 
         return {
             'success': True,
@@ -443,7 +443,7 @@ class AutoMessagesService:
             success, error = await client.send_message(conversation_id, reply_text)
 
             if success:
-                logger.info(f"✅ Auto-reply sent to conversation {conversation_id}")
+                logger.info(f"[OK] Auto-reply sent to conversation {conversation_id}")
 
                 # Mark context as auto-replied
                 if conversation_id in self.contexts:
@@ -451,7 +451,7 @@ class AutoMessagesService:
 
                 return True
             else:
-                logger.error(f"❌ Failed to send auto-reply: {error}")
+                logger.error(f"[ERROR] Failed to send auto-reply: {error}")
                 return False
 
     async def run_message_monitor(self):
@@ -461,7 +461,7 @@ class AutoMessagesService:
         Usage:
             asyncio.create_task(service.run_message_monitor())
         """
-        logger.info(f"🚀 Auto-messages monitor started for user {self.user_id}")
+        logger.info(f"[START] Auto-messages monitor started for user {self.user_id}")
         self.running = True
 
         while self.running:

@@ -29,7 +29,7 @@ class LocalStorage:
         self.base_path = Path(base_path)
         self.base_path.mkdir(parents=True, exist_ok=True)
 
-        logger.info(f"✅ LocalStorage initialized at {self.base_path}")
+        logger.info(f"[OK] LocalStorage initialized at {self.base_path}")
 
     async def upload(self, photo_id: str, data: bytes):
         """

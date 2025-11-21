@@ -189,7 +189,7 @@ async def bulk_mark_read(data: BulkMarkReadRequest):
     for thread_id in data.thread_ids:
         mark_messages_read(thread_id)
     
-    logger.info(f"✅ Marked {len(data.thread_ids)} threads as read")
+    logger.info(f"[OK] Marked {len(data.thread_ids)} threads as read")
     
     return {
         "success": True,

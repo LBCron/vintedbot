@@ -35,7 +35,7 @@ class BackblazeB2Storage:
         app_key = os.getenv('B2_APPLICATION_KEY')
 
         if not all([key_id, app_key]):
-            logger.warning("⚠️ B2 credentials not configured, B2 storage will not work")
+            logger.warning("[WARN] B2 credentials not configured, B2 storage will not work")
             self.b2_api = None
             self.bucket = None
             return
@@ -53,10 +53,10 @@ class BackblazeB2Storage:
             bucket_name = os.getenv('B2_BUCKET_NAME', 'vintedbot-archive')
             self.bucket = self.b2_api.get_bucket_by_name(bucket_name)
 
-            logger.info(f"✅ BackblazeB2Storage initialized (bucket: {bucket_name})")
+            logger.info(f"[OK] BackblazeB2Storage initialized (bucket: {bucket_name})")
 
         except Exception as e:
-            logger.error(f"❌ Failed to initialize B2: {e}")
+            logger.error(f"[ERROR] Failed to initialize B2: {e}")
             self.b2_api = None
             self.bucket = None
 
@@ -87,7 +87,7 @@ class BackblazeB2Storage:
             logger.debug(f"❄️ Uploaded to B2: {file_name} ({len(data)} bytes)")
 
         except Exception as e:
-            logger.error(f"❌ B2 upload failed: {e}")
+            logger.error(f"[ERROR] B2 upload failed: {e}")
             raise
 
     async def download(self, photo_id: str) -> bytes:
@@ -121,7 +121,7 @@ class BackblazeB2Storage:
         except FileNotPresent:
             raise FileNotFoundError(f"Photo {photo_id} not found in B2")
         except Exception as e:
-            logger.error(f"❌ B2 download failed: {e}")
+            logger.error(f"[ERROR] B2 download failed: {e}")
             raise
 
     async def delete(self, photo_id: str):
@@ -151,7 +151,7 @@ class BackblazeB2Storage:
         except FileNotPresent:
             logger.warning(f"Photo {photo_id} not found in B2 for deletion")
         except Exception as e:
-            logger.error(f"❌ B2 delete failed: {e}")
+            logger.error(f"[ERROR] B2 delete failed: {e}")
             raise
 
     async def get_url(self, photo_id: str) -> str:
@@ -179,7 +179,7 @@ class BackblazeB2Storage:
             return download_url
 
         except Exception as e:
-            logger.error(f"❌ Failed to get B2 URL: {e}")
+            logger.error(f"[ERROR] Failed to get B2 URL: {e}")
             raise
 
     async def exists(self, photo_id: str) -> bool:

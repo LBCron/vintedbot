@@ -88,9 +88,9 @@ def resolve_photo_path(photo_path: str) -> str:
     RÉSOLUTION ROBUSTE DES CHEMINS PHOTOS (pour backend filesystem access)
 
     Gère tous les formats possibles :
-    - "/temp_photos/xxx/photo_000.jpg" → "{DATA_DIR}/temp_photos/xxx/photo_000.jpg"
-    - "backend/data/temp_photos/xxx/photo_000.jpg" → "{DATA_DIR}/temp_photos/xxx/photo_000.jpg"
-    - "temp_photos/xxx/photo_000.jpg" → "{DATA_DIR}/temp_photos/xxx/photo_000.jpg"
+    - "/temp_photos/xxx/photo_000.jpg" -> "{DATA_DIR}/temp_photos/xxx/photo_000.jpg"
+    - "backend/data/temp_photos/xxx/photo_000.jpg" -> "{DATA_DIR}/temp_photos/xxx/photo_000.jpg"
+    - "temp_photos/xxx/photo_000.jpg" -> "{DATA_DIR}/temp_photos/xxx/photo_000.jpg"
 
     Returns:
         Chemin absolu valide qui existe sur le système de fichiers
@@ -130,9 +130,9 @@ def normalize_photo_url_for_frontend(photo_path: str) -> str:
     Normalize photo path to frontend-compatible URL (API response layer only)
     
     Converts filesystem paths to HTTP URLs:
-    - "backend/data/temp_photos/xxx/photo_000.jpg" → "/temp_photos/xxx/photo_000.jpg"
-    - "temp_photos/xxx/photo_000.jpg" → "/temp_photos/xxx/photo_000.jpg"
-    - "/temp_photos/xxx/photo_000.jpg" → "/temp_photos/xxx/photo_000.jpg" (unchanged)
+    - "backend/data/temp_photos/xxx/photo_000.jpg" -> "/temp_photos/xxx/photo_000.jpg"
+    - "temp_photos/xxx/photo_000.jpg" -> "/temp_photos/xxx/photo_000.jpg"
+    - "/temp_photos/xxx/photo_000.jpg" -> "/temp_photos/xxx/photo_000.jpg" (unchanged)
     """
     if not photo_path:
         return photo_path
@@ -174,7 +174,7 @@ def save_uploaded_photos(files: List[UploadFile], job_id: str) -> List[str]:
     """Save uploaded photos and return file paths (converts HEIC to JPEG)"""
     from backend.settings import settings as bulk_settings
 
-    # ✅ CRITICAL: Register HEIC support for PIL in this function context
+    # [OK] CRITICAL: Register HEIC support for PIL in this function context
     try:
         from pillow_heif import register_heif_opener
         register_heif_opener()
@@ -201,7 +201,7 @@ def save_uploaded_photos(files: List[UploadFile], job_id: str) -> List[str]:
                 from PIL import Image
                 import io
 
-                # ✅ FIX: Save HEIC to disk first, then open it (pillow-heif needs file path)
+                # [OK] FIX: Save HEIC to disk first, then open it (pillow-heif needs file path)
                 temp_heic = temp_dir / f"temp_{i:03d}.heic"
                 with open(temp_heic, "wb") as f:
                     f.write(content)
@@ -316,7 +316,7 @@ async def process_bulk_job(
                     analysis_results.append(result)
                     
                     bulk_jobs[job_id]["completed_items"] += 1
-                    # Map analysis progress from 25% → 50%
+                    # Map analysis progress from 25% -> 50%
                     progress = 25.0 + ((i + 1) / len(photo_groups) * 25.0)
                     bulk_jobs[job_id]["progress_percent"] = progress
                     
@@ -403,7 +403,7 @@ async def process_bulk_job(
             except Exception as e:
                 print(f"[WARNING] Failed to save draft to SQLite: {e} (continuing with in-memory only)")
             
-            # Map draft creation progress from 50% → 100%
+            # Map draft creation progress from 50% -> 100%
             progress = 50.0 + ((idx + 1) / len(analysis_results) * 50.0)
             bulk_jobs[job_id]["progress_percent"] = progress
             
@@ -2032,9 +2032,9 @@ async def create_grouping_plan(
     Analyzes photos and creates an intelligent grouping plan WITHOUT generating drafts yet.
     
     **Auto-grouping rules:**
-    - If auto_grouping=true OR photos ≤ SINGLE_ITEM_DEFAULT_MAX_PHOTOS (80) → Single item mode
+    - If auto_grouping=true OR photos ≤ SINGLE_ITEM_DEFAULT_MAX_PHOTOS (80) -> Single item mode
     - Detects labels (care labels, brand tags, size labels) via AI Vision
-    - Clusters ≤2 photos or label-only → auto-attach to largest cluster
+    - Clusters ≤2 photos or label-only -> auto-attach to largest cluster
     - NEVER creates label-only articles
     
     **Returns:** A grouping plan with cluster details and merge recommendations
@@ -2153,7 +2153,7 @@ async def generate_drafts_from_plan(
     current_user: User = Depends(get_current_user)
 ):
     """
-    ✨ GENERATE DRAFTS WITH STRICT VALIDATION (Zero Failed Drafts)
+    [QUALITY] GENERATE DRAFTS WITH STRICT VALIDATION (Zero Failed Drafts)
     
     Creates drafts from a grouping plan or photos with STRICT validation.
     
@@ -2243,7 +2243,7 @@ async def generate_drafts_from_plan(
                 if missing_fields:
                     validation_errors.append(f"missing: {', '.join(missing_fields)}")
                 
-                # If validation fails for this item → Skip it
+                # If validation fails for this item -> Skip it
                 if validation_errors:
                     error_msg = f"Item {item_index} ({title[:30]}...): {'; '.join(validation_errors)}"
                     errors.append(error_msg)
@@ -2251,7 +2251,7 @@ async def generate_drafts_from_plan(
                     print(f"[WARNING] Skipped item {item_index}: {error_msg}")
                     continue
                 
-                # All validations passed → Create draft for this item
+                # All validations passed -> Create draft for this item
                 draft_id = str(uuid.uuid4())
                 draft = DraftItem(
                     id=draft_id,
@@ -2308,12 +2308,12 @@ async def generate_drafts_from_plan(
                 drafts_storage[real_draft_id] = draft
                 created_drafts.append(draft)
                 
-                print(f"✅ Draft {item_index}/{len(grouped_items)}: {draft.title} ({len(item.get('photos', []))} photos, {hashtag_count} hashtags)")
+                print(f"[OK] Draft {item_index}/{len(grouped_items)}: {draft.title} ({len(item.get('photos', []))} photos, {hashtag_count} hashtags)")
                 
             except Exception as e:
                 error_msg = f"Item {item_index} error: {str(e)}"
                 errors.append(error_msg)
-                print(f"❌ {error_msg}")
+                print(f"[ERROR] {error_msg}")
         
         # Return response with all created drafts
         success_count = len(created_drafts)
@@ -2333,7 +2333,7 @@ async def generate_drafts_from_plan(
                 skipped_count=skip_count,
                 drafts=[],
                 errors=errors,
-                message=f"❌ No valid drafts created. {skip_count} items skipped. Errors: {'; '.join(errors[:3])}"
+                message=f"[ERROR] No valid drafts created. {skip_count} items skipped. Errors: {'; '.join(errors[:3])}"
             )
         
         return GenerateResponse(
@@ -2342,13 +2342,13 @@ async def generate_drafts_from_plan(
             skipped_count=skip_count,
             drafts=created_drafts,
             errors=errors,
-            message=f"✅ Created {success_count} draft(s) from {detected_count} detected items ({skip_count} skipped)"
+            message=f"[OK] Created {success_count} draft(s) from {detected_count} detected items ({skip_count} skipped)"
         )
         
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ Generate drafts error: {e}")
+        print(f"[ERROR] Generate drafts error: {e}")
         raise HTTPException(status_code=500, detail=f"Generation failed: {str(e)}")
 
 
@@ -2429,7 +2429,7 @@ This is a metadata-only backup for quick restoration.
         )
         
     except Exception as e:
-        print(f"❌ Export error: {e}")
+        print(f"[ERROR] Export error: {e}")
         raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
 
 
@@ -2496,20 +2496,20 @@ async def import_drafts(
                 imported_count += 1
                 
             except Exception as e:
-                print(f"⚠️ Skipped draft {draft.get('id')}: {e}")
+                print(f"[WARN] Skipped draft {draft.get('id')}: {e}")
                 skipped_count += 1
         
         return JSONResponse({
             "ok": True,
             "imported": imported_count,
             "skipped": skipped_count,
-            "message": f"✅ Imported {imported_count} drafts ({skipped_count} skipped)"
+            "message": f"[OK] Imported {imported_count} drafts ({skipped_count} skipped)"
         })
         
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ Import error: {e}")
+        print(f"[ERROR] Import error: {e}")
         raise HTTPException(status_code=500, detail=f"Import failed: {str(e)}")
 
 
@@ -2601,7 +2601,7 @@ async def get_ai_performance_metrics(
             }
         }
     except Exception as e:
-        print(f"❌ Analytics error: {e}")
+        print(f"[ERROR] Analytics error: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to get analytics: {str(e)}")
 
 
@@ -2631,7 +2631,7 @@ async def clear_ai_cache(
     except ImportError:
         raise HTTPException(status_code=503, detail="Redis cache not available")
     except Exception as e:
-        print(f"❌ Cache clear error: {e}")
+        print(f"[ERROR] Cache clear error: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to clear cache: {str(e)}")
 
 
@@ -2677,12 +2677,12 @@ async def estimate_image_processing_cost(
             "cost_after_optimization": f"${cost_estimate['cost_after']}",
             "savings": f"${cost_estimate['savings']}",
             "savings_percent": f"{cost_estimate['savings_percent']}%",
-            "recommendation": "✅ Image optimization saves ~75% API costs" if cost_estimate['savings_percent'] > 50 else "ℹ️ Minimal savings expected"
+            "recommendation": "[OK] Image optimization saves ~75% API costs" if cost_estimate['savings_percent'] > 50 else "[INFO] Minimal savings expected"
         }
 
     except ImportError:
         raise HTTPException(status_code=503, detail="Image optimizer not available")
     except Exception as e:
-        print(f"❌ Cost estimation error: {e}")
+        print(f"[ERROR] Cost estimation error: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to estimate cost: {str(e)}")
 

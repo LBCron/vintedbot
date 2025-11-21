@@ -131,7 +131,7 @@ async def run_playwright_job(job_id: str, headless: bool = True):
                 await page.screenshot(path=screenshot_path)
                 logs.append({
                     "timestamp": datetime.utcnow().isoformat(),
-                    "message": "⚠️ CAPTCHA detected - automation blocked",
+                    "message": "[WARN] CAPTCHA detected - automation blocked",
                     "level": "warning"
                 })
                 update_job_status(job_id, JobStatus.blocked, logs=logs, screenshot_path=screenshot_path)
@@ -239,11 +239,11 @@ async def run_playwright_job(job_id: str, headless: bool = True):
                 
                 logs.append({
                     "timestamp": datetime.utcnow().isoformat(),
-                    "message": f"✅ Automated publish completed. New URL: {page.url}"
+                    "message": f"[OK] Automated publish completed. New URL: {page.url}"
                 })
                 update_job_status(job_id, JobStatus.completed, logs=logs)
             
-            logger.info(f"✅ Job {job_id} completed successfully")
+            logger.info(f"[OK] Job {job_id} completed successfully")
         
         except Exception as e:
             screenshot_path = f"backend/data/screenshots/{job_id}_error.png"
@@ -279,7 +279,7 @@ async def worker_loop():
                 ).first()
                 
                 if job:
-                    logger.info(f"📋 Processing job {job.job_id}")
+                    logger.info(f"[INFO] Processing job {job.job_id}")
                     await run_playwright_job(job.job_id, headless=HEADLESS)
             
             # Sleep before next check

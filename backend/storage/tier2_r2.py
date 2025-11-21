@@ -39,7 +39,7 @@ class CloudflareR2Storage:
         secret_key = os.getenv('R2_SECRET_ACCESS_KEY')
 
         if not all([endpoint_url, access_key, secret_key]):
-            logger.warning("⚠️ R2 credentials not configured, R2 storage will not work")
+            logger.warning("[WARN] R2 credentials not configured, R2 storage will not work")
             self.client = None
             return
 
@@ -56,7 +56,7 @@ class CloudflareR2Storage:
         self.cdn_domain = os.getenv('R2_CDN_DOMAIN')  # Ex: photos.vintedbot.app
         self.public_url = os.getenv('R2_PUBLIC_URL')  # Fallback
 
-        logger.info(f"✅ CloudflareR2Storage initialized (bucket: {self.bucket_name})")
+        logger.info(f"[OK] CloudflareR2Storage initialized (bucket: {self.bucket_name})")
 
     async def upload(self, photo_id: str, data: bytes):
         """
@@ -87,7 +87,7 @@ class CloudflareR2Storage:
             logger.debug(f"☁️ Uploaded to R2: {key} ({len(data)} bytes)")
 
         except ClientError as e:
-            logger.error(f"❌ R2 upload failed: {e}")
+            logger.error(f"[ERROR] R2 upload failed: {e}")
             raise
 
     async def download(self, photo_id: str) -> bytes:
@@ -121,7 +121,7 @@ class CloudflareR2Storage:
             if e.response['Error']['Code'] == 'NoSuchKey':
                 raise FileNotFoundError(f"Photo {photo_id} not found in R2")
             else:
-                logger.error(f"❌ R2 download failed: {e}")
+                logger.error(f"[ERROR] R2 download failed: {e}")
                 raise
 
     async def delete(self, photo_id: str):
@@ -145,7 +145,7 @@ class CloudflareR2Storage:
             logger.debug(f"🗑️ Deleted from R2: {key}")
 
         except ClientError as e:
-            logger.error(f"❌ R2 delete failed: {e}")
+            logger.error(f"[ERROR] R2 delete failed: {e}")
             raise
 
     async def get_cdn_url(self, photo_id: str) -> str:
@@ -197,7 +197,7 @@ class CloudflareR2Storage:
             return url
 
         except ClientError as e:
-            logger.error(f"❌ Failed to generate presigned URL: {e}")
+            logger.error(f"[ERROR] Failed to generate presigned URL: {e}")
             raise
 
     async def exists(self, photo_id: str) -> bool:

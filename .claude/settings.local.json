@@ -83,7 +83,10 @@
       "Bash(powershell -Command \"Get-ChildItem -Path . -Recurse -Include *.tsx,*.ts | ForEach-Object { (Get-Content $_FullName) -replace ''from \"\"(.*)\\/ui\\/(Button|Card|Input|Badge|Modal|Skeleton|Checkbox|Toggle|Textarea|Select|Tooltip|Avatar|Drawer|Popover|Progress|Tabs|MultiSelect|DatePicker|ImageCarousel)\"\"'', ''from \"\"$1/common/$2\"\"'' | Set-Content $_FullName }\")",
       "Bash(Select-Object -Last 5)",
       "Bash(git rm:*)",
-      "Bash(del nul 2)"
+      "Bash(del nul 2)",
+      "Bash(git restore:*)",
+      "Bash(powershell:*)",
+      "Bash($null)"
     ],
     "deny": [],
     "ask": []

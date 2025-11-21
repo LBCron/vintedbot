@@ -83,7 +83,7 @@ class VintedAPIClient:
             (success, error_message)
         """
         try:
-            logger.info(f"🔄 Bumping item {item_id}...")
+            logger.info(f"[PROCESS] Bumping item {item_id}...")
 
             # Endpoint for bumping items
             url = f"{self.API_BASE}/items/{item_id}/push_up"
@@ -91,7 +91,7 @@ class VintedAPIClient:
             response = await self.client.post(url)
 
             if response.status_code == 200:
-                logger.info(f"✅ Successfully bumped item {item_id}")
+                logger.info(f"[OK] Successfully bumped item {item_id}")
                 return (True, None)
             elif response.status_code == 402:
                 # Payment required - free bumps exhausted
@@ -99,11 +99,11 @@ class VintedAPIClient:
             elif response.status_code == 429:
                 return (False, "Rate limited - too many bumps")
             else:
-                logger.error(f"❌ Bump failed: {response.status_code} - {response.text}")
+                logger.error(f"[ERROR] Bump failed: {response.status_code} - {response.text}")
                 return (False, f"Bump failed: HTTP {response.status_code}")
 
         except Exception as e:
-            logger.error(f"❌ Bump error: {e}")
+            logger.error(f"[ERROR] Bump error: {e}")
             return (False, f"Bump error: {str(e)}")
 
     async def get_items(self, user_id: str, per_page: int = 20) -> Tuple[bool, Optional[List[Dict]], Optional[str]]:
@@ -156,18 +156,18 @@ class VintedAPIClient:
             response = await self.client.post(url)
 
             if response.status_code == 200:
-                logger.info(f"✅ Successfully followed user {user_id}")
+                logger.info(f"[OK] Successfully followed user {user_id}")
                 return (True, None)
             elif response.status_code == 422:
                 return (False, "Already following this user")
             elif response.status_code == 429:
                 return (False, "Rate limited - too many follows")
             else:
-                logger.error(f"❌ Follow failed: {response.status_code}")
+                logger.error(f"[ERROR] Follow failed: {response.status_code}")
                 return (False, f"Follow failed: HTTP {response.status_code}")
 
         except Exception as e:
-            logger.error(f"❌ Follow error: {e}")
+            logger.error(f"[ERROR] Follow error: {e}")
             return (False, f"Follow error: {str(e)}")
 
     async def unfollow_user(self, user_id: str) -> Tuple[bool, Optional[str]]:
@@ -189,16 +189,16 @@ class VintedAPIClient:
             response = await self.client.delete(url)
 
             if response.status_code == 200:
-                logger.info(f"✅ Successfully unfollowed user {user_id}")
+                logger.info(f"[OK] Successfully unfollowed user {user_id}")
                 return (True, None)
             elif response.status_code == 422:
                 return (False, "Not following this user")
             else:
-                logger.error(f"❌ Unfollow failed: {response.status_code}")
+                logger.error(f"[ERROR] Unfollow failed: {response.status_code}")
                 return (False, f"Unfollow failed: HTTP {response.status_code}")
 
         except Exception as e:
-            logger.error(f"❌ Unfollow error: {e}")
+            logger.error(f"[ERROR] Unfollow error: {e}")
             return (False, f"Unfollow error: {str(e)}")
 
     async def get_followers(self, user_id: str, page: int = 1) -> Tuple[bool, Optional[List[Dict]], Optional[str]]:
@@ -268,16 +268,16 @@ class VintedAPIClient:
             response = await self.client.post(url, json=payload)
 
             if response.status_code == 200:
-                logger.info(f"✅ Message sent successfully")
+                logger.info(f"[OK] Message sent successfully")
                 return (True, None)
             elif response.status_code == 429:
                 return (False, "Rate limited - too many messages")
             else:
-                logger.error(f"❌ Send message failed: {response.status_code}")
+                logger.error(f"[ERROR] Send message failed: {response.status_code}")
                 return (False, f"Send failed: HTTP {response.status_code}")
 
         except Exception as e:
-            logger.error(f"❌ Send message error: {e}")
+            logger.error(f"[ERROR] Send message error: {e}")
             return (False, f"Send error: {str(e)}")
 
     async def get_conversations(self, page: int = 1, per_page: int = 20) -> Tuple[bool, Optional[List[Dict]], Optional[str]]:
@@ -504,7 +504,7 @@ class VintedAPIClient:
             response = await self.client.post(url)
 
             if response.status_code == 200:
-                logger.info(f"✅ Successfully liked item {item_id}")
+                logger.info(f"[OK] Successfully liked item {item_id}")
                 return (True, None)
             elif response.status_code == 422:
                 return (False, "Already liked this item")
@@ -561,7 +561,7 @@ class VintedAPIClient:
             if response.status_code == 200:
                 data = response.json()
                 item = data.get('item', {})
-                logger.info(f"✅ Successfully fetched listing {item_id}")
+                logger.info(f"[OK] Successfully fetched listing {item_id}")
                 return item
             elif response.status_code == 404:
                 logger.warning(f"Listing {item_id} not found (404)")
@@ -618,7 +618,7 @@ class VintedAPIClient:
             response = await self.client.put(url, json=payload)
 
             if response.status_code == 200:
-                logger.info(f"✅ Successfully updated listing {item_id}")
+                logger.info(f"[OK] Successfully updated listing {item_id}")
                 return True
             elif response.status_code == 403:
                 logger.error(f"Forbidden to update listing {item_id} (not owner?)")
@@ -669,7 +669,7 @@ class VintedAPIClient:
             if response.status_code == 200:
                 data = response.json()
                 items = data.get('items', [])
-                logger.info(f"✅ Fetched {len(items)} listings")
+                logger.info(f"[OK] Fetched {len(items)} listings")
                 return (True, items, None)
             else:
                 return (False, None, f"Failed to fetch listings: HTTP {response.status_code}")

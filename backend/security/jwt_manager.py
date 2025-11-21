@@ -293,7 +293,7 @@ class JWTManager:
         Revoke all tokens for a user (logout from all devices)
 
         Note: In production, this should be stored in database/Redis
-        with user_id → jti mapping
+        with user_id -> jti mapping
 
         Args:
             user_id: User ID
@@ -393,7 +393,7 @@ def generate_jwt_secret() -> str:
     print("=" * 80)
     print(secret)
     print("=" * 80)
-    print("⚠️ WARNING: If you change this, all existing tokens will be invalidated!")
+    print("[WARN] WARNING: If you change this, all existing tokens will be invalidated!")
     print("=" * 80)
 
     return secret
@@ -426,4 +426,4 @@ if __name__ == "__main__":
     new_tokens = manager.refresh_access_token(tokens.refresh_token, device_id="iphone_12_pro")
     print(f"\nRefreshed! New Access Token: {new_tokens.access_token[:50]}...")
 
-    print("\n✅ JWT manager test passed!")
+    print("\n[OK] JWT manager test passed!")

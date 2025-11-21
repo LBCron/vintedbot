@@ -81,7 +81,7 @@ async def create_listing(data: ListingCreate):
         db.commit()
         db.refresh(listing)
         
-        logger.info(f"✨ Listing {listing.id} created: {listing.title}")
+        logger.info(f"[QUALITY] Listing {listing.id} created: {listing.title}")
         
         return {
             "id": listing.id,

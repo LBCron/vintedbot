@@ -208,10 +208,10 @@ class EncryptedLogger:
             with open(output_file, 'w', encoding='utf-8') as f:
                 json.dump(all_logs, f, indent=2, ensure_ascii=False)
 
-            logger.info(f"✅ Exported {len(all_logs)} logs to {output_file}")
+            logger.info(f"[OK] Exported {len(all_logs)} logs to {output_file}")
 
         except Exception as e:
-            logger.error(f"❌ Failed to export logs: {e}")
+            logger.error(f"[ERROR] Failed to export logs: {e}")
 
 
 # Global encrypted logger instance
@@ -230,7 +230,7 @@ if __name__ == "__main__":
     logger_test.error("Test error", error_code=500, details="Internal server error")
     logger_test.metric("requests_per_second", 150.5, endpoint="/api/vinted")
 
-    print("✅ Logs written (encrypted)\n")
+    print("[OK] Logs written (encrypted)\n")
 
     # Read logs
     print("📖 Reading encrypted logs:\n")
@@ -242,8 +242,8 @@ if __name__ == "__main__":
             print(f"   Data: {log['data']}")
 
     # Search
-    print("\n🔍 Searching for 'error':\n")
+    print("\n[SEARCH] Searching for 'error':\n")
     results = logger_test.search_logs("error")
     print(f"Found {len(results)} results")
 
-    print("\n✅ Encrypted logging test complete!")
+    print("\n[OK] Encrypted logging test complete!")

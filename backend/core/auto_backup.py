@@ -50,16 +50,16 @@ class BackupManager:
         backup_file = self.backup_dir / f"{backup_name}.tar.gz"
 
         try:
-            logger.info(f"📦 Creating backup: {backup_name}")
+            logger.info(f"[PACKAGE] Creating backup: {backup_name}")
 
             with tarfile.open(backup_file, "w:gz") as tar:
                 for target in self.backup_targets:
                     target_path = Path(target)
                     if target_path.exists():
                         tar.add(target_path, arcname=target_path.name)
-                        logger.info(f"  ✅ Added: {target}")
+                        logger.info(f"  [OK] Added: {target}")
                     else:
-                        logger.warning(f"  ⚠️ Skipped (not found): {target}")
+                        logger.warning(f"  [WARN] Skipped (not found): {target}")
 
             # Add metadata
             metadata = {
@@ -73,11 +73,11 @@ class BackupManager:
             with open(metadata_file, 'w') as f:
                 json.dump(metadata, f, indent=2)
 
-            logger.info(f"✅ Backup created: {backup_file} ({metadata['size_bytes'] / 1024 / 1024:.2f} MB)")
+            logger.info(f"[OK] Backup created: {backup_file} ({metadata['size_bytes'] / 1024 / 1024:.2f} MB)")
             return backup_file
 
         except Exception as e:
-            logger.error(f"❌ Backup failed: {e}")
+            logger.error(f"[ERROR] Backup failed: {e}")
             return None
 
     def restore_backup(self, backup_name: str) -> bool:
@@ -93,11 +93,11 @@ class BackupManager:
         backup_file = self.backup_dir / f"{backup_name}.tar.gz"
 
         if not backup_file.exists():
-            logger.error(f"❌ Backup not found: {backup_name}")
+            logger.error(f"[ERROR] Backup not found: {backup_name}")
             return False
 
         try:
-            logger.info(f"📦 Restoring backup: {backup_name}")
+            logger.info(f"[PACKAGE] Restoring backup: {backup_name}")
 
             # Create restore point first
             self.create_backup(backup_name=f"pre_restore_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
@@ -106,11 +106,11 @@ class BackupManager:
             with tarfile.open(backup_file, "r:gz") as tar:
                 tar.extractall(path=".")
 
-            logger.info(f"✅ Backup restored: {backup_name}")
+            logger.info(f"[OK] Backup restored: {backup_name}")
             return True
 
         except Exception as e:
-            logger.error(f"❌ Restore failed: {e}")
+            logger.error(f"[ERROR] Restore failed: {e}")
             return False
 
     def list_backups(self) -> List[Dict]:
@@ -163,12 +163,12 @@ class BackupManager:
                     deleted += 1
                     logger.info(f"🗑️ Deleted old backup: {backup_file.name}")
                 except Exception as e:
-                    logger.error(f"❌ Failed to delete {backup_file.name}: {e}")
+                    logger.error(f"[ERROR] Failed to delete {backup_file.name}: {e}")
 
         if deleted > 0:
-            logger.info(f"✅ Cleaned up {deleted} old backups")
+            logger.info(f"[OK] Cleaned up {deleted} old backups")
         else:
-            logger.info("✅ No old backups to clean up")
+            logger.info("[OK] No old backups to clean up")
 
     def get_backup_stats(self) -> Dict:
         """Get backup statistics"""
@@ -203,7 +203,7 @@ class AutoBackupScheduler:
             interval_hours: Backup interval in hours
         """
         self.is_running = True
-        logger.info(f"🔄 Auto-backup scheduler started (every {interval_hours}h)")
+        logger.info(f"[PROCESS] Auto-backup scheduler started (every {interval_hours}h)")
 
         while self.is_running:
             try:
@@ -211,9 +211,9 @@ class AutoBackupScheduler:
                 backup_file = self.backup_manager.create_backup()
 
                 if backup_file:
-                    logger.info("✅ Scheduled backup completed")
+                    logger.info("[OK] Scheduled backup completed")
                 else:
-                    logger.error("❌ Scheduled backup failed")
+                    logger.error("[ERROR] Scheduled backup failed")
 
                 # Cleanup old backups
                 self.backup_manager.cleanup_old_backups()
@@ -222,7 +222,7 @@ class AutoBackupScheduler:
                 await asyncio.sleep(interval_hours * 3600)
 
             except Exception as e:
-                logger.error(f"❌ Auto-backup error: {e}")
+                logger.error(f"[ERROR] Auto-backup error: {e}")
                 await asyncio.sleep(3600)  # Wait 1h before retry
 
     def stop(self):
@@ -244,7 +244,7 @@ def schedule_daily_backup():
         logger.info("⏰ Running scheduled backup...")
         backup_file = backup_manager.create_backup()
         if backup_file:
-            logger.info("✅ Scheduled backup completed")
+            logger.info("[OK] Scheduled backup completed")
             backup_manager.cleanup_old_backups()
 
     # Schedule daily at 3 AM
@@ -257,20 +257,20 @@ def schedule_daily_backup():
         replace_existing=True
     )
 
-    logger.info("✅ Daily backup scheduled at 3:00 AM")
+    logger.info("[OK] Daily backup scheduled at 3:00 AM")
 
 
 if __name__ == "__main__":
     # Test backup system
     manager = BackupManager()
 
-    print("📦 Creating test backup...")
+    print("[PACKAGE] Creating test backup...")
     backup_file = manager.create_backup()
 
     if backup_file:
-        print(f"✅ Backup created: {backup_file}")
+        print(f"[OK] Backup created: {backup_file}")
 
-        print("\n📋 Available backups:")
+        print("\n[INFO] Available backups:")
         for backup in manager.list_backups():
             print(f"  - {backup['backup_name']} ({backup.get('size_bytes', 0) / 1024:.1f} KB)")
 
@@ -284,4 +284,4 @@ if __name__ == "__main__":
         print("\n🗑️ Testing cleanup...")
         manager.cleanup_old_backups()
     else:
-        print("❌ Backup failed")
+        print("[ERROR] Backup failed")

@@ -126,7 +126,7 @@ class SmartRateLimiter:
         if wait_time > 0:
             # Log if significant wait
             if wait_time > 5:
-                logger.info(f"⏳ Rate limit: waiting {wait_time:.1f}s")
+                logger.info(f"[WAIT] Rate limit: waiting {wait_time:.1f}s")
 
             await asyncio.sleep(wait_time)
             self.total_wait_time += wait_time
@@ -169,7 +169,7 @@ class SmartRateLimiter:
             if self.detection_score > 3:
                 self.current_delay_multiplier *= 1.5
                 self.current_delay_multiplier = min(self.current_delay_multiplier, 5.0)
-                logger.warning(f"⚠️ Detected issues - slowing down (multiplier: {self.current_delay_multiplier:.1f}x)")
+                logger.warning(f"[WARN] Detected issues - slowing down (multiplier: {self.current_delay_multiplier:.1f}x)")
 
         else:
             # Decrease detection score on success
@@ -193,7 +193,7 @@ class SmartRateLimiter:
         self.detection_score += 3
         self.current_delay_multiplier *= 1.8
         self.current_delay_multiplier = min(self.current_delay_multiplier, 8.0)
-        logger.warning(f"⚠️ Rate limit hit - slowing down (multiplier: {self.current_delay_multiplier:.1f}x)")
+        logger.warning(f"[WARN] Rate limit hit - slowing down (multiplier: {self.current_delay_multiplier:.1f}x)")
 
     def get_stats(self) -> Dict:
         """Get rate limiter statistics"""
@@ -221,7 +221,7 @@ class SmartRateLimiter:
         self.requests_day.clear()
         self.detection_score = 0
         self.current_delay_multiplier = 1.0
-        logger.info("🔄 Rate limiter reset")
+        logger.info("[PROCESS] Rate limiter reset")
 
 
 # Global rate limiter instance
@@ -251,16 +251,16 @@ if __name__ == "__main__":
 
             wait_time = await limiter.wait_if_needed()
             if wait_time > 0:
-                print(f"   ⏳ Waited {wait_time:.2f}s")
+                print(f"   [WAIT] Waited {wait_time:.2f}s")
 
             # Simulate request
             success = random.random() > 0.2  # 80% success rate
             limiter.record_request(success)
 
             if not success:
-                print("   ❌ Request failed")
+                print("   [ERROR] Request failed")
             else:
-                print("   ✅ Request success")
+                print("   [OK] Request success")
 
             # Stats
             stats = limiter.get_stats()
@@ -269,6 +269,6 @@ if __name__ == "__main__":
             print(f"      - Detection score: {stats['detection_score']}")
             print(f"      - Delay multiplier: {stats['current_delay_multiplier']:.2f}x")
 
-        print("\n✅ Rate limiter test complete!")
+        print("\n[OK] Rate limiter test complete!")
 
     asyncio.run(test())

@@ -68,7 +68,7 @@ class SessionVault:
             self.storage_path.write_bytes(encrypted)
             return True
         except Exception as e:
-            print(f"❌ Error saving session: {e}")
+            print(f"[ERROR] Error saving session: {e}")
             return False
     
     def load_session(self) -> Optional[VintedSession]:
@@ -99,12 +99,12 @@ class SessionVault:
             
             # Check expiration
             if session.expires_at and session.expires_at < datetime.utcnow():
-                print("⚠️ Session expired")
+                print("[WARN] Session expired")
                 return None
             
             return session
         except Exception as e:
-            print(f"❌ Error loading session: {e}")
+            print(f"[ERROR] Error loading session: {e}")
             return None
     
     def clear_session(self) -> bool:
@@ -114,7 +114,7 @@ class SessionVault:
                 self.storage_path.unlink()
             return True
         except Exception as e:
-            print(f"❌ Error clearing session: {e}")
+            print(f"[ERROR] Error clearing session: {e}")
             return False
     
     def is_authenticated(self) -> bool:

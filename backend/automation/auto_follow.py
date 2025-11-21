@@ -352,7 +352,7 @@ class AutoFollowService:
 
             self.follow_queue = unique_queue
 
-            logger.info(f"✅ Added {len(targets)} targets to follow queue")
+            logger.info(f"[OK] Added {len(targets)} targets to follow queue")
 
             return {
                 'success': True,
@@ -398,7 +398,7 @@ class AutoFollowService:
                 self.hourly_follow_count += 1
                 self.last_follow_time = datetime.now()
 
-                logger.info(f"✅ Followed @{target.username} ({target.reason})")
+                logger.info(f"[OK] Followed @{target.username} ({target.reason})")
                 return (True, None)
             else:
                 if "already following" in error.lower():
@@ -408,7 +408,7 @@ class AutoFollowService:
                 else:
                     target.status = FollowStatus.FAILED
 
-                logger.error(f"❌ Failed to follow @{target.username}: {error}")
+                logger.error(f"[ERROR] Failed to follow @{target.username}: {error}")
                 return (False, error)
 
     async def run_auto_follow(self):
@@ -418,7 +418,7 @@ class AutoFollowService:
         Usage:
             asyncio.create_task(service.run_auto_follow())
         """
-        logger.info(f"🚀 Auto-follow service started for user {self.user_id}")
+        logger.info(f"[START] Auto-follow service started for user {self.user_id}")
         self.running = True
 
         while self.running:
@@ -489,7 +489,7 @@ class AutoFollowService:
                     # Delay between unfollows
                     await asyncio.sleep(random.randint(30, 60))
 
-            logger.info(f"✅ Cleanup complete: unfollowed {unfollowed_count} users")
+            logger.info(f"[OK] Cleanup complete: unfollowed {unfollowed_count} users")
 
     def stop(self):
         """Stop auto-follow service"""

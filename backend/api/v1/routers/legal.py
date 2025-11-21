@@ -39,7 +39,7 @@ By accessing and using VintedBot ("the Service"), you accept and agree to be bou
 
 ## 2. Use at Your Own Risk
 
-⚠️ **IMPORTANT DISCLAIMER:**
+[WARN] **IMPORTANT DISCLAIMER:**
 
 VintedBot automates interactions with Vinted.com, which may violate Vinted's Terms of Service. By using this service, you acknowledge and accept the following risks:
 
@@ -278,7 +278,7 @@ async def get_disclaimer():
         content="""
 # Service Disclaimer - VintedBot
 
-**⚠️ READ CAREFULLY BEFORE USING THIS SERVICE ⚠️**
+**[WARN] READ CAREFULLY BEFORE USING THIS SERVICE [WARN]**
 
 ## 1. No Affiliation with Vinted
 
@@ -295,7 +295,7 @@ Using automation tools may **VIOLATE Vinted's Terms of Service**. Vinted explici
 
 ## 3. Account Ban Risk
 
-**⚠️ HIGH RISK OF ACCOUNT BAN ⚠️**
+**[WARN] HIGH RISK OF ACCOUNT BAN [WARN]**
 
 Using VintedBot may result in:
 
@@ -361,17 +361,17 @@ VintedBot:
 
 You agree to use VintedBot for:
 
-- ✅ Managing your own legitimate listings
-- ✅ Saving time on repetitive tasks
-- ✅ Analyzing your own performance
+- [OK] Managing your own legitimate listings
+- [OK] Saving time on repetitive tasks
+- [OK] Analyzing your own performance
 
 You agree NOT to use VintedBot for:
 
-- ❌ Spamming users
-- ❌ Creating fake accounts
-- ❌ Manipulating prices unfairly
-- ❌ Harassing other users
-- ❌ Any illegal activities
+- [ERROR] Spamming users
+- [ERROR] Creating fake accounts
+- [ERROR] Manipulating prices unfairly
+- [ERROR] Harassing other users
+- [ERROR] Any illegal activities
 
 ## 10. Alternative Recommendations
 
@@ -433,26 +433,26 @@ async def get_acceptable_use_policy():
 
 You may use VintedBot to:
 
-- ✅ Automate management of your own legitimate Vinted listings
-- ✅ Analyze your own listing performance
-- ✅ Save time on repetitive tasks
-- ✅ Generate listing descriptions from photos
-- ✅ Bump your listings within reasonable frequency
+- [OK] Automate management of your own legitimate Vinted listings
+- [OK] Analyze your own listing performance
+- [OK] Save time on repetitive tasks
+- [OK] Generate listing descriptions from photos
+- [OK] Bump your listings within reasonable frequency
 
 ## Prohibited Uses
 
 You may NOT use VintedBot to:
 
-- ❌ Create or manage fake/fraudulent accounts
-- ❌ Spam users with unsolicited messages
-- ❌ Scrape data from other users without permission
-- ❌ Manipulate prices to unfair levels
-- ❌ Circumvent Vinted's security measures
-- ❌ Harass, abuse, or threaten other users
-- ❌ Sell prohibited items
-- ❌ Engage in money laundering or fraud
-- ❌ Violate any laws or regulations
-- ❌ Overload our servers with excessive requests
+- [ERROR] Create or manage fake/fraudulent accounts
+- [ERROR] Spam users with unsolicited messages
+- [ERROR] Scrape data from other users without permission
+- [ERROR] Manipulate prices to unfair levels
+- [ERROR] Circumvent Vinted's security measures
+- [ERROR] Harass, abuse, or threaten other users
+- [ERROR] Sell prohibited items
+- [ERROR] Engage in money laundering or fraud
+- [ERROR] Violate any laws or regulations
+- [ERROR] Overload our servers with excessive requests
 
 ## Enforcement
 

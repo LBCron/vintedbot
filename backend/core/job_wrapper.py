@@ -134,7 +134,7 @@ def isolated_job(
             while attempt <= max_retries:
                 try:
                     logger.info(
-                        f"🔄 [{job_name}] Starting execution (attempt {attempt + 1}/{max_retries + 1})"
+                        f"[PROCESS] [{job_name}] Starting execution (attempt {attempt + 1}/{max_retries + 1})"
                     )
 
                     # Execute with timeout if specified
@@ -149,7 +149,7 @@ def isolated_job(
                     # Success
                     duration_ms = (time.time() - start_time) * 1000
                     logger.info(
-                        f"✅ [{job_name}] Completed successfully in {duration_ms:.0f}ms"
+                        f"[OK] [{job_name}] Completed successfully in {duration_ms:.0f}ms"
                     )
 
                     job_metrics.record_execution(
@@ -167,14 +167,14 @@ def isolated_job(
                 except Exception as e:
                     last_error = str(e)
                     error_trace = traceback.format_exc()
-                    logger.error(f"❌ [{job_name}] Failed: {last_error}")
+                    logger.error(f"[ERROR] [{job_name}] Failed: {last_error}")
                     logger.debug(f"Traceback:\n{error_trace}")
 
                 # Retry logic
                 attempt += 1
                 if attempt <= max_retries:
                     logger.warning(
-                        f"⚠️ [{job_name}] Retrying in {retry_delay}s "
+                        f"[WARN] [{job_name}] Retrying in {retry_delay}s "
                         f"(attempt {attempt + 1}/{max_retries + 1})"
                     )
                     await asyncio.sleep(retry_delay)

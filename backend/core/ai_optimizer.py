@@ -90,7 +90,7 @@ class AIOptimizer:
         global_spending = await self._get_global_spending()
 
         if user_spending > COST_LIMIT_PER_USER_DAILY:
-            logger.warning(f"⚠️ User {user_id} exceeded daily limit: ${user_spending:.2f}")
+            logger.warning(f"[WARN] User {user_id} exceeded daily limit: ${user_spending:.2f}")
 
         if global_spending > COST_LIMIT_GLOBAL_DAILY:
             logger.error(f"🚨 GLOBAL SPENDING LIMIT EXCEEDED: ${global_spending:.2f}")
@@ -160,7 +160,7 @@ class AIOptimizer:
         cache_key = f"ai_analysis:{user_id}:{':'.join(sorted(photo_paths))}"
         cached = await cache.get(cache_key)
         if cached:
-            logger.info(f"✅ Cache hit for user {user_id} - $0.00 cost")
+            logger.info(f"[OK] Cache hit for user {user_id} - $0.00 cost")
             return cached
 
         # Select model
@@ -255,18 +255,18 @@ class AIOptimizer:
             await cache.set(cache_key, result, ttl=timedelta(hours=24))
 
             logger.info(
-                f"✅ Analysis complete: model={model_config['name']}, "
+                f"[OK] Analysis complete: model={model_config['name']}, "
                 f"cost=${cost:.4f}, tokens={usage.total_tokens}"
             )
 
             return result
 
         except Exception as e:
-            logger.error(f"❌ AI analysis failed: {e}")
+            logger.error(f"[ERROR] AI analysis failed: {e}")
 
             # Fallback to cheaper model if premium failed
             if model_config["name"] == MODELS["premium"]["name"]:
-                logger.warning("⚠️ Retrying with standard model")
+                logger.warning("[WARN] Retrying with standard model")
                 model_config = MODELS["standard"]
                 # Recursive call with standard model
                 return await self.analyze_photos(user_id, photo_paths, custom_prompt)

@@ -267,7 +267,7 @@ class VintedClient:
             try:
                 element = await page.query_selector(selector)
                 if element:
-                    print(f"⚠️ Challenge detected: {selector}")
+                    print(f"[WARN] Challenge detected: {selector}")
                     return True
             except:
                 pass
@@ -298,7 +298,7 @@ class VintedClient:
             # Check if redirected to login/session page
             current_url = page.url
             if 'session' in current_url or 'login' in current_url or 'member/login' in current_url:
-                print(f"⚠️ Redirected to session/login page: {current_url}")
+                print(f"[WARN] Redirected to session/login page: {current_url}")
                 print("   Session Vinted probablement expirée - veuillez actualiser votre cookie")
                 return False
             
@@ -306,7 +306,7 @@ class VintedClient:
             file_input = await page.wait_for_selector(upload_selector, timeout=15000)
             
             if not file_input:
-                print(f"❌ File input not found with selector: {upload_selector}")
+                print(f"[ERROR] File input not found with selector: {upload_selector}")
                 return False
             
             # Upload file
@@ -317,7 +317,7 @@ class VintedClient:
             
             return True
         except Exception as e:
-            print(f"❌ Upload failed: {e}")
+            print(f"[ERROR] Upload failed: {e}")
             print(f"   Current URL: {page.url}")
             return False
     
@@ -445,7 +445,7 @@ class VintedClient:
             # For non-base64 encoding, return base64 anyway to match return type
             return base64.b64encode(screenshot_bytes).decode()
         except Exception as e:
-            print(f"❌ Screenshot failed: {e}")
+            print(f"[ERROR] Screenshot failed: {e}")
             return None
     
     async def click_publish(self, page: Page) -> Tuple[bool, Optional[str]]:
@@ -511,7 +511,7 @@ class VintedClient:
                 return match.group(1)
             return None
         except Exception as e:
-            print(f"❌ Extract ID failed: {e}")
+            print(f"[ERROR] Extract ID failed: {e}")
             return None
     
     async def click_save_as_draft(self, page: Page) -> Tuple[bool, Optional[str]]:
@@ -580,7 +580,7 @@ class VintedClient:
                 return match.group(1)
             return None
         except Exception as e:
-            print(f"❌ Extract draft ID failed: {e}")
+            print(f"[ERROR] Extract draft ID failed: {e}")
             return None
     
     async def bump(
@@ -622,7 +622,7 @@ class VintedClient:
     ) -> Tuple[bool, Optional[str]]:
         """Internal bump implementation (called via circuit breaker)"""
         try:
-            print(f"🔄 Bumping listing {listing_id}...")
+            print(f"[PROCESS] Bumping listing {listing_id}...")
 
             # Navigate to listing
             await page.goto(listing_url, wait_until='networkidle')
@@ -672,7 +672,7 @@ class VintedClient:
             if not deleted:
                 return (False, "Could not delete listing for bump")
             
-            print(f"✅ Listing deleted, now recreating...")
+            print(f"[OK] Listing deleted, now recreating...")
             
             # Note: Actual recreation would require saved listing data
             # This is a placeholder - in production, you'd need to:
@@ -729,7 +729,7 @@ class VintedClient:
                         await button.click()
                         await self.human_delay(1000, 2000)
                         
-                        print(f"✅ Successfully followed user {user_id}")
+                        print(f"[OK] Successfully followed user {user_id}")
                         return (True, None)
                 except:
                     continue
@@ -797,7 +797,7 @@ class VintedClient:
                             except:
                                 continue
                         
-                        print(f"✅ Successfully unfollowed user {user_id}")
+                        print(f"[OK] Successfully unfollowed user {user_id}")
                         return (True, None)
                 except:
                     continue
@@ -876,7 +876,7 @@ class VintedClient:
                         await send_btn.click()
                         await self.human_delay(1000, 2000)
                         
-                        print(f"✅ Message sent successfully")
+                        print(f"[OK] Message sent successfully")
                         return (True, None)
                 except:
                     continue
@@ -960,9 +960,9 @@ class VintedClient:
                 success = await self.upload_photo(page, photo_path)
                 if success:
                     photos_uploaded += 1
-                    logger.info(f"✅ Photo {i+1} uploaded successfully")
+                    logger.info(f"[OK] Photo {i+1} uploaded successfully")
                 else:
-                    logger.warning(f"⚠️ Photo {i+1} upload failed")
+                    logger.warning(f"[WARN] Photo {i+1} upload failed")
 
                 # Wait for upload to process (Vinted needs time to compress/optimize)
                 await self.human_delay(2000, 3000)
@@ -982,7 +982,7 @@ class VintedClient:
             title_selector = 'input[name="title"], input[placeholder*="Titre"], input[placeholder*="titre"]'
             try:
                 await self.human_type(page, title_selector, title)
-                logger.info("✅ Title filled")
+                logger.info("[OK] Title filled")
             except Exception as e:
                 logger.error(f"Failed to fill title: {e}")
                 return (False, f"Erreur lors de la saisie du titre: {e}", None)
@@ -991,7 +991,7 @@ class VintedClient:
             desc_selector = 'textarea[name="description"], textarea[placeholder*="Description"], textarea[placeholder*="description"]'
             try:
                 await self.human_type(page, desc_selector, description)
-                logger.info("✅ Description filled")
+                logger.info("[OK] Description filled")
             except Exception as e:
                 logger.error(f"Failed to fill description: {e}")
                 return (False, f"Erreur lors de la saisie de la description: {e}", None)
@@ -1001,7 +1001,7 @@ class VintedClient:
             price_selector = 'input[name="price"], input[type="number"], input[placeholder*="Prix"], input[placeholder*="prix"]'
             try:
                 await page.fill(price_selector, str(price))
-                logger.info(f"✅ Price filled: {price}€")
+                logger.info(f"[OK] Price filled: {price}€")
                 await self.human_delay(500, 1000)
             except Exception as e:
                 logger.error(f"Failed to fill price: {e}")
@@ -1012,7 +1012,7 @@ class VintedClient:
                 brand_selector = 'input[name="brand"], input[placeholder*="Marque"], input[placeholder*="marque"]'
                 try:
                     await self.human_type(page, brand_selector, brand)
-                    logger.info(f"✅ Brand filled: {brand}")
+                    logger.info(f"[OK] Brand filled: {brand}")
                 except Exception as e:
                     logger.warning(f"Failed to fill brand (optional): {e}")
 
@@ -1021,7 +1021,7 @@ class VintedClient:
                 try:
                     await page.fill(size_selector, size)
                     await self.human_delay(500, 1000)
-                    logger.info(f"✅ Size filled: {size}")
+                    logger.info(f"[OK] Size filled: {size}")
                 except Exception as e:
                     logger.warning(f"Failed to fill size (optional): {e}")
 
@@ -1030,7 +1030,7 @@ class VintedClient:
                 try:
                     await page.select_option(condition_selector, label=condition)
                     await self.human_delay(500, 1000)
-                    logger.info(f"✅ Condition filled: {condition}")
+                    logger.info(f"[OK] Condition filled: {condition}")
                 except Exception as e:
                     logger.warning(f"Failed to fill condition (optional): {e}")
 
@@ -1039,7 +1039,7 @@ class VintedClient:
                 try:
                     await page.fill(color_selector, color)
                     await self.human_delay(500, 1000)
-                    logger.info(f"✅ Color filled: {color}")
+                    logger.info(f"[OK] Color filled: {color}")
                 except Exception as e:
                     logger.warning(f"Failed to fill color (optional): {e}")
 
@@ -1068,7 +1068,7 @@ class VintedClient:
                     "publish_mode": "draft"
                 }
 
-                logger.info(f"✅ Draft saved successfully: {draft_url}")
+                logger.info(f"[OK] Draft saved successfully: {draft_url}")
                 return (True, None, result_data)
 
             else:  # publish_mode == "auto"
@@ -1091,7 +1091,7 @@ class VintedClient:
                     "publish_mode": "auto"
                 }
 
-                logger.info(f"✅ Published successfully: {listing_url}")
+                logger.info(f"[OK] Published successfully: {listing_url}")
                 return (True, None, result_data)
 
         except CaptchaDetected as e:

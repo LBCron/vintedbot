@@ -14,7 +14,7 @@ class ImageCompressor:
     Features:
     - Resize automatique si trop grande (max 2000x2000)
     - Compression JPEG quality 85 (optimal quality/size)
-    - Conversion RGB (RGBA → RGB)
+    - Conversion RGB (RGBA -> RGB)
     - Optimize=True pour compression maximale
     - Économie moyenne: 50-70% de la taille
     """
@@ -47,7 +47,7 @@ class ImageCompressor:
             original_size = len(image_data)
             original_dims = f"{img.width}x{img.height}"
 
-            logger.debug(f"📸 Original image: {original_dims}, {original_size} bytes")
+            logger.debug(f"[PHOTO] Original image: {original_dims}, {original_size} bytes")
 
             # 2. Resize si nécessaire
             if img.width > max_width or img.height > max_height:
@@ -63,7 +63,7 @@ class ImageCompressor:
                 background.paste(img, mask=img.split()[3] if img.mode == 'RGBA' else None)
                 img = background
 
-                logger.debug(f"🎨 Converted {img.mode} → RGB")
+                logger.debug(f"[BRAND] Converted {img.mode} -> RGB")
 
             elif img.mode not in ('RGB', 'L'):  # L = grayscale
                 img = img.convert('RGB')
@@ -98,14 +98,14 @@ class ImageCompressor:
             compression_ratio = (1 - compressed_size / original_size) * 100
 
             logger.info(
-                f"✅ Compressed: {original_size} → {compressed_size} bytes "
+                f"[OK] Compressed: {original_size} -> {compressed_size} bytes "
                 f"({compression_ratio:.1f}% reduction)"
             )
 
             return compressed_data
 
         except Exception as e:
-            logger.error(f"❌ Compression failed: {e}")
+            logger.error(f"[ERROR] Compression failed: {e}")
             # Return original if compression fails
             return image_data
 
@@ -158,7 +158,7 @@ class ImageCompressor:
             }
 
         except Exception as e:
-            logger.error(f"❌ Failed to get image info: {e}")
+            logger.error(f"[ERROR] Failed to get image info: {e}")
             return {}
 
     async def validate_image(self, image_data: bytes) -> tuple[bool, str]:

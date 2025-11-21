@@ -45,7 +45,7 @@ class S3StorageService:
         self.session = None
 
         if self.mode == "s3":
-            logger.info(f"📦 S3 Storage: endpoint={S3_ENDPOINT}, bucket={S3_BUCKET}")
+            logger.info(f"[PACKAGE] S3 Storage: endpoint={S3_ENDPOINT}, bucket={S3_BUCKET}")
         else:
             logger.info(f"💾 Local Storage: path={LOCAL_STORAGE_PATH}")
 
@@ -69,9 +69,9 @@ class S3StorageService:
                 # Bucket doesn't exist, create it
                 try:
                     await client.create_bucket(Bucket=self.bucket)
-                    logger.info(f"✅ Created S3 bucket: {self.bucket}")
+                    logger.info(f"[OK] Created S3 bucket: {self.bucket}")
                 except ClientError as create_error:
-                    logger.error(f"❌ Failed to create bucket: {create_error}")
+                    logger.error(f"[ERROR] Failed to create bucket: {create_error}")
                     raise
             else:
                 raise
@@ -118,10 +118,10 @@ class S3StorageService:
                 return await self._upload_to_local(file_path, object_name)
 
         except Exception as e:
-            logger.error(f"❌ Upload failed: {e}")
+            logger.error(f"[ERROR] Upload failed: {e}")
             # Fallback to local storage
             if self.mode == "s3":
-                logger.warning("⚠️ Falling back to local storage")
+                logger.warning("[WARN] Falling back to local storage")
                 return await self._upload_to_local(file_path, object_name)
             raise
 
@@ -155,7 +155,7 @@ class S3StorageService:
             else:
                 url = f"{S3_ENDPOINT}/{self.bucket}/{object_name}"
 
-            logger.info(f"✅ Uploaded to S3: {object_name}")
+            logger.info(f"[OK] Uploaded to S3: {object_name}")
             return url
 
     async def _upload_to_local(self, file_path: str, object_name: str) -> str:
@@ -171,7 +171,7 @@ class S3StorageService:
 
         # Return relative URL
         url = f"/photos/{object_name}"
-        logger.info(f"✅ Saved locally: {object_name}")
+        logger.info(f"[OK] Saved locally: {object_name}")
         return url
 
     async def upload_bytes(
@@ -201,9 +201,9 @@ class S3StorageService:
                 return await self._upload_bytes_to_local(file_data, object_name)
 
         except Exception as e:
-            logger.error(f"❌ Upload bytes failed: {e}")
+            logger.error(f"[ERROR] Upload bytes failed: {e}")
             if self.mode == "s3":
-                logger.warning("⚠️ Falling back to local storage")
+                logger.warning("[WARN] Falling back to local storage")
                 return await self._upload_bytes_to_local(file_data, object_name)
             raise
 
@@ -260,7 +260,7 @@ class S3StorageService:
                 return await self._delete_from_local(object_name)
 
         except Exception as e:
-            logger.error(f"❌ Delete failed for {object_name}: {e}")
+            logger.error(f"[ERROR] Delete failed for {object_name}: {e}")
             return False
 
     async def _delete_from_s3(self, object_name: str) -> bool:
@@ -319,7 +319,7 @@ class S3StorageService:
                 return url
 
         except Exception as e:
-            logger.error(f"❌ Failed to generate presigned URL: {e}")
+            logger.error(f"[ERROR] Failed to generate presigned URL: {e}")
             return None
 
 

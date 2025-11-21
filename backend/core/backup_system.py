@@ -88,7 +88,7 @@ class BackupSystem:
                 logger.error(f"pg_dump failed: {stderr.decode()}")
                 return None
 
-            logger.info(f"✅ PostgreSQL backup created: {backup_path}")
+            logger.info(f"[OK] PostgreSQL backup created: {backup_path}")
 
             # Compress backup
             compressed_path = await self._compress_backup(backup_path)
@@ -124,7 +124,7 @@ class BackupSystem:
             # Copy database file
             shutil.copy2(db_path, backup_path)
 
-            logger.info(f"✅ SQLite backup created: {backup_path}")
+            logger.info(f"[OK] SQLite backup created: {backup_path}")
 
             # Compress backup
             compressed_path = await self._compress_backup(backup_path)
@@ -157,7 +157,7 @@ class BackupSystem:
             ratio = (1 - compressed_size / original_size) * 100
 
             logger.info(
-                f"✅ Backup compressed: {original_size / 1024 / 1024:.1f}MB → "
+                f"[OK] Backup compressed: {original_size / 1024 / 1024:.1f}MB -> "
                 f"{compressed_size / 1024 / 1024:.1f}MB ({ratio:.1f}% reduction)"
             )
 
@@ -174,7 +174,7 @@ class BackupSystem:
             url = await storage.upload_file(str(backup_path), object_name)
 
             if url:
-                logger.info(f"✅ Backup uploaded to S3: {url}")
+                logger.info(f"[OK] Backup uploaded to S3: {url}")
                 return True
             else:
                 logger.error("S3 upload failed")
@@ -255,7 +255,7 @@ class BackupSystem:
                 # Restore SQLite
                 db_path = os.getenv("SQLITE_DB_PATH", "backend/data/vbs.db")
                 shutil.copy2(backup_path, db_path)
-                logger.info(f"✅ SQLite restored from: {backup_filename}")
+                logger.info(f"[OK] SQLite restored from: {backup_filename}")
                 return True
 
             # Parse PostgreSQL URL
@@ -289,7 +289,7 @@ class BackupSystem:
                 logger.error(f"Restore failed: {stderr.decode()}")
                 return False
 
-            logger.info(f"✅ PostgreSQL restored from: {backup_filename}")
+            logger.info(f"[OK] PostgreSQL restored from: {backup_filename}")
             return True
 
         except Exception as e:

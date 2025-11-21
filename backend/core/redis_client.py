@@ -50,10 +50,10 @@ async def get_redis() -> redis.Redis:
         # Test connection
         try:
             await _client.ping()
-            logger.info("✅ Redis connection established")
+            logger.info("[OK] Redis connection established")
         except ConnectionError as e:
-            logger.error(f"❌ Redis connection failed: {e}")
-            logger.warning("⚠️ Running without Redis - performance will be degraded")
+            logger.error(f"[ERROR] Redis connection failed: {e}")
+            logger.warning("[WARN] Running without Redis - performance will be degraded")
             _client = None
 
     return _client
@@ -68,7 +68,7 @@ async def close_redis():
     if _pool:
         await _pool.disconnect()
         _pool = None
-    logger.info("✅ Redis connections closed")
+    logger.info("[OK] Redis connections closed")
 
 
 class RedisCache:

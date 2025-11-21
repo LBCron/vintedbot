@@ -34,7 +34,7 @@ class VintedMonitor:
 
     async def run_all_tests(self) -> Dict[str, Any]:
         """Run all monitoring tests"""
-        logger.info("🔍 Starting Vinted platform monitoring...")
+        logger.info("[SEARCH] Starting Vinted platform monitoring...")
 
         try:
             async with VintedClient(headless=True) as client:
@@ -64,7 +64,7 @@ class VintedMonitor:
             self._analyze_results()
 
         except Exception as e:
-            logger.error(f"❌ Monitoring failed: {e}")
+            logger.error(f"[ERROR] Monitoring failed: {e}")
             self.results["status"] = "error"
             self.results["errors"].append(str(e))
 
@@ -105,7 +105,7 @@ class VintedMonitor:
             })
 
         except Exception as e:
-            logger.error(f"❌ {test_name} failed: {e}")
+            logger.error(f"[ERROR] {test_name} failed: {e}")
             self.results["tests"].append({
                 "name": test_name,
                 "status": "failed",
@@ -162,7 +162,7 @@ class VintedMonitor:
             })
 
         except Exception as e:
-            logger.error(f"❌ {test_name} failed: {e}")
+            logger.error(f"[ERROR] {test_name} failed: {e}")
             self.results["tests"].append({
                 "name": test_name,
                 "status": "failed",
@@ -223,7 +223,7 @@ class VintedMonitor:
             })
 
         except Exception as e:
-            logger.error(f"❌ {test_name} failed: {e}")
+            logger.error(f"[ERROR] {test_name} failed: {e}")
             self.results["tests"].append({
                 "name": test_name,
                 "status": "failed",
@@ -262,7 +262,7 @@ class VintedMonitor:
                 })
 
         except Exception as e:
-            logger.error(f"❌ {test_name} failed: {e}")
+            logger.error(f"[ERROR] {test_name} failed: {e}")
             self.results["tests"].append({
                 "name": test_name,
                 "status": "failed",
@@ -307,7 +307,7 @@ class VintedMonitor:
                 })
 
         except Exception as e:
-            logger.error(f"❌ {test_name} failed: {e}")
+            logger.error(f"[ERROR] {test_name} failed: {e}")
             self.results["tests"].append({
                 "name": test_name,
                 "status": "failed",
@@ -375,7 +375,7 @@ class VintedMonitor:
         else:
             self.results["status"] = "healthy"
 
-        logger.info(f"✅ Monitoring complete. Status: {self.results['status']}")
+        logger.info(f"[OK] Monitoring complete. Status: {self.results['status']}")
 
     def _save_results(self):
         """Save monitoring results"""
@@ -405,7 +405,7 @@ if __name__ == "__main__":
     user_agent = os.getenv("VINTED_USER_AGENT", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
 
     if not cookie:
-        print("❌ VINTED_COOKIE environment variable required")
+        print("[ERROR] VINTED_COOKIE environment variable required")
         sys.exit(1)
 
     results = asyncio.run(run_monitoring(cookie, user_agent))

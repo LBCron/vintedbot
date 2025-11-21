@@ -48,7 +48,7 @@ async def inbox_sync_job():
             
             db.commit()
         
-        logger.info("✅ Inbox sync completed")
+        logger.info("[OK] Inbox sync completed")
     
     except Exception as e:
         logger.error(f"Inbox sync job error: {e}")
@@ -97,10 +97,10 @@ async def price_drop_job():
                     listing.price = new_price
                     listing.updated_at = datetime.utcnow()
                     db.add(listing)
-                    logger.info(f"Dropped price for listing {listing.id}: ${old_price} → ${new_price}")
+                    logger.info(f"Dropped price for listing {listing.id}: ${old_price} -> ${new_price}")
             
             db.commit()
-            logger.info(f"✅ Price drop completed for {len(listings)} listings")
+            logger.info(f"[OK] Price drop completed for {len(listings)} listings")
     
     except Exception as e:
         logger.error(f"Price drop job error: {e}")
@@ -138,7 +138,7 @@ async def clean_temp_photos_job():
                     deleted_count += 1
                     freed_mb += folder_size
         
-        logger.info(f"✅ Cleaned {deleted_count} old photo folders, freed {freed_mb:.2f} MB")
+        logger.info(f"[OK] Cleaned {deleted_count} old photo folders, freed {freed_mb:.2f} MB")
     
     except Exception as e:
         logger.error(f"Clean temp photos job error: {e}")
@@ -156,7 +156,7 @@ async def vacuum_and_prune_job():
     try:
         result = get_store().vacuum_and_prune()
         logger.info(
-            f"✅ Vacuum completed: "
+            f"[OK] Vacuum completed: "
             f"{result['deleted_drafts']} drafts deleted (TTL={result['draft_ttl_days']}d), "
             f"{result['deleted_logs']} logs purged (TTL={result['log_ttl_days']}d)"
         )
@@ -216,7 +216,7 @@ async def automation_executor_job():
             except Exception as e:
                 logger.error(f"   Error executing rule {rule['id'][:8]}...: {e}")
 
-        logger.info("✅ Automation executor completed")
+        logger.info("[OK] Automation executor completed")
 
     except Exception as e:
         logger.error(f"Automation executor job error: {e}")
@@ -232,8 +232,8 @@ async def storage_lifecycle_job():
     Actions:
     1. Delete expired TEMP photos (>48h)
     2. Delete published photos (>7 days after publishing)
-    3. Promote TEMP → HOT (non-published drafts >48h)
-    4. Archive HOT → COLD (>90 days without access)
+    3. Promote TEMP -> HOT (non-published drafts >48h)
+    4. Archive HOT -> COLD (>90 days without access)
     5. Delete COLD photos (>365 days)
     """
     logger.info("[STORAGE] Running storage lifecycle job")
@@ -250,7 +250,7 @@ async def storage_lifecycle_job():
         stats = await lifecycle_manager.run_daily_lifecycle()
 
         logger.info(
-            f"✅ Storage lifecycle completed:\n"
+            f"[OK] Storage lifecycle completed:\n"
             f"   - TEMP deleted: {stats.get('temp_deleted', 0)}\n"
             f"   - Published deleted: {stats.get('published_deleted', 0)}\n"
             f"   - Promoted to HOT: {stats.get('promoted_to_hot', 0)}\n"

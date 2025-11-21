@@ -92,7 +92,7 @@ async def vinted_auto_login(
     current_user: User = Depends(get_current_user)
 ):
     """
-    🚀 CONNEXION AUTOMATIQUE À VINTED
+    [START] CONNEXION AUTOMATIQUE À VINTED
 
     L'utilisateur entre juste son email/password,
     le bot se connecte automatiquement et récupère les cookies.
@@ -204,7 +204,7 @@ async def vinted_auto_login(
         return {
             "ok": True,
             "account_id": account_id,
-            "message": f"✅ Connexion réussie ! Compte '{request.nickname}' configuré automatiquement."
+            "message": f"[OK] Connexion réussie ! Compte '{request.nickname}' configuré automatiquement."
         }
 
     except Exception as e:
@@ -234,7 +234,7 @@ async def vinted_auto_login(
         else:
             raise HTTPException(
                 status_code=500,
-                detail=f"❌ Erreur lors de la connexion : {error_detail}"
+                detail=f"[ERROR] Erreur lors de la connexion : {error_detail}"
             )
 
 

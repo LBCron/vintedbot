@@ -16,7 +16,7 @@ class MigrationManager:
 
     Supports:
     - Schema version tracking
-    - Forward migrations (SQLite → PostgreSQL)
+    - Forward migrations (SQLite -> PostgreSQL)
     - Rollback capabilities
     - Data export/import
     """

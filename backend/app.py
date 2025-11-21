@@ -47,9 +47,9 @@ async def lifespan(app: FastAPI):
     try:
         from pillow_heif import register_heif_opener
         register_heif_opener()
-        logger.info("✅ HEIC/HEIF support registered for PIL")
+        logger.info("[OK] HEIC/HEIF support registered for PIL")
     except Exception as e:
-        logger.warning(f"⚠️ Failed to register HEIC support: {e}")
+        logger.warning(f"[WARN] Failed to register HEIC support: {e}")
 
     # Initialize databases
     create_tables()  # Legacy JSON database
@@ -230,7 +230,7 @@ try:
     frontend_dir = Path("frontend/dist")
 
     if frontend_dir.exists():
-        logger.info(f"✅ Frontend found at {frontend_dir}, serving SPA...")
+        logger.info(f"[OK] Frontend found at {frontend_dir}, serving SPA...")
 
         # Mount static assets
         app.mount("/assets", StaticFiles(directory=str(frontend_dir / "assets")), name="frontend-assets")
@@ -252,9 +252,9 @@ try:
             """Serve React SPA"""
             return FileResponse(frontend_dir / "index.html")
 
-        logger.info("✅ Frontend successfully mounted")
+        logger.info("[OK] Frontend successfully mounted")
     else:
-        logger.warning(f"⚠️ Frontend not found at {frontend_dir} - only API will be available")
+        logger.warning(f"[WARN] Frontend not found at {frontend_dir} - only API will be available")
 
         @app.get("/")
         async def root():
@@ -267,7 +267,7 @@ try:
                 "mode": "MOCK" if os.getenv("MOCK_MODE", "true") == "true" else "LIVE"
             }
 except Exception as e:
-    logger.error(f"❌ Failed to mount frontend: {e}")
+    logger.error(f"[ERROR] Failed to mount frontend: {e}")
 
     @app.get("/")
     async def root():

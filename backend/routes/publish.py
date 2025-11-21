@@ -28,7 +28,7 @@ async def queue_job(data: QueueJobRequest):
         schedule_at=data.schedule_at
     )
     
-    logger.info(f"📋 Publish job {job.job_id} queued (mode: {data.mode})")
+    logger.info(f"[INFO] Publish job {job.job_id} queued (mode: {data.mode})")
     
     return {
         "job_id": job.job_id,
@@ -104,7 +104,7 @@ async def cancel_job(job_id: str):
     
     update_job_status(job_id, JobStatus.cancelled)
     
-    logger.info(f"❌ Job {job_id} cancelled")
+    logger.info(f"[ERROR] Job {job_id} cancelled")
     
     return {
         "success": True,
@@ -126,7 +126,7 @@ async def retry_job(job_id: str):
     
     update_job_status(job_id, JobStatus.queued)
     
-    logger.info(f"🔄 Job {job_id} queued for retry")
+    logger.info(f"[PROCESS] Job {job_id} queued for retry")
     
     return {
         "success": True,

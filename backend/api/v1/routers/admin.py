@@ -376,7 +376,7 @@ async def restore_database_backup(
     Returns:
         Restore result
 
-    ⚠️ WARNING: This will replace the current database!
+    [WARN] WARNING: This will replace the current database!
     """
     AdminLogger.log_action(admin["email"], "restore_backup", details={"backup_path": request.backup_path})
 

@@ -96,11 +96,11 @@ class EmailService:
                 start_tls=True,
             )
 
-            logger.info(f"✅ Email sent to {to_email}: {subject}")
+            logger.info(f"[OK] Email sent to {to_email}: {subject}")
             return True
 
         except Exception as e:
-            logger.error(f"❌ Email send failed to {to_email}: {e}")
+            logger.error(f"[ERROR] Email send failed to {to_email}: {e}")
             return False
 
     async def send_template_email(
@@ -134,7 +134,7 @@ class EmailService:
             return await self.send_email(to_email, subject, html_content, text_content)
 
         except Exception as e:
-            logger.error(f"❌ Template email failed: {e}")
+            logger.error(f"[ERROR] Template email failed: {e}")
             return False
 
     # ============================================================================
@@ -145,7 +145,7 @@ class EmailService:
         """Send welcome email to new user"""
         return await self.send_template_email(
             to_email=email,
-            subject="Bienvenue sur VintedBot ! 🚀",
+            subject="Bienvenue sur VintedBot ! [START]",
             template_name="welcome.html",
             context={
                 "username": username,
@@ -158,7 +158,7 @@ class EmailService:
         """Send quota limit alert"""
         return await self.send_template_email(
             to_email=email,
-            subject=f"⚠️ Limite de quota atteinte - {quota_type}",
+            subject=f"[WARN] Limite de quota atteinte - {quota_type}",
             template_name="quota_alert.html",
             context={
                 "username": username,
@@ -174,7 +174,7 @@ class EmailService:
         """Send error alert to user"""
         return await self.send_template_email(
             to_email=email,
-            subject="❌ Erreur dans votre automatisation VintedBot",
+            subject="[ERROR] Erreur dans votre automatisation VintedBot",
             template_name="error_alert.html",
             context={
                 "username": username,
@@ -187,7 +187,7 @@ class EmailService:
         """Send payment confirmation"""
         return await self.send_template_email(
             to_email=email,
-            subject=f"✅ Paiement confirmé - Plan {plan}",
+            subject=f"[OK] Paiement confirmé - Plan {plan}",
             template_name="payment_confirmation.html",
             context={
                 "username": username,
@@ -201,7 +201,7 @@ class EmailService:
         """Send captcha detection alert"""
         return await self.send_template_email(
             to_email=email,
-            subject="⚠️ Captcha détecté sur votre compte Vinted",
+            subject="[WARN] Captcha détecté sur votre compte Vinted",
             template_name="captcha_alert.html",
             context={
                 "username": username,
@@ -238,14 +238,14 @@ def create_default_templates():
 <body>
     <div class="container">
         <div class="header">
-            <h1>🚀 Bienvenue sur VintedBot !</h1>
+            <h1>[START] Bienvenue sur VintedBot !</h1>
         </div>
         <div class="content">
             <h2>Bonjour {{ username }},</h2>
             <p>Merci de vous être inscrit sur VintedBot, le bot Vinted le plus sophistiqué du marché !</p>
             <p>Voici ce que vous pouvez faire dès maintenant :</p>
             <ul>
-                <li>📸 Analyser vos photos avec l'IA GPT-4 Vision</li>
+                <li>[PHOTO] Analyser vos photos avec l'IA GPT-4 Vision</li>
                 <li>📊 Suivre vos performances dans le dashboard analytics</li>
                 <li>🤖 Automatiser vos bumps, follows et messages</li>
             </ul>
@@ -276,7 +276,7 @@ def create_default_templates():
 <body>
     <div class="container">
         <div class="header">
-            <h1>⚠️ Limite de quota atteinte</h1>
+            <h1>[WARN] Limite de quota atteinte</h1>
         </div>
         <div class="content">
             <h2>Bonjour {{ username }},</h2>

@@ -263,7 +263,7 @@ class VintedAuthenticator:
 
             # Success indicators
             if any(indicator in current_url for indicator in ['/member/general', '/inbox', '/items']):
-                logger.info("✅ Login successful!")
+                logger.info("[OK] Login successful!")
 
                 # Extract cookies
                 cookies = await self.context.cookies()
@@ -433,7 +433,7 @@ async def authenticate_vinted_account(
             from backend.core.session import save_vinted_session
             save_vinted_session(user_id, result.session)
 
-            logger.info(f"✅ Vinted account connected and session saved for user {user_id}")
+            logger.info(f"[OK] Vinted account connected and session saved for user {user_id}")
 
         return result
 
@@ -456,12 +456,12 @@ if __name__ == "__main__":
 
             print("\n" + "=" * 50)
             if result.success:
-                print("✅ LOGIN SUCCESSFUL!")
+                print("[OK] LOGIN SUCCESSFUL!")
                 print(f"Session: {result.session.cookie[:50]}...")
                 print(f"User Agent: {result.session.user_agent}")
                 print(f"Vinted User ID: {result.session.vinted_user_id}")
             else:
-                print("❌ LOGIN FAILED")
+                print("[ERROR] LOGIN FAILED")
                 print(f"Error: {result.error}")
                 print(f"Error Code: {result.error_code}")
             print("=" * 50)

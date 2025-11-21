@@ -14,7 +14,7 @@ from loguru import logger
 
 async def test_bump_item():
     """Test bumping an item"""
-    logger.info("🧪 TEST: Bump Item")
+    logger.info("[TEST] TEST: Bump Item")
 
     # Create mock session (replace with real session for actual testing)
     session = VintedSession(
@@ -27,16 +27,16 @@ async def test_bump_item():
         success, error = await client.bump_item("123456789")
 
         if success:
-            logger.success("✅ Bump test PASSED")
+            logger.success("[OK] Bump test PASSED")
         else:
-            logger.warning(f"⚠️ Bump test expected behavior: {error}")
+            logger.warning(f"[WARN] Bump test expected behavior: {error}")
 
     return success
 
 
 async def test_follow_unfollow():
     """Test following and unfollowing a user"""
-    logger.info("🧪 TEST: Follow/Unfollow User")
+    logger.info("[TEST] TEST: Follow/Unfollow User")
 
     session = VintedSession(
         cookie="your_cookie_here",
@@ -51,9 +51,9 @@ async def test_follow_unfollow():
         follow_success, follow_error = await client.follow_user(test_user_id)
 
         if follow_success:
-            logger.success("✅ Follow test PASSED")
+            logger.success("[OK] Follow test PASSED")
         else:
-            logger.warning(f"⚠️ Follow test: {follow_error}")
+            logger.warning(f"[WARN] Follow test: {follow_error}")
 
         # Wait a bit
         await asyncio.sleep(2)
@@ -63,16 +63,16 @@ async def test_follow_unfollow():
         unfollow_success, unfollow_error = await client.unfollow_user(test_user_id)
 
         if unfollow_success:
-            logger.success("✅ Unfollow test PASSED")
+            logger.success("[OK] Unfollow test PASSED")
         else:
-            logger.warning(f"⚠️ Unfollow test: {unfollow_error}")
+            logger.warning(f"[WARN] Unfollow test: {unfollow_error}")
 
     return follow_success or unfollow_success
 
 
 async def test_messaging():
     """Test sending messages with typing simulation"""
-    logger.info("🧪 TEST: Send Message with Typing Simulation")
+    logger.info("[TEST] TEST: Send Message with Typing Simulation")
 
     session = VintedSession(
         cookie="your_cookie_here",
@@ -92,16 +92,16 @@ async def test_messaging():
         )
 
         if success:
-            logger.success("✅ Messaging test PASSED")
+            logger.success("[OK] Messaging test PASSED")
         else:
-            logger.warning(f"⚠️ Messaging test: {error}")
+            logger.warning(f"[WARN] Messaging test: {error}")
 
     return success
 
 
 async def test_get_user_info():
     """Test getting user information"""
-    logger.info("🧪 TEST: Get User Information")
+    logger.info("[TEST] TEST: Get User Information")
 
     session = VintedSession(
         cookie="your_cookie_here",
@@ -114,17 +114,17 @@ async def test_get_user_info():
         success, user_data, error = await client.get_current_user()
 
         if success:
-            logger.success(f"✅ Get user test PASSED - User ID: {user_data.get('id')}")
+            logger.success(f"[OK] Get user test PASSED - User ID: {user_data.get('id')}")
             logger.info(f"User: {user_data.get('login')} - Items: {user_data.get('item_count')}")
         else:
-            logger.warning(f"⚠️ Get user test: {error}")
+            logger.warning(f"[WARN] Get user test: {error}")
 
     return success
 
 
 async def test_get_items():
     """Test getting user's items"""
-    logger.info("🧪 TEST: Get User Items")
+    logger.info("[TEST] TEST: Get User Items")
 
     session = VintedSession(
         cookie="your_cookie_here",
@@ -136,7 +136,7 @@ async def test_get_items():
         success, user_data, error = await client.get_current_user()
 
         if not success:
-            logger.error(f"❌ Cannot get user ID: {error}")
+            logger.error(f"[ERROR] Cannot get user ID: {error}")
             return False
 
         user_id = user_data.get('id')
@@ -146,20 +146,20 @@ async def test_get_items():
         success, items, error = await client.get_items(user_id)
 
         if success:
-            logger.success(f"✅ Get items test PASSED - Found {len(items)} items")
+            logger.success(f"[OK] Get items test PASSED - Found {len(items)} items")
 
             # Show first 3 items
             for i, item in enumerate(items[:3]):
                 logger.info(f"  Item {i+1}: {item.get('title')} - {item.get('price')}€")
         else:
-            logger.warning(f"⚠️ Get items test: {error}")
+            logger.warning(f"[WARN] Get items test: {error}")
 
     return success
 
 
 async def test_search():
     """Test search functionality"""
-    logger.info("🧪 TEST: Search Items and Users")
+    logger.info("[TEST] TEST: Search Items and Users")
 
     session = VintedSession(
         cookie="your_cookie_here",
@@ -177,11 +177,11 @@ async def test_search():
         )
 
         if success:
-            logger.success(f"✅ Item search test PASSED - Found {len(items)} items")
+            logger.success(f"[OK] Item search test PASSED - Found {len(items)} items")
             for i, item in enumerate(items[:3]):
                 logger.info(f"  {i+1}. {item.get('title')} - {item.get('price')}€")
         else:
-            logger.warning(f"⚠️ Item search test: {error}")
+            logger.warning(f"[WARN] Item search test: {error}")
 
         # Test user search
         logger.info("Testing user search...")
@@ -191,18 +191,18 @@ async def test_search():
         )
 
         if success:
-            logger.success(f"✅ User search test PASSED - Found {len(users)} users")
+            logger.success(f"[OK] User search test PASSED - Found {len(users)} users")
             for i, user in enumerate(users[:3]):
                 logger.info(f"  {i+1}. {user.get('login')} - {user.get('item_count')} items")
         else:
-            logger.warning(f"⚠️ User search test: {error}")
+            logger.warning(f"[WARN] User search test: {error}")
 
     return success
 
 
 async def test_like_unlike():
     """Test liking and unliking items"""
-    logger.info("🧪 TEST: Like/Unlike Items")
+    logger.info("[TEST] TEST: Like/Unlike Items")
 
     session = VintedSession(
         cookie="your_cookie_here",
@@ -217,9 +217,9 @@ async def test_like_unlike():
         like_success, like_error = await client.like_item(test_item_id)
 
         if like_success:
-            logger.success("✅ Like test PASSED")
+            logger.success("[OK] Like test PASSED")
         else:
-            logger.warning(f"⚠️ Like test: {like_error}")
+            logger.warning(f"[WARN] Like test: {like_error}")
 
         # Wait a bit
         await asyncio.sleep(1)
@@ -229,16 +229,16 @@ async def test_like_unlike():
         unlike_success, unlike_error = await client.unlike_item(test_item_id)
 
         if unlike_success:
-            logger.success("✅ Unlike test PASSED")
+            logger.success("[OK] Unlike test PASSED")
         else:
-            logger.warning(f"⚠️ Unlike test: {unlike_error}")
+            logger.warning(f"[WARN] Unlike test: {unlike_error}")
 
     return like_success or unlike_success
 
 
 async def test_conversations():
     """Test getting conversations"""
-    logger.info("🧪 TEST: Get Conversations")
+    logger.info("[TEST] TEST: Get Conversations")
 
     session = VintedSession(
         cookie="your_cookie_here",
@@ -250,13 +250,13 @@ async def test_conversations():
         success, conversations, error = await client.get_conversations(per_page=10)
 
         if success:
-            logger.success(f"✅ Get conversations test PASSED - Found {len(conversations)} conversations")
+            logger.success(f"[OK] Get conversations test PASSED - Found {len(conversations)} conversations")
 
             # Show first 3 conversations
             for i, conv in enumerate(conversations[:3]):
                 logger.info(f"  Conversation {i+1}: {conv.get('id')} - Last message: {conv.get('last_message', {}).get('body', 'N/A')[:50]}...")
         else:
-            logger.warning(f"⚠️ Get conversations test: {error}")
+            logger.warning(f"[WARN] Get conversations test: {error}")
 
     return success
 
@@ -264,10 +264,10 @@ async def test_conversations():
 async def run_all_tests():
     """Run all tests"""
     logger.info("="*60)
-    logger.info("🚀 STARTING VINTED API CLIENT TEST SUITE")
+    logger.info("[START] STARTING VINTED API CLIENT TEST SUITE")
     logger.info("="*60)
-    logger.warning("⚠️  NOTE: Replace 'your_cookie_here' with real Vinted session cookie")
-    logger.warning("⚠️  NOTE: Replace test IDs with real Vinted item/user/conversation IDs")
+    logger.warning("[WARN]  NOTE: Replace 'your_cookie_here' with real Vinted session cookie")
+    logger.warning("[WARN]  NOTE: Replace test IDs with real Vinted item/user/conversation IDs")
     logger.info("="*60)
 
     tests = [
@@ -290,7 +290,7 @@ async def run_all_tests():
             result = await test_func()
             results.append((test_name, result))
         except Exception as e:
-            logger.error(f"❌ Test '{test_name}' raised exception: {e}")
+            logger.error(f"[ERROR] Test '{test_name}' raised exception: {e}")
             results.append((test_name, False))
 
         # Delay between tests
@@ -306,7 +306,7 @@ async def run_all_tests():
     total = len(results)
 
     for test_name, result in results:
-        status = "✅ PASSED" if result else "❌ FAILED"
+        status = "[OK] PASSED" if result else "[ERROR] FAILED"
         logger.info(f"{status} - {test_name}")
 
     logger.info("-"*60)

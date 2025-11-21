@@ -15,11 +15,11 @@ class StorageLifecycleManager:
     Gère le cycle de vie des photos
 
     Règles:
-    1. TEMP > 48h → Suppression OU promotion HOT
-    2. Photos publiées > 7j → Suppression
-    3. TEMP non publié > 48h → HOT
-    4. HOT sans accès 90j → COLD
-    5. COLD > 365j → Suppression
+    1. TEMP > 48h -> Suppression OU promotion HOT
+    2. Photos publiées > 7j -> Suppression
+    3. TEMP non publié > 48h -> HOT
+    4. HOT sans accès 90j -> COLD
+    5. COLD > 365j -> Suppression
 
     Exécuté: Quotidiennement à 3h du matin (cron job)
     """
@@ -40,11 +40,11 @@ class StorageLifecycleManager:
         Actions:
         1. Supprimer photos TEMP > 48h
         2. Supprimer photos publiées > 7j
-        3. Promouvoir TEMP → HOT si draft reste
-        4. Archiver HOT → COLD si 90j sans accès
+        3. Promouvoir TEMP -> HOT si draft reste
+        4. Archiver HOT -> COLD si 90j sans accès
         5. Supprimer COLD > 365j
         """
-        logger.info("🔄 Starting storage lifecycle job")
+        logger.info("[PROCESS] Starting storage lifecycle job")
 
         now = datetime.utcnow()
 
@@ -58,7 +58,7 @@ class StorageLifecycleManager:
         }
 
         # 1. Supprimer photos TEMP expirées
-        logger.info("📋 Step 1: Deleting expired TEMP photos")
+        logger.info("[INFO] Step 1: Deleting expired TEMP photos")
         temp_photos = await self._get_photos_by_tier(StorageTier.TEMP)
 
         for photo in temp_photos:
@@ -68,7 +68,7 @@ class StorageLifecycleManager:
                 stats['temp_deleted'] += 1
 
         # 2. Supprimer photos publiées expirées (7j après publication)
-        logger.info("📋 Step 2: Deleting published photos (7+ days)")
+        logger.info("[INFO] Step 2: Deleting published photos (7+ days)")
         published_photos = await self._get_published_photos()
 
         for photo in published_photos:
@@ -80,8 +80,8 @@ class StorageLifecycleManager:
                 await self.storage.delete_photo(photo.photo_id)
                 stats['published_deleted'] += 1
 
-        # 3. Promouvoir TEMP → HOT (drafts non publiés)
-        logger.info("📋 Step 3: Promoting TEMP → HOT (non-published drafts)")
+        # 3. Promouvoir TEMP -> HOT (drafts non publiés)
+        logger.info("[INFO] Step 3: Promoting TEMP -> HOT (non-published drafts)")
         temp_old = await self._get_photos_older_than(
             StorageTier.TEMP,
             hours=48
@@ -96,8 +96,8 @@ class StorageLifecycleManager:
                 await self.storage.promote_to_hot_storage(photo.photo_id)
                 stats['promoted_to_hot'] += 1
 
-        # 4. Archiver HOT → COLD (90j sans accès)
-        logger.info("📋 Step 4: Archiving HOT → COLD (90+ days without access)")
+        # 4. Archiver HOT -> COLD (90j sans accès)
+        logger.info("[INFO] Step 4: Archiving HOT -> COLD (90+ days without access)")
         hot_old = await self._get_photos_not_accessed_for(
             StorageTier.HOT,
             days=90
@@ -105,14 +105,14 @@ class StorageLifecycleManager:
 
         for photo in hot_old:
             logger.info(
-                f"📦 Archiving to COLD storage: {photo.photo_id} "
+                f"[PACKAGE] Archiving to COLD storage: {photo.photo_id} "
                 f"(last accessed {(now - photo.last_accessed).days} days ago)"
             )
             await self.storage.archive_to_cold_storage(photo.photo_id)
             stats['archived_to_cold'] += 1
 
         # 5. Supprimer COLD > 365j
-        logger.info("📋 Step 5: Deleting old COLD photos (365+ days)")
+        logger.info("[INFO] Step 5: Deleting old COLD photos (365+ days)")
         cold_old = await self._get_photos_older_than(
             StorageTier.COLD,
             days=365
@@ -128,7 +128,7 @@ class StorageLifecycleManager:
 
         # Log summary
         logger.info(
-            f"✅ Storage lifecycle job completed\n"
+            f"[OK] Storage lifecycle job completed\n"
             f"   - TEMP deleted: {stats['temp_deleted']}\n"
             f"   - Published deleted: {stats['published_deleted']}\n"
             f"   - Promoted to HOT: {stats['promoted_to_hot']}\n"

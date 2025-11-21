@@ -92,7 +92,7 @@ async def save_session(request: SessionRequest):
         # Save encrypted session
         persisted = vault.save_session(session)
         
-        print(f"✅ Session saved (encrypted): user={username or 'unknown'}")
+        print(f"[OK] Session saved (encrypted): user={username or 'unknown'}")
         
         # Return EXACT format Lovable expects: {session_id, valid, created_at}
         return SessionResponse(
@@ -102,7 +102,7 @@ async def save_session(request: SessionRequest):
             note=f"Session saved for user: {username or 'unknown'}"
         )
     except Exception as e:
-        print(f"❌ Save session error: {e}")
+        print(f"[ERROR] Save session error: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to save session: {str(e)}")
 
 
@@ -111,9 +111,9 @@ async def debug_session(payload: Dict[str, Any]):
     """
     Debug endpoint - accepts any JSON to see what Lovable sends
     """
-    print(f"🔍 DEBUG - Received payload: {payload}")
-    print(f"🔍 DEBUG - Payload keys: {list(payload.keys())}")
-    print(f"🔍 DEBUG - Payload types: {[(k, type(v).__name__) for k, v in payload.items()]}")
+    print(f"[SEARCH] DEBUG - Received payload: {payload}")
+    print(f"[SEARCH] DEBUG - Payload keys: {list(payload.keys())}")
+    print(f"[SEARCH] DEBUG - Payload types: {[(k, type(v).__name__) for k, v in payload.items()]}")
     
     # Try to save it anyway
     try:
@@ -174,7 +174,7 @@ async def validate_session(request: SessionRequest):
             }
         }
     except Exception as e:
-        print(f"❌ VALIDATE error: {e}")
+        print(f"[ERROR] VALIDATE error: {e}")
         return {
             "valid": False,
             "authenticated": False,
@@ -203,7 +203,7 @@ async def check_auth():
             user_id=session.user_id
         )
     except Exception as e:
-        print(f"❌ Check auth error: {e}")
+        print(f"[ERROR] Check auth error: {e}")
         return AuthCheckResponse(
             authenticated=False,
             username=None,
@@ -273,7 +273,7 @@ async def upload_photos(
             
             # Convert HEIC/HEIF to JPG
             if is_heic:
-                print(f"🔄 Converting HEIC/HEIF to JPG: {file.filename}")
+                print(f"[PROCESS] Converting HEIC/HEIF to JPG: {file.filename}")
                 try:
                     # Open HEIC with PIL (pillow-heif registered)
                     image = Image.open(io.BytesIO(content))
@@ -288,9 +288,9 @@ async def upload_photos(
                     content = output.getvalue()
                     
                     ext = 'jpg'
-                    print(f"✅ Converted HEIC → JPG: {file.filename}")
+                    print(f"[OK] Converted HEIC -> JPG: {file.filename}")
                 except Exception as e:
-                    print(f"❌ HEIC conversion failed: {e}")
+                    print(f"[ERROR] HEIC conversion failed: {e}")
                     raise HTTPException(status_code=400, detail=f"Failed to convert HEIC: {file.filename}")
             else:
                 ext = file.filename.split('.')[-1] if (file.filename and '.' in file.filename) else 'jpg'
@@ -301,7 +301,7 @@ async def upload_photos(
             with open(file_path, "wb") as f:
                 f.write(content)
             
-            print(f"✅ Photo uploaded: {file.filename} -> {filename}")
+            print(f"[OK] Photo uploaded: {file.filename} -> {filename}")
             
             photo_paths.append(file_path)
             photos.append({
@@ -333,7 +333,7 @@ async def upload_photos(
             # Start analysis in background
             asyncio.create_task(process_bulk_job(job_id, photo_paths, photos_per_item=4))
             
-            print(f"🚀 AI analysis started: job_id={job_id}")
+            print(f"[START] AI analysis started: job_id={job_id}")
             
             return {
                 "job_id": job_id,
@@ -347,7 +347,7 @@ async def upload_photos(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ Upload error: {e}")
+        print(f"[ERROR] Upload error: {e}")
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 
@@ -371,70 +371,70 @@ async def prepare_listing(
     """
     try:
         print(f"\n{'='*60}")
-        print(f"🚀 DÉBUT PUBLICATION - PHASE A (PREPARE)")
+        print(f"[START] DÉBUT PUBLICATION - PHASE A (PREPARE)")
         print(f"{'='*60}")
-        print(f"📋 Title: {request.title[:50]}...")
-        print(f"💰 Price: {request.price}€")
-        print(f"📸 Photos: {len(request.photos)} fichiers")
-        print(f"🏷️  Category: {request.category_hint}")
-        print(f"👕 Size: {request.size}")
-        print(f"✨ Condition: {request.condition}")
-        print(f"🎨 Brand: {request.brand}")
+        print(f"[INFO] Title: {request.title[:50]}...")
+        print(f"[PRICE] Price: {request.price}€")
+        print(f"[PHOTO] Photos: {len(request.photos)} fichiers")
+        print(f"[TAG]  Category: {request.category_hint}")
+        print(f"[ITEM] Size: {request.size}")
+        print(f"[QUALITY] Condition: {request.condition}")
+        print(f"[BRAND] Brand: {request.brand}")
         
         # In dry_run mode, skip session check (simulation only)
         if not request.dry_run and not settings.MOCK_MODE:
             # Check authentication (ONLY for real execution)
             session = vault.load_session()
             if not session:
-                print(f"❌ ERREUR: Aucune session Vinted trouvée")
-                print(f"   → Va dans Settings pour coller ton cookie Vinted")
+                print(f"[ERROR] ERREUR: Aucune session Vinted trouvée")
+                print(f"   -> Va dans Settings pour coller ton cookie Vinted")
                 raise HTTPException(status_code=401, detail="Not authenticated. Call /auth/session first.")
             
-            print(f"✅ Session Vinted active: user={session.username or 'unknown'}")
+            print(f"[OK] Session Vinted active: user={session.username or 'unknown'}")
         else:
-            print(f"🧪 [DRY-RUN MODE] Skipping Vinted session check")
+            print(f"[TEST] [DRY-RUN MODE] Skipping Vinted session check")
             session = None  # Not needed for dry-run
         
-        # 🛡️ PUBLICATION SAFEGUARDS - Validate AI payload
-        print(f"\n🔍 VALIDATION DES CHAMPS:")
+        # [SECURITY] PUBLICATION SAFEGUARDS - Validate AI payload
+        print(f"\n[SEARCH] VALIDATION DES CHAMPS:")
         if settings.SAFE_DEFAULTS:
             validation_errors = []
             
             # 1. Title length check (≤70 chars for optimal visibility)
             if len(request.title) > 70:
                 validation_errors.append(f"Title too long ({len(request.title)} chars, max 70)")
-                print(f"   ❌ Titre trop long: {len(request.title)} chars (max 70)")
+                print(f"   [ERROR] Titre trop long: {len(request.title)} chars (max 70)")
             else:
-                print(f"   ✅ Titre: {len(request.title)} chars")
+                print(f"   [OK] Titre: {len(request.title)} chars")
             
             # 2. Hashtags validation (3-5 required)
             if not request.hashtags or len(request.hashtags) < 3 or len(request.hashtags) > 5:
                 hashtag_count = len(request.hashtags) if request.hashtags else 0
                 validation_errors.append(f"Invalid hashtags count ({hashtag_count}, need 3-5)")
-                print(f"   ❌ Hashtags invalides: {hashtag_count} (besoin 3-5)")
+                print(f"   [ERROR] Hashtags invalides: {hashtag_count} (besoin 3-5)")
             else:
-                print(f"   ✅ Hashtags: {len(request.hashtags)} tags")
+                print(f"   [OK] Hashtags: {len(request.hashtags)} tags")
             
             # 3. Price suggestion validation (min/target/max required)
             if not request.price_suggestion:
                 validation_errors.append("Missing price_suggestion (min/target/max)")
-                print(f"   ❌ Prix suggestion manquant")
+                print(f"   [ERROR] Prix suggestion manquant")
             elif not all([
                 hasattr(request.price_suggestion, 'min'),
                 hasattr(request.price_suggestion, 'target'),
                 hasattr(request.price_suggestion, 'max')
             ]):
                 validation_errors.append("Incomplete price_suggestion (need min/target/max)")
-                print(f"   ❌ Prix suggestion incomplet")
+                print(f"   [ERROR] Prix suggestion incomplet")
             else:
-                print(f"   ✅ Prix: {request.price_suggestion.min}€ - {request.price_suggestion.target}€ - {request.price_suggestion.max}€")
+                print(f"   [OK] Prix: {request.price_suggestion.min}€ - {request.price_suggestion.target}€ - {request.price_suggestion.max}€")
             
             # 4. Publish readiness flag
             if not request.flags or not request.flags.publish_ready:
                 validation_errors.append("Not ready for publication (flags.publish_ready != true)")
-                print(f"   ❌ Pas prêt pour publication (publish_ready=false)")
+                print(f"   [ERROR] Pas prêt pour publication (publish_ready=false)")
             else:
-                print(f"   ✅ Prêt pour publication")
+                print(f"   [OK] Prêt pour publication")
             
             # If any validation fails, return NOT_READY
             if validation_errors:
@@ -447,11 +447,11 @@ async def prepare_listing(
                     reason=f"NOT_READY: {'; '.join(validation_errors)}"
                 )
         
-        print(f"\n✅ TOUTES LES VALIDATIONS PASSÉES")
+        print(f"\n[OK] TOUTES LES VALIDATIONS PASSÉES")
         
         # Dry run simulation
         if request.dry_run or settings.MOCK_MODE:
-            print(f"🔄 [DRY-RUN] Preparing listing: {request.title}")
+            print(f"[PROCESS] [DRY-RUN] Preparing listing: {request.title}")
             
             # Generate confirm token (TTL: 30 minutes)
             draft_context = {
@@ -479,7 +479,7 @@ async def prepare_listing(
             )
         
         # Real execution
-        print(f"🚀 [REAL] Preparing listing: {request.title}")
+        print(f"[START] [REAL] Preparing listing: {request.title}")
         
         # session is guaranteed to exist here (checked above)
         if not session:
@@ -506,7 +506,7 @@ async def prepare_listing(
                 import os
                 
                 for idx, photo_ref in enumerate(request.photos):
-                    # ✅ SMART PATH RESOLUTION - handles all formats
+                    # [OK] SMART PATH RESOLUTION - handles all formats
                     # Case 1: Absolute path (starts with /)
                     if photo_ref.startswith('/'):
                         photo_path = f"{settings.DATA_DIR}{photo_ref}"
@@ -525,7 +525,7 @@ async def prepare_listing(
                     
                     # Verify file exists before upload
                     if not os.path.exists(photo_path):
-                        print(f"❌ Photo [{idx}] NOT FOUND: {photo_ref}")
+                        print(f"[ERROR] Photo [{idx}] NOT FOUND: {photo_ref}")
                         print(f"   Resolved path: {photo_path}")
                         print(f"   File exists: {os.path.exists(photo_path)}")
                         raise HTTPException(
@@ -533,20 +533,20 @@ async def prepare_listing(
                             detail=f"Photo not found: {photo_ref} (resolved to {photo_path})"
                         )
                     
-                    print(f"📸 Uploading photo [{idx+1}/{len(request.photos)}]: {os.path.basename(photo_path)}")
+                    print(f"[PHOTO] Uploading photo [{idx+1}/{len(request.photos)}]: {os.path.basename(photo_path)}")
                     upload_success = await client.upload_photo(page, photo_path)
                     
                     if not upload_success:
                         # Check if we were redirected to login/session page
                         current_url = page.url
                         if 'session-refresh' in current_url or 'session/new' in current_url or 'member/login' in current_url:
-                            print(f"❌ Session Vinted expirée (redirigé vers {current_url})")
+                            print(f"[ERROR] Session Vinted expirée (redirigé vers {current_url})")
                             raise HTTPException(
                                 status_code=401,
                                 detail=f"SESSION_EXPIRED: Votre session Vinted a expiré. Veuillez actualiser votre cookie dans Settings. Testez votre session avec le bouton 'Tester ma session'."
                             )
                         
-                        print(f"⚠️ Photo upload failed: {photo_ref}")
+                        print(f"[WARN] Photo upload failed: {photo_ref}")
                         raise HTTPException(
                             status_code=500,
                             detail=f"Failed to upload photo: {photo_ref}. Vérifiez votre connexion ou testez votre session Vinted."
@@ -579,7 +579,7 @@ async def prepare_listing(
             
             confirm_token = serializer.dumps(draft_context)
             
-            print(f"✅ Listing prepared: {request.title}")
+            print(f"[OK] Listing prepared: {request.title}")
             
             return ListingPrepareResponse(
                 ok=True,
@@ -593,7 +593,7 @@ async def prepare_listing(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ Prepare error: {e}")
+        print(f"[ERROR] Prepare error: {e}")
         raise HTTPException(status_code=500, detail=f"Prepare failed: {str(e)}")
 
 
@@ -624,7 +624,7 @@ async def publish_listing(
         if not request.dry_run:
             await check_and_consume_quota(current_user, "publications", amount=1)
         
-        # 🛡️ Idempotency protection - ATOMIC reservation before publish
+        # [SECURITY] Idempotency protection - ATOMIC reservation before publish
         # This MUST happen before the external Vinted API call to prevent race conditions
         if not request.dry_run:
             # Try to reserve the idempotency key atomically (UNIQUE constraint)
@@ -661,7 +661,7 @@ async def publish_listing(
         
         # Dry run simulation
         if request.dry_run or settings.MOCK_MODE:
-            print(f"🔄 [DRY-RUN] Publishing: {draft_context.get('title', 'unknown')}")
+            print(f"[PROCESS] [DRY-RUN] Publishing: {draft_context.get('title', 'unknown')}")
             
             return ListingPublishResponse(
                 ok=True,
@@ -673,7 +673,7 @@ async def publish_listing(
             )
         
         # Real execution
-        print(f"🚀 [REAL] Publishing: {draft_context.get('title', 'unknown')}")
+        print(f"[START] [REAL] Publishing: {draft_context.get('title', 'unknown')}")
         
         async with VintedClient(headless=settings.PLAYWRIGHT_HEADLESS) as client:
             await client.create_context(session)
@@ -684,7 +684,7 @@ async def publish_listing(
             
             # Detect challenge before publish
             if await client.detect_challenge(page):
-                print("⚠️ Challenge/Captcha detected - manual action needed")
+                print("[WARN] Challenge/Captcha detected - manual action needed")
                 return ListingPublishResponse(
                     ok=True,
                     dry_run=False,
@@ -717,7 +717,7 @@ async def publish_listing(
             listing_id = await client.extract_listing_id(page)
             listing_url = page.url if listing_id else None
             
-            print(f"✅ Published: ID={listing_id}, URL={listing_url}")
+            print(f"[OK] Published: ID={listing_id}, URL={listing_url}")
             
             # Log successful publish to SQLite
             draft_id = draft_context.get("draft_id")
@@ -761,7 +761,7 @@ async def publish_listing(
     except HTTPException:
         raise
     except CaptchaDetected as e:
-        print(f"⚠️ Captcha detected: {e}")
+        print(f"[WARN] Captcha detected: {e}")
         return ListingPublishResponse(
             ok=True,
             dry_run=False,
@@ -771,7 +771,7 @@ async def publish_listing(
             reason="captcha_or_verification"
         )
     except Exception as e:
-        print(f"❌ Publish error: {e}")
+        print(f"[ERROR] Publish error: {e}")
         raise HTTPException(status_code=500, detail=f"Publish failed: {str(e)}")
 
 
@@ -803,31 +803,31 @@ async def create_draft(
         print(f"\n{'='*60}")
         print(f"📝 CRÉATION BROUILLON VINTED")
         print(f"{'='*60}")
-        print(f"📋 Title: {request.title[:50]}...")
-        print(f"💰 Price: {request.price}€")
-        print(f"📸 Photos: {len(request.photos)} fichiers")
-        print(f"🏷️  Category: {request.category_hint}")
-        print(f"👕 Size: {request.size}")
-        print(f"✨ Condition: {request.condition}")
-        print(f"🎨 Brand: {request.brand}")
+        print(f"[INFO] Title: {request.title[:50]}...")
+        print(f"[PRICE] Price: {request.price}€")
+        print(f"[PHOTO] Photos: {len(request.photos)} fichiers")
+        print(f"[TAG]  Category: {request.category_hint}")
+        print(f"[ITEM] Size: {request.size}")
+        print(f"[QUALITY] Condition: {request.condition}")
+        print(f"[BRAND] Brand: {request.brand}")
         
         # In dry_run mode, skip session check (simulation only)
         if not request.dry_run and not settings.MOCK_MODE:
             # Check authentication (ONLY for real execution)
             session = vault.load_session()
             if not session:
-                print(f"❌ ERREUR: Aucune session Vinted trouvée")
-                print(f"   → Va dans Settings pour coller ton cookie Vinted")
+                print(f"[ERROR] ERREUR: Aucune session Vinted trouvée")
+                print(f"   -> Va dans Settings pour coller ton cookie Vinted")
                 raise HTTPException(status_code=401, detail="Not authenticated. Call /auth/session first.")
             
-            print(f"✅ Session Vinted active: user={session.username or 'unknown'}")
+            print(f"[OK] Session Vinted active: user={session.username or 'unknown'}")
         else:
-            print(f"🧪 [DRY-RUN MODE] Skipping Vinted session check")
+            print(f"[TEST] [DRY-RUN MODE] Skipping Vinted session check")
             session = None
         
         # Dry run simulation
         if request.dry_run or settings.MOCK_MODE:
-            print(f"🔄 [DRY-RUN] Creating draft: {request.title}")
+            print(f"[PROCESS] [DRY-RUN] Creating draft: {request.title}")
             
             # Simulate draft creation
             mock_draft_id = "123456789"
@@ -844,7 +844,7 @@ async def create_draft(
             )
         
         # Real execution
-        print(f"🚀 [REAL] Creating draft: {request.title}")
+        print(f"[START] [REAL] Creating draft: {request.title}")
         
         # session is guaranteed to exist here (checked above)
         if not session:
@@ -883,26 +883,26 @@ async def create_draft(
                     
                     # Verify file exists
                     if not os.path.exists(photo_path):
-                        print(f"❌ Photo [{idx}] NOT FOUND: {photo_ref}")
+                        print(f"[ERROR] Photo [{idx}] NOT FOUND: {photo_ref}")
                         raise HTTPException(
                             status_code=404,
                             detail=f"Photo not found: {photo_ref}"
                         )
                     
-                    print(f"📸 Uploading photo [{idx+1}/{len(request.photos)}]: {os.path.basename(photo_path)}")
+                    print(f"[PHOTO] Uploading photo [{idx+1}/{len(request.photos)}]: {os.path.basename(photo_path)}")
                     upload_success = await client.upload_photo(page, photo_path)
                     
                     if not upload_success:
                         # Check if redirected to login
                         current_url = page.url
                         if 'session-refresh' in current_url or 'session/new' in current_url or 'member/login' in current_url:
-                            print(f"❌ Session Vinted expirée (redirigé vers {current_url})")
+                            print(f"[ERROR] Session Vinted expirée (redirigé vers {current_url})")
                             raise HTTPException(
                                 status_code=401,
                                 detail=f"SESSION_EXPIRED: Votre session Vinted a expiré."
                             )
                         
-                        print(f"⚠️ Photo upload failed: {photo_ref}")
+                        print(f"[WARN] Photo upload failed: {photo_ref}")
                         raise HTTPException(
                             status_code=500,
                             detail=f"Failed to upload photo: {photo_ref}"
@@ -921,9 +921,9 @@ async def create_draft(
                 category_hint=request.category_hint
             )
             
-            print(f"✅ Formulaire rempli: {fill_result['filled']}")
+            print(f"[OK] Formulaire rempli: {fill_result['filled']}")
             if fill_result['errors']:
-                print(f"⚠️ Erreurs: {fill_result['errors']}")
+                print(f"[WARN] Erreurs: {fill_result['errors']}")
             
             # Click "Save as draft" button
             success, error = await client.click_save_as_draft(page)
@@ -950,7 +950,7 @@ async def create_draft(
             # Take screenshot
             screenshot_b64 = await client.take_screenshot(page)
             
-            print(f"✅ Brouillon créé: ID={draft_id}, URL={draft_url}")
+            print(f"[OK] Brouillon créé: ID={draft_id}, URL={draft_url}")
             
             return ListingPrepareResponse(
                 ok=True,
@@ -965,13 +965,13 @@ async def create_draft(
     except HTTPException:
         raise
     except CaptchaDetected as e:
-        print(f"⚠️ Captcha detected: {e}")
+        print(f"[WARN] Captcha detected: {e}")
         raise HTTPException(
             status_code=403,
             detail="Captcha/Verification detected. Please complete manually."
         )
     except Exception as e:
-        print(f"❌ Create draft error: {e}")
+        print(f"[ERROR] Create draft error: {e}")
         raise HTTPException(status_code=500, detail=f"Create draft failed: {str(e)}")
 
 
@@ -994,11 +994,11 @@ async def test_session(current_user: User = Depends(get_current_user)):
             return JSONResponse({
                 "ok": False,
                 "status": "missing",
-                "message": "❌ Aucune session Vinted configurée. Veuillez ajouter votre cookie dans Settings.",
+                "message": "[ERROR] Aucune session Vinted configurée. Veuillez ajouter votre cookie dans Settings.",
                 "action": "add_cookie"
             })
         
-        print(f"🔍 Testing Vinted session for user {current_user.id}...")
+        print(f"[SEARCH] Testing Vinted session for user {current_user.id}...")
         
         # Create browser context and test
         async with VintedClient(headless=True) as client:
@@ -1013,41 +1013,41 @@ async def test_session(current_user: User = Depends(get_current_user)):
             
             # If redirected to session-refresh or login, session is expired
             if 'session-refresh' in current_url or 'session/new' in current_url or 'member/login' in current_url:
-                print(f"❌ Session expired (redirected to {current_url})")
+                print(f"[ERROR] Session expired (redirected to {current_url})")
                 return JSONResponse({
                     "ok": False,
                     "status": "expired",
-                    "message": "❌ Votre session Vinted a expiré. Veuillez actualiser votre cookie.",
+                    "message": "[ERROR] Votre session Vinted a expiré. Veuillez actualiser votre cookie.",
                     "action": "refresh_cookie",
                     "detected_url": current_url
                 })
             
             # If we're still on /items/new, session is valid
             if '/items/new' in current_url:
-                print(f"✅ Session valid!")
+                print(f"[OK] Session valid!")
                 return JSONResponse({
                     "ok": True,
                     "status": "valid",
-                    "message": "✅ Votre session Vinted est active et valide !",
+                    "message": "[OK] Votre session Vinted est active et valide !",
                     "action": None
                 })
             
             # Unknown state
-            print(f"⚠️ Unknown state: {current_url}")
+            print(f"[WARN] Unknown state: {current_url}")
             return JSONResponse({
                 "ok": False,
                 "status": "unknown",
-                "message": f"⚠️ État inconnu. URL actuelle: {current_url}",
+                "message": f"[WARN] État inconnu. URL actuelle: {current_url}",
                 "action": "check_manually",
                 "detected_url": current_url
             })
             
     except Exception as e:
-        print(f"❌ Session test error: {e}")
+        print(f"[ERROR] Session test error: {e}")
         return JSONResponse({
             "ok": False,
             "status": "error",
-            "message": f"❌ Erreur lors du test: {str(e)}",
+            "message": f"[ERROR] Erreur lors du test: {str(e)}",
             "action": "retry",
             "error": str(e)
         }, status_code=500)

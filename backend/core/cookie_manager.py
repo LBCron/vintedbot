@@ -115,11 +115,11 @@ class CookieManager:
             conn.commit()
             conn.close()
 
-            logger.info(f"✅ Cookie added: {name}")
+            logger.info(f"[OK] Cookie added: {name}")
             return True
 
         except Exception as e:
-            logger.error(f"❌ Failed to add cookie: {e}")
+            logger.error(f"[ERROR] Failed to add cookie: {e}")
             return False
 
     def get_cookie(self, name: str) -> Optional[Dict]:
@@ -160,7 +160,7 @@ class CookieManager:
             }
 
         except Exception as e:
-            logger.error(f"❌ Failed to get cookie: {e}")
+            logger.error(f"[ERROR] Failed to get cookie: {e}")
             return None
 
     def get_next_cookie(self) -> Optional[Dict]:
@@ -188,7 +188,7 @@ class CookieManager:
             conn.close()
 
             if not row:
-                logger.warning("⚠️ No active cookies available")
+                logger.warning("[WARN] No active cookies available")
                 return None
 
             # Decrypt cookie
@@ -207,7 +207,7 @@ class CookieManager:
             }
 
         except Exception as e:
-            logger.error(f"❌ Failed to get next cookie: {e}")
+            logger.error(f"[ERROR] Failed to get next cookie: {e}")
             return None
 
     def _update_last_used(self, cookie_id: int):
@@ -224,7 +224,7 @@ class CookieManager:
             conn.close()
 
         except Exception as e:
-            logger.error(f"❌ Failed to update last_used: {e}")
+            logger.error(f"[ERROR] Failed to update last_used: {e}")
 
     def mark_cookie_failed(self, cookie_id: int, error_message: str = None):
         """
@@ -252,10 +252,10 @@ class CookieManager:
             conn.commit()
             conn.close()
 
-            logger.warning(f"⚠️ Cookie marked as failed: ID {cookie_id}")
+            logger.warning(f"[WARN] Cookie marked as failed: ID {cookie_id}")
 
         except Exception as e:
-            logger.error(f"❌ Failed to mark cookie as failed: {e}")
+            logger.error(f"[ERROR] Failed to mark cookie as failed: {e}")
 
     def list_cookies(self, include_expired: bool = False) -> List[Dict]:
         """
@@ -287,7 +287,7 @@ class CookieManager:
             return [dict(row) for row in rows]
 
         except Exception as e:
-            logger.error(f"❌ Failed to list cookies: {e}")
+            logger.error(f"[ERROR] Failed to list cookies: {e}")
             return []
 
     def cleanup_expired_cookies(self):
@@ -309,7 +309,7 @@ class CookieManager:
                 logger.info(f"🗑️ Marked {expired_count} cookies as expired")
 
         except Exception as e:
-            logger.error(f"❌ Failed to cleanup cookies: {e}")
+            logger.error(f"[ERROR] Failed to cleanup cookies: {e}")
 
     def get_stats(self) -> Dict:
         """Get cookie statistics"""
@@ -346,7 +346,7 @@ class CookieManager:
             }
 
         except Exception as e:
-            logger.error(f"❌ Failed to get stats: {e}")
+            logger.error(f"[ERROR] Failed to get stats: {e}")
             return {}
 
 
@@ -364,12 +364,12 @@ if __name__ == "__main__":
     )
 
     # List cookies
-    print("\n📋 Available cookies:")
+    print("\n[INFO] Available cookies:")
     for cookie in manager.list_cookies():
         print(f"  - {cookie['name']} (Status: {cookie['status']})")
 
     # Get next cookie
-    print("\n🔄 Getting next cookie:")
+    print("\n[PROCESS] Getting next cookie:")
     next_cookie = manager.get_next_cookie()
     if next_cookie:
         print(f"  Selected: {next_cookie['name']}")

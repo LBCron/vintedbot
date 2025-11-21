@@ -189,8 +189,8 @@ class StorageMetrics:
 
         metrics = {
             'photos_uploaded': 0,
-            'photos_promoted': 0,  # TEMP → HOT
-            'photos_archived': 0,  # HOT → COLD
+            'photos_promoted': 0,  # TEMP -> HOT
+            'photos_archived': 0,  # HOT -> COLD
             'photos_deleted': 0
         }
 
@@ -299,7 +299,7 @@ class StorageMetrics:
         # Trop de photos en TEMP
         if stats['temp_count'] > 1000:
             recommendations.append(
-                f"⚠️ {stats['temp_count']} photos en TEMP storage. "
+                f"[WARN] {stats['temp_count']} photos en TEMP storage. "
                 "Vérifiez que le lifecycle job fonctionne correctement."
             )
 
@@ -326,6 +326,6 @@ class StorageMetrics:
             )
 
         if not recommendations:
-            recommendations.append("✅ Stockage bien optimisé !")
+            recommendations.append("[OK] Stockage bien optimisé !")
 
         return recommendations

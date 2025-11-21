@@ -16,7 +16,7 @@ class ClaudeAutoFix:
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
         if not self.api_key:
-            logger.warning("⚠️ ANTHROPIC_API_KEY not configured")
+            logger.warning("[WARN] ANTHROPIC_API_KEY not configured")
             self.client = None
         else:
             self.client = anthropic.Anthropic(api_key=self.api_key)
@@ -32,7 +32,7 @@ class ClaudeAutoFix:
             Analysis with suggested fixes or None
         """
         if not self.client:
-            logger.error("❌ Claude API not configured")
+            logger.error("[ERROR] Claude API not configured")
             return None
 
         try:
@@ -41,7 +41,7 @@ class ClaudeAutoFix:
             failed_tests = [t for t in results.get("tests", []) if t["status"] == "failed"]
 
             if not changes and not failed_tests:
-                logger.info("✅ No issues to analyze")
+                logger.info("[OK] No issues to analyze")
                 return None
 
             # Read current vinted_client.py code
@@ -71,11 +71,11 @@ class ClaudeAutoFix:
             # Save analysis
             self._save_analysis(analysis)
 
-            logger.info("✅ Claude analysis complete")
+            logger.info("[OK] Claude analysis complete")
             return analysis
 
         except Exception as e:
-            logger.error(f"❌ Claude analysis failed: {e}")
+            logger.error(f"[ERROR] Claude analysis failed: {e}")
             return None
 
     def _build_analysis_prompt(
@@ -176,7 +176,7 @@ Sois précis et fournis du code Python/Playwright fonctionnel.
             return json.loads(json_str)
 
         except json.JSONDecodeError:
-            logger.warning("⚠️ Could not parse JSON from Claude response")
+            logger.warning("[WARN] Could not parse JSON from Claude response")
             return {"raw_response": response}
 
     def _read_vinted_client_code(self) -> str:

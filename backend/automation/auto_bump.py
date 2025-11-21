@@ -242,7 +242,7 @@ class AutoBumpService:
             self.schedules[draft_id] = schedule
             scheduled.append(schedule.to_dict())
 
-            logger.info(f"✅ Scheduled auto-bump for draft {draft_id} at {next_bump}")
+            logger.info(f"[OK] Scheduled auto-bump for draft {draft_id} at {next_bump}")
 
         return {
             'success': True,
@@ -292,7 +292,7 @@ class AutoBumpService:
                 schedule.scheduled_time = schedule.next_bump_at
                 schedule.status = BumpStatus.SCHEDULED
 
-                logger.info(f"✅ Bump successful! Next bump at {schedule.next_bump_at}")
+                logger.info(f"[OK] Bump successful! Next bump at {schedule.next_bump_at}")
                 return (True, None)
 
             else:
@@ -310,7 +310,7 @@ class AutoBumpService:
                     # Retry in 30 minutes
                     schedule.next_bump_at = datetime.now() + timedelta(minutes=30)
 
-                logger.error(f"❌ Bump failed: {error}")
+                logger.error(f"[ERROR] Bump failed: {error}")
                 return (False, error)
 
     async def run_scheduler(self):
@@ -320,7 +320,7 @@ class AutoBumpService:
         Usage:
             asyncio.create_task(service.run_scheduler())
         """
-        logger.info(f"🚀 Auto-bump scheduler started for user {self.user_id}")
+        logger.info(f"[START] Auto-bump scheduler started for user {self.user_id}")
         self.running = True
 
         while self.running:
