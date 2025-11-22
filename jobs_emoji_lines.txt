@@ -1,7 +1,0 @@
-Found 6 lines with emojis
-Line 21:     logger.info("📥 Running inbox sync job")
-Line 59:     logger.info("📋 Checking publish queue")
-Line 80:     logger.info("💸 Running price drop job")
-Line 114:     logger.info("🧹 Cleaning old temporary photos...")
-Line 154:     logger.info("🧹 Running SQLite vacuum and prune job")
-Line 176:     logger.info("🤖 Running automation executor...")

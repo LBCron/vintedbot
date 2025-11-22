@@ -86,7 +86,8 @@
       "Bash(del nul 2)",
       "Bash(git restore:*)",
       "Bash(powershell:*)",
-      "Bash($null)"
+      "Bash($null)",
+      "Bash(flyctl postgres:*)"
     ],
     "deny": [],
     "ask": []
