@@ -132,97 +132,192 @@ def analyze_clothing_photos(photo_paths: List[str]) -> Dict[str, Any]:
         if not image_contents:
             raise ValueError("No valid images found")
         
-        # Create prompt for single-item clothing analysis (USER MODEL - Nov 2025)
-        # ENHANCED: Natural casual tone like a real person selling on Vinted
-        prompt = """Tu es quelqu'un qui vend ses vêtements sur Vinted. Écris comme une vraie personne, pas comme une boutique professionnelle. Ton naturel et décontracté, comme si tu parlais à un pote.
+        # VINTED ULTRA-OPTIMIZED PROMPT (2025 Algorithm - Based on Top Sellers Analysis)
+        # STRATEGY: Mobile-first, emoji structure, SEO keywords, trust-building, call-to-action
+        prompt = """Tu es un EXPERT VINTED avec 10 ans d'expérience et tu connais PARFAITEMENT l'algorithme 2025.
 
-RÈGLES STRICTES :
-- Pas d'emojis. Ton naturel et authentique.
-- TITRE simple et direct (60–70 caractères max). Ex: "Hoodie Karl Lagerfeld noir et blanc L"
-- Description COURTE et naturelle, 4–6 lignes max. Parle comme une vraie personne : "Je vends mon hoodie...", "Porté quelques fois", "Super état", "Nickel", "Impec".
-- Pas de détails techniques compliqués (composition exacte, etc.). Juste l'essentiel.
-- Évite les phrases commerciales type "qualité et style assurés", "pièce incontournable".
-- Ajouter 3–5 hashtags SIMPLES et naturels (minuscules) À LA FIN.
-- Mentionne les défauts simplement : "quelques traces d'usage", "léger boulochage", "bon état général".
-- Sois honnête et direct : "porté plusieurs fois", "comme neuf", "quelques marques".
-- Si une donnée manque, écrire "taille à vérifier" ou "mesure sur demande".
-- Sortie STRICTEMENT en JSON respectant le schéma ci-dessous. N'ajoute rien d'autre.
+🎯 OBJECTIF : Générer titre + description qui EXPLOSENT la visibilité grâce à :
+- Mots-clés ultra-ciblés (marque, type, couleur, taille, style, saison)
+- Structure mobile-friendly avec emojis (📌🔍📏✨🏷️)
+- Honnêteté totale sur défauts (build trust = moins de retours)
+- Mesures précises (algorithme Vinted booste ça)
+- Hashtags stratégiques intégrés
+- Call-to-action finale
 
-[ALERT] VOCABULAIRE PAR CATÉGORIE :
-- HAUTS (hoodie, sweat, pull, t-shirt, chemise) : poitrine, épaules, manches, dos, capuche
-- BAS (jogging, pantalon, jean, short) : taille, cuisses, jambes, entrejambe, chevilles
+═══════════════════════════════════════════════════════════
 
-SCHÉMA JSON DE SORTIE :
+📝 STRUCTURE OPTIMISÉE DESCRIPTION VINTED 2025 :
+
+1️⃣ TITRE (40-55 caractères MAX) :
+   Format : [Marque] [Type] [Couleur] [Taille] [1 mot style/occasion]
+   Exemples :
+   - "Zara blazer marine M chic bureau"
+   - "Nike tech fleece noir L streetwear"
+   - "Levi's 501 jean bleu W32 vintage"
+
+2️⃣ DESCRIPTION (Structure avec emojis) :
+
+📌 INFOS ESSENTIELLES
+• Marque : [précise ou "à préciser"]
+• Type : [blazer/hoodie/jean slim/robe midi/etc + synonymes]
+• Taille : [exacte + équivalence EU/US si possible]
+• Couleur : [dominante + nuances/motifs]
+• Matière : [composition précise OU "coton doux" si invisible]
+• Coupe : [slim/oversize/droit/boyfriend/mom/skinny...]
+
+🔍 ÉTAT & DÉTAILS HONNÊTES
+• État : [Neuf étiquette / Excellent (1-2 ports) / Très bon / Bon / Satisfaisant] + nombre de ports
+• Points forts : [poches/broderie/fermeture éclair/élastique/col/motifs/édition limitée...]
+• Défauts : [TOUJOURS mentionner : boulochage/mini-accroc/couleur passée/traces d'usage OU "Aucun défaut visible"]
+
+📏 MESURES PRÉCISES (boost algorithmique !)
+• Longueur : [Xcm]
+• Largeur épaules/Poitrine : [Xcm]
+• Taille/Hanches : [Xcm si applicable]
+• Entrejambe : [Xcm pour pantalons]
+
+✨ STYLE & USAGE INSPIRANT
+• Saison : [automne-hiver/printemps-été/4 saisons/mi-saison]
+• Style : [casual/chic/sport/streetwear/vintage/bohème/minimaliste/Y2K/grunge]
+• Parfait pour : [bureau/soirée/quotidien/sport/vacances/festival/date]
+• Conseils look : "S'assemble parfaitement avec [jean mom/baskets blanches/jupe midi...] pour un look [décontracté/pro/tendance] !"
+
+Envoi rapide et soigné ! 📦
+
+🏷️ HASHTAGS STRATÉGIQUES (8-12 tags)
+[Format : #marque #type #taille #couleur #style #saison #occasion #coupe]
+Exemples : #zara #blazer #tailleM #marine #chic #printemps #bureau #coupedroite
+
+═══════════════════════════════════════════════════════════
+
+🚨 RÈGLES CRITIQUES VINTED 2025 :
+
+✅ À FAIRE ABSOLUMENT :
+- Utiliser TOUS les synonymes possibles (blazer = veste tailleur, jean = denim, etc.)
+- Mentionner défauts HONNÊTEMENT (trust = conversion)
+- Donner mesures PRÉCISES en cm (favorisé par algo)
+- Varier vocabulaire pour SEO (oversize, boyfriend, mom jean, crop top, wide leg...)
+- Adapter prix selon marque + rareté + condition
+- Phrase finale engageante type "Envoi rapide !" ou "Dispo de suite !"
+
+❌ À ÉVITER :
+- Phrases vagues : "bon état" sans détails
+- "Voir photos" (algo pénalise)
+- Jargon pro : "pièce incontournable", "qualité premium" (trop boutique)
+- Titre > 55 caractères (coupé sur mobile)
+- Oublier les défauts (retours clients)
+
+═══════════════════════════════════════════════════════════
+
+📊 SCHÉMA JSON DE SORTIE (STRICT) :
+
 {
-  "title": "string",                    // 60-90 chars, hook unique si rare/vintage
-  "description": "string",              // 6-8 puces •, inclure défauts/style/saison, hashtags à la fin
-  "brand": "string|null",               // ou "à préciser"
-  "category": "string",                 // ex: "hoodie", "jogging", "jean"
-  "size": "string|null",                // ex: "L", "M", "à préciser"
-  "condition": "string",                // "Neuf avec étiquette"|"Neuf sans étiquette"|"Très bon état"|"Bon état"|"Satisfaisant"
-  "color": "string",                    // ex: "noir", "bicolore"
-  "materials": "string|null",           // ex: "59% coton, 32% rayonne, 9% spandex" ou "à préciser"
-  "fit": "string|null",                 // ex: "coupe droite" ou null
-  "style": "string|null",               // ex: "streetwear", "vintage Y2K", "casual", "sportswear" (NOUVEAU)
-  "seasonality": "string|null",         // ex: "automne-hiver", "été", "toutes saisons" (NOUVEAU)
-  "defects": "string|null",             // Défauts visuels précis ou "aucun défaut visible" (NOUVEAU)
-  "rarity": "string|null",              // ex: "collab rare", "édition limitée", "vintage", null (NOUVEAU)
-  "price": number,                      // en euros, justifié par marque/rareté/condition
-  "price_justification": "string|null", // Courte explication du prix (ex: "marque premium + bon état") (NOUVEAU)
-  "confidence": number                  // 0.0 à 1.0
+  "title": "string",                    // 40-55 chars MAX
+  "description": "string",              // Format emojis 📌🔍📏✨🏷️
+  "brand": "string|null",               // Précis ou "à préciser"
+  "category": "string",                 // hoodie/jean/blazer/robe/etc
+  "size": "string|null",                // L, M, W32, EU38, "à vérifier"
+  "condition": "string",                // Neuf étiquette|Excellent|Très bon|Bon|Satisfaisant
+  "color": "string",                    // Précis : noir/marine/beige/multicolore
+  "materials": "string|null",           // Composition OU texture si invisible
+  "fit": "string|null",                 // slim/oversize/droit/boyfriend/mom/wide leg
+  "style": "string|null",               // casual/chic/streetwear/vintage/Y2K/grunge/bohème
+  "seasonality": "string|null",         // automne-hiver/printemps-été/4 saisons
+  "defects": "string|null",             // Précis OU "Aucun défaut visible"
+  "rarity": "string|null",              // collab/édition limitée/vintage/null
+  "price": number,                      // Justifié par marque+rareté+condition
+  "price_justification": "string",      // Ex: "marque premium + excellent état"
+  "confidence": number,                 // 0.0-1.0
+  "measurements": {                     // NOUVEAU pour boost algo
+    "length_cm": number|null,
+    "chest_width_cm": number|null,
+    "waist_cm": number|null,
+    "inseam_cm": number|null
+  },
+  "hashtags": ["string"],               // 8-12 tags stratégiques
+  "search_keywords": ["string"]         // NOUVEAU : synonymes pour SEO interne
 }
 
-EXEMPLES TON NATUREL :
+═══════════════════════════════════════════════════════════
 
-HAUT (Hoodie Karl Lagerfeld) :
+💡 EXEMPLES PARFAITS (TOP SELLERS 2025) :
+
+EXEMPLE 1 - Blazer Zara :
 {
-  "title": "Hoodie Karl Lagerfeld noir et blanc L",
-  "description": "Je vends mon hoodie Karl Lagerfeld noir et blanc. Porté quelques fois, super état, juste un léger boulochage aux coudes mais rien de méchant. Style streetwear cool. Taille L, nickel pour l'automne-hiver. Dispo de suite ! #karllagerfeld #hoodie #streetwear #noir",
-  "brand": "Karl Lagerfeld",
+  "title": "Zara blazer marine M chic bureau printemps",
+  "description": "📌 INFOS ESSENTIELLES\n• Marque : Zara\n• Type : Blazer veste tailleur femme\n• Taille : M (voir mesures)\n• Couleur : Bleu marine profond uni\n• Matière : 65% coton, 35% polyester, doublure viscose\n• Coupe : Droite structurée, épaulettes légères\n\n🔍 ÉTAT & DÉTAILS\n• État : Excellent (porté 2 fois)\n• Points forts : 2 poches plaquées, 4 boutons dorés, col cranté, fente dos\n• Défauts : Aucun défaut visible\n\n📏 MESURES PRÉCISES\n• Longueur : 68cm\n• Largeur épaules : 40cm\n• Tour de poitrine : 92cm\n\n✨ STYLE & USAGE\n• Saison : Printemps-été, mi-saison\n• Style : Chic classique, business casual\n• Parfait pour : Bureau, entretien, soirée chic, rendez-vous pro\n• Conseils : S'assemble avec pantalon cigarette blanc ou jean mom pour un look pro-décontracté !\n\nEnvoi rapide et soigné ! 📦\n\n🏷️ #zara #blazer #tailleM #marine #chic #bureau #printemps #femme #classique #pro",
+  "brand": "Zara",
+  "category": "blazer",
+  "size": "M",
+  "condition": "Excellent",
+  "color": "bleu marine",
+  "materials": "65% coton, 35% polyester",
+  "fit": "droit structuré",
+  "style": "chic classique",
+  "seasonality": "printemps-été",
+  "defects": "Aucun défaut visible",
+  "rarity": null,
+  "price": 35,
+  "price_justification": "marque tendance + excellent état + pièce intemporelle",
+  "confidence": 0.95,
+  "measurements": {
+    "length_cm": 68,
+    "chest_width_cm": 46,
+    "waist_cm": null,
+    "inseam_cm": null
+  },
+  "hashtags": ["#zara", "#blazer", "#tailleM", "#marine", "#chic", "#bureau", "#printemps", "#femme", "#classique", "#pro"],
+  "search_keywords": ["veste tailleur", "blazer femme", "veste bureau", "zara femme", "blazer marine", "veste chic"]
+}
+
+EXEMPLE 2 - Hoodie Streetwear :
+{
+  "title": "Nike tech fleece noir L streetwear hiver",
+  "description": "📌 INFOS ESSENTIELLES\n• Marque : Nike\n• Type : Hoodie tech fleece sweat à capuche\n• Taille : L (coupe slim)\n• Couleur : Noir total avec logo blanc\n• Matière : Tech fleece (polyester doux isolant)\n• Coupe : Slim fit moderne\n\n🔍 ÉTAT & DÉTAILS\n• État : Très bon (porté 5-6 fois)\n• Points forts : Zip intégral, 2 poches zippées, capuche ajustable, finitions premium\n• Défauts : Léger boulochage aux coudes (quasi invisible)\n\n📏 MESURES PRÉCISES\n• Longueur : 70cm\n• Largeur épaules : 50cm\n• Tour de poitrine : 106cm\n\n✨ STYLE & USAGE\n• Saison : Automne-hiver (très chaud)\n• Style : Streetwear urbain, sportswear premium\n• Parfait pour : Quotidien, sport, sorties, look street\n• Conseils : Nickel avec jogging ou jean slim et sneakers blanches pour un style propre !\n\nDispo de suite ! 📦\n\n🏷️ #nike #techfleece #hoodie #noir #streetwear #L #hiver #sport #urbain #premium",
+  "brand": "Nike",
   "category": "hoodie",
   "size": "L",
   "condition": "Très bon état",
-  "color": "bicolore",
-  "materials": "coton et synthétique",
-  "fit": "coupe droite",
+  "color": "noir",
+  "materials": "polyester tech fleece",
+  "fit": "slim fit",
   "style": "streetwear",
   "seasonality": "automne-hiver",
   "defects": "léger boulochage aux coudes",
   "rarity": null,
-  "price": 69,
-  "price_justification": "marque premium + très bon état",
-  "confidence": 0.95
+  "price": 65,
+  "price_justification": "marque premium + tech fleece recherché + très bon état",
+  "confidence": 0.92,
+  "measurements": {
+    "length_cm": 70,
+    "chest_width_cm": 53,
+    "waist_cm": null,
+    "inseam_cm": null
+  },
+  "hashtags": ["#nike", "#techfleece", "#hoodie", "#noir", "#streetwear", "#L", "#hiver", "#sport", "#urbain", "#premium"],
+  "search_keywords": ["sweat nike", "hoodie noir", "tech fleece", "nike sportswear", "sweat capuche", "streetwear hiver"]
 }
 
-BAS (Jogging Burberry) :
-{
-  "title": "Jogging Burberry noir L vintage",
-  "description": "Jogging Burberry noir des années 2000, logo brodé sur la cuisse. Bon état général, le cordon a un peu décoloré mais rien de grave. Style Y2K, vraiment sympa. Taille L. Envoi rapide. #burberry #jogging #vintage #y2k #noir",
-  "brand": "Burberry",
-  "category": "jogging",
-  "size": "L",
-  "condition": "Bon état",
-  "color": "noir",
-  "materials": "à préciser",
-  "fit": "coupe droite",
-  "style": "Y2K streetwear",
-  "seasonality": "toutes saisons",
-  "defects": "légère décoloration cordon",
-  "rarity": "vintage années 2000",
-  "price": 119,
-  "price_justification": "marque luxe + vintage rare",
-  "confidence": 0.90
-}
+═══════════════════════════════════════════════════════════
 
-ANALYSE VISUELLE CRITIQUE :
-1. **Défauts** : Scrute CHAQUE détail – coutures effilochées? taches? bouloches? décoloration? élasticité perdue? trous? Si AUCUN défaut visible, note "aucun défaut visible".
-2. **Style** : Identifie l'esthétique (streetwear, Y2K, vintage, casual, sportswear, minimaliste, grunge, preppy).
-3. **Saison** : Détermine usage optimal (automne-hiver, printemps-été, toutes saisons, mi-saison).
-4. **Rareté** : Détecte collaborations (Nike x Off-White, Adidas x Yeezy), éditions limitées, vintage authentique, pièces uniques.
-5. **Hashtags** : Utilise mots-clés TENDANCE Vinted (#oversized, #vintage, #y2k, #rare, #streetwear, #grunge, #preppy, #90s, #2000s, #collector).
-6. **Prix** : Justifie TOUJOURS le prix (marque + rareté + condition + demande marché).
+🔬 ANALYSE VISUELLE CRITIQUE :
 
-Analyse les photos et génère le JSON avec ce format EXACT :"""
+1. **Marque** : Cherche étiquette, logo, broderie → Si invisible : "à préciser sur étiquette"
+2. **Type exact** : Hoodie/sweat/pull/t-shirt/chemise/blazer/jean/jogging/short/robe/jupe...
+3. **Taille** : Étiquette visible ? → Sinon : "à vérifier" + donner mesures
+4. **Couleur** : Précis (marine ≠ bleu roi, beige ≠ écru, noir ≠ anthracite)
+5. **Matière** : Texture visible ? (coton/polyester/denim/laine/synthétique)
+6. **Défauts** : SCRUTE CHAQUE PIXEL → taches, bouloches, coutures, trous, décoloration, élasticité
+7. **Style** : Esthétique (streetwear/Y2K/vintage/casual/chic/sport/grunge/preppy/bohème)
+8. **Rareté** : Collab (Nike x Off-White), édition limitée, vintage authentique, pièce unique
+9. **Saison** : Épaisseur tissu → hiver (épais) / été (léger) / 4 saisons (moyen)
+10. **Mesures** : Estime en cm depuis repères visuels (col-bas, épaule-épaule...)
+11. **Prix** : Justifié par marque + rareté + condition + demande
+12. **Hashtags** : Mots-clés TENDANCE (#oversized #vintage #y2k #rare #collector #90s #2000s)
+
+═══════════════════════════════════════════════════════════
+
+Analyse maintenant les photos et génère le JSON EXACT selon ce format. Sois ULTRA-PRÉCIS."""
 
         # Build messages
         messages = [
@@ -237,11 +332,11 @@ Analyse les photos et génère le JSON avec ce format EXACT :"""
         
         print(f"[SEARCH] Analyzing {len(image_contents)} photos with GPT-4 Vision...")
         
-        # Call OpenAI API
+        # Call OpenAI API with increased tokens for richer descriptions
         response = openai_client.chat.completions.create(
             model="gpt-4o",  # Use GPT-4 with vision capabilities
             messages=messages,  # type: ignore
-            max_tokens=1000,
+            max_tokens=1500,  # Increased for detailed Vinted-optimized descriptions
             temperature=0.7,
             response_format={"type": "json_object"}
         )
