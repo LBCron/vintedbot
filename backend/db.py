@@ -7,8 +7,13 @@ from backend.models import (
     JobStatus, JobMode, ListingStatus
 )
 
-# Force SQLite database (ignore Replit's PostgreSQL DATABASE_URL)
-DATABASE_URL = os.getenv("VINTEDBOT_DATABASE_URL", "sqlite:///backend/data/db.sqlite")
+# Use persistent storage location based on environment
+# In production (Fly.io), use /data volume for persistence
+# In development, use backend/data
+if os.getenv("ENV") == "production" or os.path.exists("/data"):
+    DATABASE_URL = os.getenv("VINTEDBOT_DATABASE_URL", "sqlite:////data/db.sqlite")
+else:
+    DATABASE_URL = os.getenv("VINTEDBOT_DATABASE_URL", "sqlite:///backend/data/db.sqlite")
 engine = create_engine(DATABASE_URL, echo=False)
 
 

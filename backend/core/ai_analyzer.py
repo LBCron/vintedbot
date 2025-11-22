@@ -1130,7 +1130,7 @@ RÈGLES DE GROUPEMENT CRITIQUES (anti-saucisson ET anti-mélange):
 
 5. Les étiquettes (care labels, brand tags, size labels) DOIVENT être rattachées au vêtement principal correspondant - JAMAIS créer d'article "étiquette seule".
 
-6. **MINIMUM 3 PHOTOS PAR ARTICLE** : Si un groupe a moins de 3 photos, essaie de trouver d'autres photos du même vêtement. Si impossible, ne crée PAS ce groupe (il sera rejeté).
+6. **TOUTES LES PHOTOS D'UN MÊME VÊTEMENT ENSEMBLE** : Pour un même vêtement/pièce, tu DOIS regrouper TOUTES ses photos dans UN SEUL article (pas de limite maximum). Par exemple, si 6 photos montrent le même hoodie sous différents angles, crée UN SEUL article avec les 6 photos. NE PAS diviser les photos d'un même vêtement en plusieurs articles.
 
 CHAMPS OBLIGATOIRES (NE JAMAIS LAISSER VIDE):
 
