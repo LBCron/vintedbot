@@ -959,9 +959,22 @@ def _auto_polish_draft(draft: Dict[str, Any]) -> Dict[str, Any]:
         # Garder début + état
         title = title[:67] + "..."
     
-    # 6. AJUSTER PRIX SI NÉCESSAIRE
+    # 6. AJUSTER PRIX AVEC LE MARCHÉ VINTED RÉEL
     original_price = draft.get("price", 20)
-    adjusted_price = _adjust_price_if_needed(draft)
+    try:
+        # Utiliser le pricing basé sur le marché réel
+        import asyncio
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        adjusted_price = loop.run_until_complete(_get_market_price(draft))
+    except Exception as e:
+        print(f"[PRICE] Erreur market pricing: {e}, utilisation fallback")
+        adjusted_price = _adjust_price_if_needed(draft)
+
     if adjusted_price != original_price:
         print(f"[PRICE] Prix ajusté : {original_price}€ -> {adjusted_price}€")
         draft["price"] = adjusted_price
@@ -973,14 +986,60 @@ def _auto_polish_draft(draft: Dict[str, Any]) -> Dict[str, Any]:
     return draft
 
 
+async def _get_market_price(item: Dict[str, Any]) -> float:
+    """
+    Obtenir le prix basé sur le marché réel Vinted (SCRAPING)
+    Scrape les prix d'articles similaires pour donner un prix précis
+
+    Args:
+        item: Dict avec title, brand, category, condition, size
+
+    Returns:
+        Prix basé sur le marché réel en euros
+    """
+    try:
+        from backend.core.market_pricing_engine import MarketPricingEngine
+        from backend.core.session import SessionVault
+        from backend.settings import settings
+
+        # Charger la session Vinted
+        vault = SessionVault(
+            key=settings.SECRET_KEY,
+            storage_path=settings.SESSION_STORE_PATH
+        )
+        session = vault.load_session()
+
+        if not session:
+            print("[PRICING] No Vinted session available, using fallback")
+            return _adjust_price_if_needed(item)
+
+        # Utiliser le moteur de pricing intelligent
+        engine = MarketPricingEngine(session)
+
+        recommendation = await engine.get_price_recommendation(
+            title=item.get("title", ""),
+            category=item.get("category", ""),
+            brand=item.get("brand"),
+            condition=item.get("condition", "Bon état"),
+            size=item.get("size"),
+            photos_quality_score=75.0  # Score moyen
+        )
+
+        print(f"[PRICING] Market price: {recommendation.recommended_price}€ (confidence: {recommendation.confidence:.0%})")
+        return recommendation.recommended_price
+
+    except Exception as e:
+        print(f"[PRICING] Market pricing failed: {e}, using fallback")
+        return _adjust_price_if_needed(item)
+
+
 def _adjust_price_if_needed(item: Dict[str, Any]) -> float:
     """
-    Ajuster le prix selon les règles réalistes Vinted 2025
-    Si l'AI a mal calculé, on corrige automatiquement
-    
+    FALLBACK: Ajuster le prix avec multiplicateurs si le scraping échoue
+
     Args:
         item: Dict avec brand, category, condition, price
-        
+
     Returns:
         Prix ajusté en euros
     """
