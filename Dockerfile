@@ -33,6 +33,7 @@ RUN apt-get update && apt-get install -y \
     libxshmfence1 \
     libheif-dev \
     libheif1 \
+    playwright \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

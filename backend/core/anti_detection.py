@@ -173,8 +173,8 @@ class BrowserFingerprint:
         if fingerprint is None:
             fingerprint = cls.generate()
 
-        # Set viewport
-        await context.set_viewport_size(fingerprint["viewport"])
+        # Note: viewport is already set during context creation in vinted_client.py
+        # No need to set it again here as BrowserContext doesn't have set_viewport_size()
 
         # Set timezone
         await context.add_init_script(f"""

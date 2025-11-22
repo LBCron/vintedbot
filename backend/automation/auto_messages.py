@@ -433,7 +433,7 @@ class AutoMessagesService:
         await asyncio.sleep(delay)
 
         # Get session
-        session = get_vinted_session(self.user_id)
+        session = _session(self.user_id)
         if not session:
             logger.error("No Vinted session")
             return False

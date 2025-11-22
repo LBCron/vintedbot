@@ -473,7 +473,7 @@ async def prepare_listing(
                 ok=True,
                 dry_run=True,
                 confirm_token=confirm_token,
-                preview_url="https://www.vinted.fr/items/new",
+                preview_url="https://www.vinted.com/items/new",
                 screenshot_b64=None,  # Not captured in dry-run
                 draft_context=draft_context
             )
@@ -491,7 +491,7 @@ async def prepare_listing(
             page = await client.new_page()
             
             # Navigate to new item page
-            await page.goto("https://www.vinted.fr/items/new", wait_until="networkidle")
+            await page.goto("https://www.vinted.com/items/new", wait_until="networkidle")
             
             # Check for challenges
             if await client.detect_challenge(page):
@@ -680,7 +680,7 @@ async def publish_listing(
             page = await client.new_page()
             
             # Navigate to new item page (state should be preserved)
-            await page.goto("https://www.vinted.fr/items/new", wait_until="networkidle")
+            await page.goto("https://www.vinted.com/items/new", wait_until="networkidle")
             
             # Detect challenge before publish
             if await client.detect_challenge(page):
@@ -795,7 +795,7 @@ async def create_draft(
     
     Returns:
         - ok: true/false
-        - vinted_draft_url: URL of the draft (e.g., https://www.vinted.fr/items/drafts/123)
+        - vinted_draft_url: URL of the draft (e.g., https://www.vinted.com/items/drafts/123)
         - vinted_draft_id: ID of the draft
         - dry_run: whether this was a simulation
     """
@@ -831,7 +831,7 @@ async def create_draft(
             
             # Simulate draft creation
             mock_draft_id = "123456789"
-            mock_draft_url = f"https://www.vinted.fr/items/drafts/{mock_draft_id}"
+            mock_draft_url = f"https://www.vinted.com/items/drafts/{mock_draft_id}"
             
             return ListingPrepareResponse(
                 ok=True,
@@ -856,7 +856,7 @@ async def create_draft(
             page = await client.new_page()
             
             # Navigate to new item page
-            await page.goto("https://www.vinted.fr/items/new", wait_until="networkidle")
+            await page.goto("https://www.vinted.com/items/new", wait_until="networkidle")
             
             # Check for challenges
             if await client.detect_challenge(page):
@@ -1006,7 +1006,7 @@ async def test_session(current_user: User = Depends(get_current_user)):
             page = await client.new_page()
             
             # Navigate to a page that requires auth
-            await page.goto("https://www.vinted.fr/items/new", wait_until="networkidle", timeout=15000)
+            await page.goto("https://www.vinted.com/items/new", wait_until="networkidle", timeout=15000)
             
             # Check current URL
             current_url = page.url

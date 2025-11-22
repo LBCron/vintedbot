@@ -109,16 +109,52 @@ class VintedClient:
 
         # Parse cookies from header string
         cookies = []
-        for cookie_str in session.cookie.split(';'):
-            cookie_str = cookie_str.strip()
-            if '=' in cookie_str:
-                name, value = cookie_str.split('=', 1)
-                cookies.append({
-                    'name': name.strip(),
-                    'value': value.strip(),
-                    'domain': '.vinted.fr',
-                    'path': '/'
-                })
+        cookie_string = session.cookie.strip()
+        
+        # Check if cookie_string is already in "name=value" format or just a value
+        if '=' in cookie_string:
+            # Format: "name=value; name2=value2" or "name=value"
+            for cookie_str in cookie_string.split(';'):
+                cookie_str = cookie_str.strip()
+                if '=' in cookie_str:
+                    name, value = cookie_str.split('=', 1)
+                    name = name.strip()
+                    value = value.strip()
+                    
+                    # Determine if this is a session cookie (needs secure/httpOnly)
+                    is_session_cookie = 'session' in name.lower() and '_vinted' in name.lower()
+                    
+                    # Use .vinted.com as domain (works for both www.vinted.com and vinted.com)
+                    cookies.append({
+                        'name': name,
+                        'value': value,
+                        'domain': '.vinted.com',
+                        'path': '/',
+                        'secure': True,  # Required for HTTPS cookies
+                        'httpOnly': is_session_cookie,  # Session cookies are httpOnly
+                        'sameSite': 'Lax'  # Modern cookie security
+                    })
+        else:
+            # Format: Just the cookie value (probably _vinted_fr_session value)
+            # Assume it's the session cookie value
+            logger.info("Cookie string appears to be just a value, treating as _vinted_fr_session")
+            cookies.append({
+                'name': '_vinted_fr_session',
+                'value': cookie_string,
+                'domain': '.vinted.com',  # Must match the domain we navigate to (www.vinted.com)
+                'path': '/',
+                'secure': True,  # Required for HTTPS cookies
+                'httpOnly': True,  # Session cookies are httpOnly
+                'sameSite': 'Lax'  # Modern cookie security
+            })
+        
+        # Log parsed cookies for debugging
+        cookie_names = [c['name'] for c in cookies]
+        has_session_cookie = any('_vinted' in name.lower() and 'session' in name.lower() for name in cookie_names)
+        logger.info(f"Parsed {len(cookie_names)} cookies: {', '.join(cookie_names)}")
+        if not has_session_cookie:
+            logger.warning("⚠️  No _vinted*_session cookie found in parsed cookies!")
+            logger.warning(f"Cookie string received: {cookie_string[:100]}...")
 
         # Create context with randomized fingerprint
         self.context = await self.browser.new_context(
@@ -140,8 +176,77 @@ class VintedClient:
         # Apply advanced anti-detection scripts
         await BrowserFingerprint.apply_to_context(self.context, fingerprint)
 
-        # Add cookies
-        await self.context.add_cookies(cookies)
+        # Create a temporary page and navigate to Vinted before adding cookies
+        # This ensures the domain context is set correctly
+        temp_page = await self.context.new_page()
+        try:
+            await temp_page.goto("https://www.vinted.com", wait_until='domcontentloaded', timeout=10000)
+            logger.info("Navigated to vinted.com for cookie context")
+        except Exception as e:
+            logger.warning(f"Could not navigate to vinted.com before adding cookies: {e}")
+        
+        # Add cookies (must be done after navigation to domain)
+        try:
+            await self.context.add_cookies(cookies)
+            logger.info(f"Added {len(cookies)} cookies to context")
+            
+            # Verify cookies were added
+            context_cookies = await self.context.cookies()
+            context_cookie_names = [c['name'] for c in context_cookies]
+            logger.info(f"Context now has {len(context_cookies)} cookies: {', '.join(context_cookie_names)}")
+            
+            # Check specifically for session cookie
+            session_cookies = [c for c in context_cookies if 'session' in c['name'].lower()]
+            if session_cookies:
+                session_cookie = session_cookies[0]
+                logger.info(f"✅ Session cookie found: {session_cookie['name']}")
+                logger.info(f"   → Secure: {session_cookie.get('secure', False)}")
+                logger.info(f"   → HttpOnly: {session_cookie.get('httpOnly', False)}")
+                logger.info(f"   → Domain: {session_cookie.get('domain', 'N/A')}")
+            else:
+                logger.warning("⚠️  No session cookie found in context after adding!")
+                logger.warning("This might cause authentication issues.")
+            
+            # Verify authentication by navigating to a protected page
+            try:
+                logger.info("Verifying authentication by checking account page...")
+                await temp_page.goto("https://www.vinted.com/account", wait_until='domcontentloaded', timeout=10000)
+                await asyncio.sleep(2)  # Wait for page to fully load
+                current_url = temp_page.url
+                
+                # Check for login redirect
+                if 'login' in current_url.lower() or 'session' in current_url.lower() or '/member/login' in current_url:
+                    logger.warning("⚠️  Authentication check failed - redirected to login page")
+                    logger.warning(f"   → Current URL: {current_url}")
+                    logger.warning("   → Cookie may be expired or invalid")
+                    logger.warning("   → Please refresh your cookie from your browser")
+                else:
+                    # Try to verify we're actually logged in by checking for account-specific elements
+                    try:
+                        # Check for elements that only exist when logged in
+                        account_indicators = await temp_page.query_selector_all('a[href*="/account"], button[data-testid*="user"], [data-testid*="profile"]')
+                        if account_indicators:
+                            logger.info("✅ Authentication verified - logged in elements found")
+                        else:
+                            logger.warning("⚠️  Authentication unclear - no logged-in indicators found")
+                            logger.warning("   → You may not be fully authenticated")
+                            logger.warning("   → Check the browser manually to confirm")
+                    except:
+                        pass
+                    
+                    logger.info("✅ Authentication appears successful - not redirected to login")
+                    logger.info(f"   → Current URL: {current_url}")
+                    
+            except Exception as e:
+                logger.warning(f"Could not verify authentication: {e}")
+                
+        except Exception as e:
+            logger.error(f"Failed to add cookies: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            # Continue anyway, cookies might still work
+        
+        await temp_page.close()
 
         logger.info(f"Created context with fingerprint: {fingerprint['user_agent'][:60]}...")
 
@@ -933,7 +1038,7 @@ class VintedClient:
 
             # STEP 1: Navigate to new listing page
             logger.info("Step 1: Navigating to /items/new")
-            await page.goto("https://www.vinted.fr/items/new", wait_until='networkidle')
+            await page.goto("https://www.vinted.com/items/new", wait_until='networkidle')
             await self.human_delay(2000, 4000)  # Human reads the page
 
             # Check for login redirect

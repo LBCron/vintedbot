@@ -76,7 +76,7 @@ class SessionVault:
         Load and decrypt session
         
         Returns:
-            VintedSession if found and valid, None otherwise
+            VintedSession if found and va   lid, None otherwise
         """
         try:
             if not self.storage_path.exists():
@@ -121,3 +121,36 @@ class SessionVault:
         """Check if valid session exists"""
         session = self.load_session()
         return session is not None
+
+
+def get_vinted_session(user_id: int) -> Optional[VintedSession]:
+    """
+    Get Vinted session for a specific user from the database.
+    
+    This function loads sessions from the database (multi-user system),
+    as opposed to SessionVault.load_session() which loads from an encrypted file
+    (single-user system).
+    
+    Args:
+        user_id: User ID to get session for
+        
+    Returns:
+        VintedSession if found, None otherwise
+    """
+    from backend.core.storage import get_store
+    
+    store = get_store()
+    session_data = store.get_vinted_session_for_user(str(user_id))
+    
+    if not session_data:
+        return None
+    
+    # Convert dict to VintedSession object
+    return VintedSession(
+        cookie=session_data.get("cookie", ""),
+        user_agent=session_data.get("user_agent", ""),
+        username=None,  # Can be extracted from cookie if needed
+        user_id=str(user_id),
+        expires_at=None,  # Can be set if stored in database
+        created_at=datetime.utcnow()
+    )

@@ -17,8 +17,8 @@ class VintedAPIClient:
     Uses direct API calls instead of browser automation
     """
 
-    BASE_URL = "https://www.vinted.fr"
-    API_BASE = "https://www.vinted.fr/api/v2"
+    BASE_URL = "https://www.vinted.com"
+    API_BASE = "https://www.vinted.com/api/v2"
 
     def __init__(self, session: VintedSession):
         """
@@ -42,8 +42,8 @@ class VintedAPIClient:
             'Accept': 'application/json, text/plain, */*',
             'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7',
             'Accept-Encoding': 'gzip, deflate, br',
-            'Origin': 'https://www.vinted.fr',
-            'Referer': 'https://www.vinted.fr/',
+            'Origin': 'https://www.vinted.com',
+            'Referer': 'https://www.vinted.com/',
             'X-Requested-With': 'XMLHttpRequest',
             'Connection': 'keep-alive',
             'Sec-Fetch-Dest': 'empty',
