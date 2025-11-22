@@ -1248,42 +1248,82 @@ CHAMPS OBLIGATOIRES (NE JAMAIS LAISSER VIDE):
 
 LISTING POUR CHAQUE GROUPE:
 
-title (≤70 chars, format SIMPLE « {{Catégorie}} {{Couleur}} {{Marque?}} {{Taille}} – {{État}} »)
-  [WARN] FORMAT SIMPLIFIÉ - PAS de parenthèses, PAS d'équivalences, PAS de mesures
-  
-  Exemples CORRECTS:
-  [OK] "T-shirt noir Burberry XS – très bon état"
-  [OK] "Jogging noir Burberry XS – bon état"
-  [OK] "Hoodie Karl Lagerfeld noir M – très bon état"
-  
-  Exemples INTERDITS:
-  [ERROR] "T-shirt noir Burberry XS (≈ 16Y/165 cm) – très bon état" (PAS de parenthèses)
-  [ERROR] "Jogging Burberry 16Y / 165 cm – bon état" (utiliser taille adulte)
-  
-  INTERDITS: emojis, superlatifs ("magnifique", "parfait"), marketing ("découvrez", "idéal pour"), parenthèses avec équivalences
+title (60-70 chars MAX - FORMAT SEO OPTIMISÉ VINTED 2025)
+  Condense TOUS les mots-clés recherchables dans l'ordre de priorité :
+  {{Marque}} {{Type}} {{Coupe/Style}} {{Couleur}} {{Taille}} {{Occasion/Saison}}
 
-description (4–6 lignes max, ton naturel et décontracté, ZÉRO emoji, ZÉRO phrases commerciales)
-  Parle comme une vraie personne qui vend ses vêtements :
-  - "Je vends mon...", "Porté quelques fois", "Super état", "Nickel", "Impec"
-  - Mentionne l'essentiel : ce que c'est, état honnête, taille, style
-  - Défauts simplement : "quelques traces", "léger boulochage", "rien de grave"
-  - Pas de détails techniques compliqués (composition exacte, etc.)
-  - Évite les phrases commerciales : "qualité assurée", "pièce incontournable", "style tendance"
+  Exemples OPTIMISÉS (70 chars MAX):
+  [OK] "Karl Lagerfeld hoodie streetwear noir blanc L automne hiver"
+  [OK] "Zara robe longue fluide bleu pastel M cérémonie été"
+  [OK] "Ralph Lauren polo slim fit rouge XL casual printemps"
+  [OK] "Burberry t-shirt vintage noir XS collector streetwear"
 
-  Exemple TON NATUREL: "Je vends mon hoodie Karl Lagerfeld noir et blanc. Porté quelques fois, super état, juste un léger boulochage aux coudes mais rien de méchant. Style streetwear cool. Taille L, nickel pour l'automne-hiver. Dispo de suite !"
+  PRIORITÉ DES MOTS-CLÉS (dans cet ordre):
+  1. Marque (si connue et recherchée)
+  2. Type exact (hoodie, robe, jean, etc.)
+  3. Coupe/style (slim, oversized, fluide, etc.)
+  4. Couleur principale
+  5. Taille
+  6. Occasion/saison (été, hiver, casual, soirée)
 
-  MENTIONNE HONNÊTEMENT:
-  • Défauts de façon simple et directe (pas de langue de bois)
-  • État général sans exagérer
-  • Taille et style basique
-  • Si vintage/rare, dis-le simplement
+  INTERDITS: emojis, "très bon état" dans titre (mettre dans description), parenthèses, tirets longs
 
-  INTERDITS: emojis, marketing ("parfait pour", "style tendance", "pièce magnifique", "qualité assurée"), superlatifs excessifs, détails techniques inutiles
+description (FORMAT FEATURE LIST SEO - Structure obligatoire ci-dessous)
 
-hashtags (3–5 SIMPLES et naturels, À LA FIN de la description)
-  Hashtags basiques et directs, pas trop compliqués
-  Exemple: #karllagerfeld #hoodie #streetwear #noir
-  Ou: #burberry #jogging #vintage #y2k
+  📋 STRUCTURE OBLIGATOIRE (ligne par ligne, comme un vrai vendeur pro):
+
+  Marque : {{marque}}
+  Type : {{type détaillé avec coupe si applicable}}
+  Taille : {{taille}} {{si mesures visibles: "(mesures : poitrine Xcm, longueur Ycm)"}}
+  Couleur : {{couleur principale}}, {{détails motif/texture si visible}}
+  Matière : {{matière si visible sur étiquette, sinon estimer}} (ex: "100% coton", "polyester léger", "jean stretch")
+  État : {{état exact}} {{préciser défauts honnêtement si visibles}}
+  Détails notables : {{CRITIQUES - liste 3-5 éléments distinctifs}} (ex: poches zippées, capuche ajustable, broderie logo, coupe oversize, ceinture réglable)
+
+  Idéal pour : {{3 occasions/contextes d'usage}} (ex: "casual quotidien, bureau décontracté, week-end", ou "soirée, vacances, cérémonies")
+  Suggestion style : {{1 conseil d'association}} (ex: "À porter avec jean slim et baskets", "Parfait avec veste en jean pour look casual chic")
+
+  {{Si visible: "Envoi rapide sous 24-48h, emballage soigné"}}
+
+  {{SYNONYMES MULTILINGUES pour SEO}} : {{traduire 2-3 mots-clés}} (ex: "robe = dress", "été = summer", "noir = black")
+
+  Hashtags : {{6-10 hashtags ultra-ciblés}}
+
+  EXEMPLE COMPLET (Karl Lagerfeld hoodie):
+
+  Marque : Karl Lagerfeld
+  Type : Hoodie streetwear oversize
+  Taille : L (mesures : poitrine 60cm, longueur 70cm)
+  Couleur : Noir et blanc, logo brodé poitrine
+  Matière : Coton épais 80%, polyester 20%
+  État : Très bon état, porté 3-4 fois, léger boulochage coudes (rien de visible)
+  Détails notables : Capuche ajustable, poches kangourou zippées, bord côtelé poignets et taille, logo KL signature
+
+  Idéal pour : streetwear urbain, automne-hiver, look décontracté casual
+  Suggestion style : Parfait avec jogging noir et sneakers blanches pour un total look street
+
+  Envoi rapide sous 24h, emballage soigné avec protection bulle
+
+  Synonymes : hoodie = sweatshirt, black = noir, streetwear = urban
+
+  Hashtags : #karllagerfeld #hoodie #streetwear #noir #tailleL #automne #hiver #urban #logo #oversize
+
+  RÈGLES ABSOLUES:
+  • Toujours mentionner les mesures si visibles sur photos/étiquette
+  • Lister 3-5 détails notables CONCRETS (poches, broderie, coupe, etc.)
+  • Donner 3 occasions d'usage + 1 conseil de style
+  • Ajouter "Envoi rapide" si pertinent
+  • Traduire 2-3 mots-clés en anglais pour SEO international
+  • 6-10 hashtags variés (marque, type, couleur, taille, saison, style)
+
+hashtags (6-10 ULTRA-CIBLÉS - Inclus dans la description ci-dessus)
+  Mix obligatoire :
+  • 1-2 marque (#karllagerfeld #burberry)
+  • 1-2 type (#hoodie #robe #jean)
+  • 1-2 couleur (#noir #bleu #rouge)
+  • 1 taille (#tailleL #tailleM)
+  • 2-3 style/occasion (#streetwear #casual #été #vintage)
+  • 1-2 bonus (#logo #oversize #slim #collector)
 
 price (suggéré en euros, bases réalistes Vinted 2025)
   BASES CATÉGORIES:
